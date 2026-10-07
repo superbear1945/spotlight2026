@@ -9,12 +9,18 @@
     箭头是带 source / target 的边（edge），因此在 draw.io 里拖动方框时
     箭头会自动跟随，可以长期维护这些架构图。
 
-输入：`docs/diagrams/<name>.json`（fireworks-tech-graph 图纸定义）
-输出：`docs/diagrams/<name>.drawio`（mxfile，可直接用 draw.io 打开或导入）
+输入：`docs/diagrams/<name>/<name>.json`（fireworks-tech-graph 图纸定义）
+输出：`docs/diagrams/<name>/<name>.drawio`（mxfile，可直接用 draw.io 打开）
+
+目录约定（每张图一个子目录，避免多张图的同名产物混在一个目录里）：
+    docs/diagrams/<name>/<name>.json          图纸定义（唯一来源）
+    docs/diagrams/<name>/<name>.layout.json   布局检查报告（由 fireworks 技能生成）
+    docs/diagrams/<name>/<name>.svg / .png / .html
+    docs/diagrams/<name>/<name>.drawio        draw.io 原生文件（本脚本输出）
 
 用法：
-    python spec-to-drawio.py docs/diagrams          # 转换目录下全部 JSON
-    python spec-to-drawio.py docs/diagrams --check  # 只校验已生成的 .drawio
+    python docs/diagrams/spec-to-drawio.py docs/diagrams          # 转换全部子目录下的图纸 JSON
+    python docs/diagrams/spec-to-drawio.py docs/diagrams --check  # 只校验已生成的 .drawio
 """
 import argparse
 import glob
@@ -258,10 +264,30 @@ def check(path):
     return problems
 
 
+def find_specs(root):
+    """找出目录下全部图纸定义。
+
+    输入：图纸根目录；输出：图纸 JSON 路径列表。
+    约定每张图放在自己的子目录里，形如 `<root>/<name>/<name>.json`；
+    同时兼容早期把 JSON 直接放在根目录下的平铺布局，便于平滑迁移。
+    """
+    specs = []
+    for entry in sorted(os.listdir(root)):
+        candidate = os.path.join(root, entry)
+        if os.path.isdir(candidate):
+            for json_path in sorted(glob.glob(os.path.join(candidate, "*.json"))):
+                if not json_path.endswith(".layout.json"):
+                    specs.append(json_path)
+        elif entry.endswith(".json") and not entry.endswith(".layout.json"):
+            specs.append(candidate)
+    return specs
+
+
 def convert(json_path, out_dir=None):
     """转换单个图纸 JSON。
 
     输入：JSON 路径与可选输出目录；输出：生成的 .drawio 路径。
+    默认把 .drawio 写在图纸 JSON 旁边，保持“一张图一个目录”。
     """
     with open(json_path, encoding="utf-8") as handle:
         spec = json.load(handle)
@@ -275,12 +301,13 @@ def convert(json_path, out_dir=None):
 def main():
     """命令行入口。输入：目录与 --check；输出：退出码与报告。"""
     parser = argparse.ArgumentParser(description="把图纸 JSON 转成 draw.io 原生 .drawio 文件")
-    parser.add_argument("directory", help="包含 *.json 图纸定义的目录")
+    parser.add_argument("directory", help="图纸根目录（每张图位于各自的子目录中）")
     parser.add_argument("--check", action="store_true", help="只校验已生成的 .drawio，不重新转换")
     args = parser.parse_args()
 
     if args.check:
-        targets = sorted(glob.glob(os.path.join(args.directory, "*.drawio")))
+        targets = sorted(glob.glob(os.path.join(args.directory, "*", "*.drawio")))
+        targets += sorted(glob.glob(os.path.join(args.directory, "*.drawio")))
         if not targets:
             print("没有找到任何 .drawio 文件")
             return 1
@@ -292,8 +319,7 @@ def main():
         print(f"校验完成：{len(targets)} 个文件，{len(problems)} 个问题")
         return 1 if problems else 0
 
-    sources = [p for p in sorted(glob.glob(os.path.join(args.directory, "*.json")))
-               if not p.endswith(".layout.json")]
+    sources = find_specs(args.directory)
     if not sources:
         print("没有找到任何图纸 JSON")
         return 1
