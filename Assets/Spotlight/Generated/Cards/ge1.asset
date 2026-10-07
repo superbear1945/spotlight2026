@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-8795902440029840070
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f46270952f46ef441a82ecbe84dc9fd9, type: 3}
+  m_Name: ge1_Resource
+  m_EditorClassIdentifier: 
+  _produce: 1
+  _upkeep: 0
+--- !u!114 &-2340171078816063782
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3099d18b4ff55c4cbe7732b2d6561a9, type: 3}
+  m_Name: ge1_Combat
+  m_EditorClassIdentifier: 
+  _hp: 1
+  _attack: 0
+  _range: 0
+  _moveDistance: 0
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f286b130caf66f84cbd77f9f1a0c2cc5, type: 3}
+  m_Name: ge1
+  m_EditorClassIdentifier: 
+  _id: ge1
+  _name: "GE-1\u5F00\u91C7\u673A"
+  _category: resource
+  _viewKey: default
+  _requiresUpgrade: 0
+  _upgradeFrom: 
+  _deployHomeOnly: 0
+  _avoidAdjacentSameType: 0
+  _combat: {fileID: -2340171078816063782}
+  _resource: {fileID: -8795902440029840070}
+  _teleport: {fileID: 0}
+  _prefab: {fileID: 6749875582034393383, guid: 9da3e0744635f8744b3e8535be6fa104, type: 3}
+  _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
+  _sourceSheet: Cards
