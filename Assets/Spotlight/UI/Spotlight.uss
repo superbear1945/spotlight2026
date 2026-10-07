@@ -1,0 +1,228 @@
+/* 静态界面样式。颜色与尺寸集中在此文件，便于策划在不改代码的情况下调整面板外观；
+   卡牌与棋盘的语义颜色来自 Excel 的 Presentation 表，不在此重复定义。 */
+
+.hud-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* 顶部信息条 */
+.top-bar {
+    flex-direction: row;
+    align-items: center;
+    padding: 8px 16px;
+    background-color: rgba(12, 16, 24, 0.78);
+}
+
+.title-label {
+    font-size: 20px;
+    color: rgb(240, 245, 255);
+    -unity-font-style: bold;
+}
+
+.info-label {
+    font-size: 15px;
+    color: rgb(210, 224, 245);
+    margin-left: 24px;
+    white-space: normal;
+}
+
+.warn-label {
+    font-size: 15px;
+    color: rgb(255, 210, 120);
+    white-space: normal;
+}
+
+.section-label {
+    font-size: 15px;
+    color: rgb(160, 200, 255);
+    margin-top: 6px;
+    margin-bottom: 2px;
+    -unity-font-style: bold;
+}
+
+.detail-label {
+    font-size: 14px;
+    color: rgb(225, 232, 245);
+    white-space: normal;
+}
+
+.log-line {
+    font-size: 13px;
+    color: rgb(200, 214, 235);
+    white-space: normal;
+    margin-bottom: 2px;
+}
+
+/* 通用面板 */
+.panel {
+    background-color: rgba(10, 14, 22, 0.82);
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgba(80, 120, 190, 0.55);
+    border-right-color: rgba(80, 120, 190, 0.55);
+    border-top-color: rgba(80, 120, 190, 0.55);
+    border-bottom-color: rgba(80, 120, 190, 0.55);
+    padding: 8px 10px;
+}
+
+.log-panel {
+    position: absolute;
+    left: 12px;
+    bottom: 64px;
+    width: 420px;
+    height: 240px;
+}
+
+.log-list {
+    flex-grow: 1;
+}
+
+.log-content {
+    flex-direction: column;
+}
+
+.side-panel {
+    position: absolute;
+    right: 12px;
+    top: 64px;
+    width: 380px;
+    max-height: 420px;
+}
+
+/* 底部按钮条 */
+.bottom-bar {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    flex-direction: row;
+}
+
+.action-button {
+    font-size: 15px;
+    margin-right: 8px;
+    padding: 6px 14px;
+    background-color: rgb(38, 52, 78);
+    color: rgb(235, 242, 255);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(90, 130, 200);
+    border-right-color: rgb(90, 130, 200);
+    border-top-color: rgb(90, 130, 200);
+    border-bottom-color: rgb(90, 130, 200);
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+.action-button:hover {
+    background-color: rgb(54, 74, 108);
+}
+
+.action-button.primary {
+    background-color: rgb(52, 110, 82);
+    border-left-color: rgb(90, 200, 140);
+    border-right-color: rgb(90, 200, 140);
+    border-top-color: rgb(90, 200, 140);
+    border-bottom-color: rgb(90, 200, 140);
+}
+
+.error-label {
+    position: absolute;
+    left: 50%;
+    top: 64px;
+    translate: -50% 0;
+    padding: 6px 14px;
+    font-size: 15px;
+    color: rgb(255, 235, 235);
+    background-color: rgba(150, 40, 40, 0.88);
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    white-space: normal;
+    max-width: 900px;
+}
+
+/* 遮罩 */
+.overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay {
+    background-color: rgba(0, 0, 0, 0.35);
+}
+
+.overlay-card {
+    background-color: rgba(14, 20, 32, 0.94);
+    padding: 24px 32px;
+    align-items: center;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.victory-label {
+    font-size: 32px;
+    color: rgb(255, 245, 210);
+    -unity-font-style: bold;
+    margin-bottom: 16px;
+}
+
+/* 调试面板 */
+.debug-panel {
+    /* 默认隐藏：面板只能由“配置/调试”按钮打开。
+       用 USS 而不是只靠代码隐藏，可以避免绑定时机变化时露出面板。 */
+    display: none;
+    position: absolute;
+    left: 40px;
+    top: 40px;
+    right: 40px;
+    bottom: 40px;
+    background-color: rgba(8, 12, 20, 0.97);
+}
+
+.debug-scroll {
+    flex-grow: 1;
+}
+
+.debug-columns {
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.debug-column {
+    flex-grow: 1;
+    flex-basis: 0;
+    margin-right: 16px;
+}
+
+.debug-json {
+    height: 420px;
+    white-space: normal;
+}
+
+.button-row {
+    flex-direction: row;
+    margin-top: 8px;
+}

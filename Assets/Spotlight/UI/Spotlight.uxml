@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 静态界面标记：回合信息、资源、日志、单位详情、按钮、胜负遮罩与调试面板。
+     动态的手牌与棋盘使用 UGUI，因此这里只放结构固定的面板；容器默认 picking-mode="Ignore"，
+     以免装饰性元素挡住 UGUI 的棋盘点击，只有按钮等交互元素保持默认拾取。 -->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="Spotlight.uss" />
+
+    <ui:VisualElement name="hud-root" class="hud-root" picking-mode="Ignore">
+
+        <!-- 顶部信息条 -->
+        <ui:VisualElement name="top-bar" class="top-bar" picking-mode="Ignore">
+            <ui:Label name="turn-label" text="第 1 回合 · 玩家行动" class="title-label" />
+            <ui:Label name="resource-label" text="资源 0" class="info-label" />
+            <ui:Label name="plays-label" text="剩余出牌 5" class="info-label" />
+        </ui:VisualElement>
+
+        <!-- 左侧日志 -->
+        <ui:VisualElement name="log-panel" class="panel log-panel" picking-mode="Ignore">
+            <ui:Label text="对局日志" class="section-label" picking-mode="Ignore" />
+            <ui:ScrollView name="log-list" class="log-list">
+                <ui:VisualElement name="log-content" class="log-content" picking-mode="Ignore" />
+            </ui:ScrollView>
+        </ui:VisualElement>
+
+        <!-- 右侧状态 -->
+        <ui:VisualElement name="side-panel" class="panel side-panel" picking-mode="Ignore">
+            <ui:Label text="Boss 状态" class="section-label" picking-mode="Ignore" />
+            <ui:Label name="boss-info-label" text="" class="info-label" picking-mode="Ignore" />
+            <ui:Label name="phase-label" text="" class="warn-label" picking-mode="Ignore" />
+            <ui:Label text="选中详情" class="section-label" picking-mode="Ignore" />
+            <ui:Label name="unit-detail" text="点击手牌、己方单位或己方家进行操作" class="detail-label" picking-mode="Ignore" />
+        </ui:VisualElement>
+
+        <!-- 底部按钮条 -->
+        <ui:VisualElement name="bottom-bar" class="bottom-bar" picking-mode="Ignore">
+            <ui:Button name="end-turn-button" text="结束回合" class="action-button" />
+            <ui:Button name="skip-deploy-button" text="跳过放牌并结束" class="action-button" />
+            <ui:Button name="restart-button" text="重开" class="action-button" />
+            <ui:Button name="debug-button" text="配置/调试" class="action-button" />
+        </ui:VisualElement>
+
+        <!-- 错误与提示 -->
+        <ui:Label name="error-label" text="" class="error-label" picking-mode="Ignore" />
+
+        <!-- 胜负遮罩 -->
+        <ui:VisualElement name="victory-overlay" class="overlay" picking-mode="Ignore">
+            <ui:VisualElement class="overlay-card" picking-mode="Ignore">
+                <ui:Label name="victory-label" text="" class="victory-label" picking-mode="Ignore" />
+                <ui:Button name="victory-restart-button" text="再来一局" class="action-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- 模态遮罩：配置面板打开时挡住棋盘视觉，真正的输入拦截由规则层完成 -->
+        <ui:VisualElement name="modal-overlay" class="overlay modal-overlay" />
+
+        <!-- 配置调试面板 -->
+        <ui:VisualElement name="debug-panel" class="panel debug-panel">
+            <ui:Label text="配置草稿（仅本次运行有效，不写回 Excel）" class="title-label" />
+            <ui:ScrollView class="debug-scroll">
+                <ui:VisualElement class="debug-columns">
+                    <ui:VisualElement class="debug-column">
+                        <ui:Label text="JSON 草稿" class="section-label" />
+                        <ui:TextField name="debug-json" multiline="true" class="debug-json" />
+                        <ui:VisualElement class="button-row">
+                            <ui:Button name="debug-export-button" text="导出" class="action-button" />
+                            <ui:Button name="debug-import-button" text="导入" class="action-button" />
+                            <ui:Button name="debug-reset-button" text="恢复默认" class="action-button" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="debug-column">
+                        <ui:Label text="临时新增卡种" class="section-label" />
+                        <ui:TextField name="debug-new-id" label="ID" />
+                        <ui:TextField name="debug-new-name" label="名称" />
+                        <ui:DropdownField name="debug-new-category" label="分类" />
+                        <ui:TextField name="debug-new-viewkey" label="外观键" value="default" />
+                        <ui:IntegerField name="debug-new-hp" label="生命" value="1" />
+                        <ui:IntegerField name="debug-new-atk" label="攻击" value="0" />
+                        <ui:IntegerField name="debug-new-range" label="射程" value="0" />
+                        <ui:IntegerField name="debug-new-move" label="移动" value="0" />
+                        <ui:IntegerField name="debug-new-produce" label="产出" value="0" />
+                        <ui:IntegerField name="debug-new-upkeep" label="维持费" value="0" />
+                        <ui:Button name="debug-add-card-button" text="新增卡种" class="action-button" />
+
+                        <ui:Label text="卡组数量" class="section-label" />
+                        <ui:TextField name="debug-deck-id" label="卡种 ID" />
+                        <ui:IntegerField name="debug-deck-count" label="数量" value="0" />
+                        <ui:Button name="debug-deck-set-button" text="设置数量" class="action-button" />
+
+                        <ui:Label text="卡种与卡组" class="section-label" />
+                        <ui:Label name="debug-card-summary" text="" class="detail-label" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:ScrollView>
+            <ui:Label name="debug-status" text="" class="detail-label" />
+            <ui:VisualElement class="button-row">
+                <ui:Button name="debug-apply-button" text="应用并重开" class="action-button primary" />
+                <ui:Button name="debug-close-button" text="关闭" class="action-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
