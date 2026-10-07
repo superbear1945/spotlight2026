@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "mode": "architecture",
+  "template_type": "architecture",
+  "style": 1,
+  "quality_profile": "standard",
+  "text_policy": "strict",
+  "width": 1600,
+  "height": 900,
+  "title": "Spotlight 模块架构与程序集依赖",
+  "subtitle": "规则内核 → 运行层 → 编辑器工具；测试程序集依赖三者，Plugins 按编辑器与运行时分离",
+  "containers": [
+    { "id": "c-core", "x": 60, "y": 140, "width": 340, "height": 150, "label": "Spotlight.Core", "subtitle": "纯 C# 规则内核，不引用 UnityEngine", "preserve_case": true },
+    { "id": "c-runtime", "x": 440, "y": 140, "width": 340, "height": 150, "label": "Spotlight.Runtime", "subtitle": "运行层：组件 · SO · UI · 调试", "preserve_case": true },
+    { "id": "c-editor", "x": 820, "y": 140, "width": 340, "height": 150, "label": "Spotlight.Editor", "subtitle": "仅编辑器：编译 · 菜单 · 门禁", "preserve_case": true },
+    { "id": "c-plugins", "x": 1200, "y": 140, "width": 340, "height": 300, "label": "Assets/Plugins", "subtitle": "第三方依赖，按用途分离", "preserve_case": true },
+    { "id": "c-tests", "x": 440, "y": 520, "width": 340, "height": 150, "label": "Spotlight.Tests.EditMode", "subtitle": "EditMode 行为与配置测试", "preserve_case": true }
+  ],
+  "nodes": [
+    { "id": "n-core", "kind": "double_rect", "x": 90, "y": 204, "width": 280, "height": 64, "label": "规则内核与配置契约", "sublabel": "Configuration · GameSession", "fill": "#eff6ff", "stroke": "#2563eb", "flat": true },
+    { "id": "n-runtime", "kind": "double_rect", "x": 470, "y": 204, "width": 280, "height": 64, "label": "运行层与视图", "sublabel": "Card · 三个组件 · UI · 调试面板", "fill": "#faf5ff", "stroke": "#7c3aed", "flat": true },
+    { "id": "n-editor", "kind": "double_rect", "x": 850, "y": 204, "width": 280, "height": 64, "label": "编辑器工具", "sublabel": "Excel 编译 · 工作簿 · 构建门禁", "fill": "#fff7ed", "stroke": "#f97316", "flat": true },
+    { "id": "n-excel", "kind": "cylinder", "x": 1230, "y": 204, "width": 280, "height": 64, "label": "ExcelDataReader 3.9.0", "sublabel": "仅编辑器引用，不进正式包", "fill": "#f0fdfa", "stroke": "#0d9488" },
+    { "id": "n-dotween", "kind": "rect", "x": 1230, "y": 340, "width": 280, "height": 64, "label": "DOTween Free 1.2.765", "sublabel": "运行时表现反馈与清理", "fill": "#fef2f2", "stroke": "#dc2626", "flat": true },
+    { "id": "n-tests", "kind": "rect", "x": 470, "y": 584, "width": 280, "height": 64, "label": "EditMode 测试程序集", "sublabel": "引用 Core / Runtime / Editor", "fill": "#ecfdf5", "stroke": "#10b981", "flat": true }
+  ],
+  "arrows": [
+    { "id": "e-runtime-core", "source": "n-runtime", "target": "n-core", "source_port": "left", "target_port": "right", "flow": "control", "label": "引用规则内核" },
+    { "id": "e-editor-runtime", "source": "n-editor", "target": "n-runtime", "source_port": "left", "target_port": "right", "flow": "control", "label": "引用运行层" },
+    { "id": "e-editor-excel", "source": "n-editor", "target": "n-excel", "source_port": "right", "target_port": "left", "flow": "data", "label": "读取 .xlsx" },
+    { "id": "e-runtime-dotween", "source": "n-runtime", "target": "n-dotween", "source_port": "right", "target_port": "left", "flow": "write", "label": "运行时调用" },
+    { "id": "e-tests-runtime", "source": "n-tests", "target": "n-runtime", "source_port": "top", "target_port": "bottom", "flow": "control", "label": "运行层测试" },
+    { "id": "e-tests-core", "source": "n-tests", "target": "n-core", "source_port": "left", "target_port": "bottom", "flow": "control", "label": "规则测试" },
+    { "id": "e-tests-editor", "source": "n-tests", "target": "n-editor", "source_port": "right", "target_port": "bottom", "flow": "control", "label": "配置编译测试" }
+  ],
+  "legend_orientation": "horizontal",
+  "legend_y": 750,
+  "legend": [
+    { "flow": "control", "label": "程序集依赖与测试引用" },
+    { "flow": "data", "label": "Excel 数据读取" },
+    { "flow": "write", "label": "运行时表现反馈" }
+  ],
+  "footer": "Spotlight · 模块与程序集依赖 · 由 fireworks-tech-graph Style 1 生成",
+  "footer_y": 850
+}

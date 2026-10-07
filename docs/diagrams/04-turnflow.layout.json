@@ -1,0 +1,648 @@
+{
+  "canvas": {
+    "height": 1980.0,
+    "width": 1500.0
+  },
+  "composition": {
+    "limits": {
+      "max_bends_per_edge": 12,
+      "max_bridged_crossings": 8,
+      "max_route_stretch": 5.0,
+      "max_total_bends": 100,
+      "min_container_gutter": 0.0,
+      "min_label_clearance": 2.0,
+      "min_node_gap": 0.0,
+      "min_segment_length": 0.0,
+      "profile": "standard"
+    },
+    "metrics": {
+      "bridged_crossings": 1,
+      "max_route_stretch": 1.031,
+      "minimum_container_gutter": 40.0,
+      "minimum_node_gap": 60.0,
+      "shortest_segment": 24.0,
+      "total_bends": 7
+    },
+    "ok": true,
+    "profile": "standard",
+    "score": 92,
+    "violations": []
+  },
+  "edges": [
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-start-restore",
+      "length": 60.0,
+      "route": [
+        [
+          400.0,
+          290.0
+        ],
+        [
+          400.0,
+          350.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-start",
+      "source_port": [
+        400.0,
+        290.0
+      ],
+      "target": "n-restore",
+      "target_port": [
+        400.0,
+        350.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-restore-resource",
+      "length": 60.0,
+      "route": [
+        [
+          400.0,
+          440.0
+        ],
+        [
+          400.0,
+          500.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-restore",
+      "source_port": [
+        400.0,
+        440.0
+      ],
+      "target": "n-resource",
+      "target_port": [
+        400.0,
+        500.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-resource-upkeep",
+      "length": 60.0,
+      "route": [
+        [
+          400.0,
+          590.0
+        ],
+        [
+          400.0,
+          650.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-resource",
+      "source_port": [
+        400.0,
+        590.0
+      ],
+      "target": "n-upkeep",
+      "target_port": [
+        400.0,
+        650.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-upkeep-draw",
+      "length": 60.0,
+      "route": [
+        [
+          400.0,
+          740.0
+        ],
+        [
+          400.0,
+          800.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-upkeep",
+      "source_port": [
+        400.0,
+        740.0
+      ],
+      "target": "n-draw",
+      "target_port": [
+        400.0,
+        800.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-draw-operate",
+      "length": 60.0,
+      "route": [
+        [
+          400.0,
+          890.0
+        ],
+        [
+          400.0,
+          950.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-draw",
+      "source_port": [
+        400.0,
+        890.0
+      ],
+      "target": "n-operate",
+      "target_port": [
+        400.0,
+        950.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-operate-endturn",
+      "length": 60.0,
+      "route": [
+        [
+          400.0,
+          1040.0
+        ],
+        [
+          400.0,
+          1100.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-operate",
+      "source_port": [
+        400.0,
+        1040.0
+      ],
+      "target": "n-endturn",
+      "target_port": [
+        400.0,
+        1100.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-endturn-limit",
+      "length": 60.0,
+      "route": [
+        [
+          400.0,
+          1190.0
+        ],
+        [
+          400.0,
+          1250.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-endturn",
+      "source_port": [
+        400.0,
+        1190.0
+      ],
+      "target": "n-limit",
+      "target_port": [
+        400.0,
+        1250.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-limit-discard",
+      "length": 60.0,
+      "route": [
+        [
+          400.0,
+          1340.0
+        ],
+        [
+          400.0,
+          1400.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-limit",
+      "source_port": [
+        400.0,
+        1340.0
+      ],
+      "target": "n-discard",
+      "target_port": [
+        400.0,
+        1400.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [
+        [
+          700.0,
+          1295.0
+        ]
+      ],
+      "crossings": [
+        [
+          700.0,
+          1295.0
+        ]
+      ],
+      "id": "e-limit-boss",
+      "length": 551.0,
+      "route": [
+        [
+          620.0,
+          1295.0
+        ],
+        [
+          800.0,
+          1295.0
+        ],
+        [
+          800.0,
+          1004.0
+        ],
+        [
+          880.0,
+          1004.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-limit",
+      "source_port": [
+        620.0,
+        1295.0
+      ],
+      "target": "n-boss-restore",
+      "target_port": [
+        880.0,
+        1004.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-discard-boss",
+      "length": 719.0,
+      "route": [
+        [
+          620.0,
+          1445.0
+        ],
+        [
+          700.0,
+          1445.0
+        ],
+        [
+          700.0,
+          986.0
+        ],
+        [
+          880.0,
+          986.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-discard",
+      "source_port": [
+        620.0,
+        1445.0
+      ],
+      "target": "n-boss-restore",
+      "target_port": [
+        880.0,
+        986.0
+      ],
+      "waypoints": [
+        [
+          700.0,
+          1445.0
+        ],
+        [
+          700.0,
+          986.0
+        ]
+      ]
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-boss-restore-spawn",
+      "length": 60.0,
+      "route": [
+        [
+          1100.0,
+          1040.0
+        ],
+        [
+          1100.0,
+          1100.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-boss-restore",
+      "source_port": [
+        1100.0,
+        1040.0
+      ],
+      "target": "n-boss-spawn",
+      "target_port": [
+        1100.0,
+        1100.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-boss-spawn-act",
+      "length": 60.0,
+      "route": [
+        [
+          1100.0,
+          1190.0
+        ],
+        [
+          1100.0,
+          1250.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-boss-spawn",
+      "source_port": [
+        1100.0,
+        1190.0
+      ],
+      "target": "n-boss-act",
+      "target_port": [
+        1100.0,
+        1250.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-boss-act-end",
+      "length": 60.0,
+      "route": [
+        [
+          1100.0,
+          1340.0
+        ],
+        [
+          1100.0,
+          1400.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-boss-act",
+      "source_port": [
+        1100.0,
+        1340.0
+      ],
+      "target": "n-boss-end",
+      "target_port": [
+        1100.0,
+        1400.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-boss-end-check",
+      "length": 90.0,
+      "route": [
+        [
+          1100.0,
+          1490.0
+        ],
+        [
+          1100.0,
+          1580.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-boss-end",
+      "source_port": [
+        1100.0,
+        1490.0
+      ],
+      "target": "n-check",
+      "target_port": [
+        1100.0,
+        1580.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-check-outcome",
+      "length": 70.0,
+      "route": [
+        [
+          1100.0,
+          1670.0
+        ],
+        [
+          1100.0,
+          1740.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-check",
+      "source_port": [
+        1100.0,
+        1670.0
+      ],
+      "target": "n-outcome",
+      "target_port": [
+        1100.0,
+        1740.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 1,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-check-next",
+      "length": 360.0,
+      "route": [
+        [
+          860.0,
+          1625.0
+        ],
+        [
+          660.0,
+          1625.0
+        ],
+        [
+          660.0,
+          1785.0
+        ],
+        [
+          660.0,
+          1785.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-check",
+      "source_port": [
+        860.0,
+        1625.0
+      ],
+      "target": "n-next",
+      "target_port": [
+        660.0,
+        1785.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-next-start",
+      "length": 1588.0,
+      "route": [
+        [
+          180.0,
+          1785.0
+        ],
+        [
+          156.0,
+          1785.0
+        ],
+        [
+          156.0,
+          245.0
+        ],
+        [
+          180.0,
+          245.0
+        ]
+      ],
+      "route_stretch": 1.031,
+      "source": "n-next",
+      "source_port": [
+        180.0,
+        1785.0
+      ],
+      "target": "n-start",
+      "target_port": [
+        180.0,
+        245.0
+      ],
+      "waypoints": []
+    }
+  ],
+  "input_schema": "v1",
+  "issues": [
+    {
+      "code": "EDGE_CROSSING_BRIDGED",
+      "coordinates": [
+        [
+          700.0,
+          1295.0
+        ]
+      ],
+      "element": "e-limit-boss",
+      "severity": "info"
+    }
+  ],
+  "mode": "flowchart",
+  "ok": true,
+  "palette": {
+    "below_target": [],
+    "minimum_target": 4.5,
+    "ratios": {
+      "section_sub_fill": 4.76,
+      "text_muted": 4.76,
+      "text_primary": 17.74,
+      "text_secondary": 4.83
+    },
+    "scope": "default opaque canvas text tokens; not a full rendered accessibility audit",
+    "unsupported_tokens": []
+  },
+  "placements": {
+    "legend": {
+      "actual": [
+        42.0,
+        1850.0
+      ],
+      "bounds": [
+        32.0,
+        1836.0,
+        666.0,
+        1882.0
+      ],
+      "moved": false,
+      "requested": [
+        42.0,
+        1850.0
+      ]
+    }
+  },
+  "schema_version": 1,
+  "semantics": {
+    "details": {},
+    "ok": true,
+    "profile": "generic",
+    "style": 1,
+    "visual_theme": "Flat Icon"
+  },
+  "style": {
+    "id": 1,
+    "name": "Flat Icon"
+  },
+  "summary": {
+    "bridged_crossings": 1,
+    "edges": 17,
+    "nodes": 17
+  },
+  "text_metrics": "heuristic-v1",
+  "typography": {
+    "complete_text": true,
+    "hint": null,
+    "metrics": "heuristic widths; inspect the actual rendered font",
+    "truncated": []
+  }
+}

@@ -1,0 +1,446 @@
+{
+ "schema_version": 1,
+ "mode": "flowchart",
+ "template_type": "flowchart",
+ "style": 1,
+ "quality_profile": "standard",
+ "text_policy": "strict",
+ "width": 1500,
+ "height": 1980,
+ "title": "Spotlight 回合与胜负流程",
+ "subtitle": "玩家回合：恢复行动 → 资源结算 → 维持费 → 抽牌 → 操作 → 超限弃牌；Boss 回合自动执行",
+ "containers": [
+  {
+   "id": "c-player",
+   "x": 140,
+   "y": 130,
+   "width": 520,
+   "height": 1400,
+   "label": "玩家回合",
+   "subtitle": "rules.firstSide = player 时的执行顺序",
+   "preserve_case": true
+  },
+  {
+   "id": "c-boss",
+   "x": 840,
+   "y": 130,
+   "width": 520,
+   "height": 1400,
+   "label": "Boss 回合",
+   "subtitle": "补齐兵位后逐个行动，然后自动结束",
+   "preserve_case": true
+  }
+ ],
+ "nodes": [
+  {
+   "id": "n-start",
+   "kind": "rect",
+   "x": 180,
+   "y": 200,
+   "width": 440,
+   "height": 90,
+   "label": "回合开始",
+   "sublabel": "回合号从 1 开始，双方各行动一次后递增",
+   "fill": "#eff6ff",
+   "stroke": "#2563eb",
+   "flat": true
+  },
+  {
+   "id": "n-restore",
+   "kind": "rect",
+   "x": 180,
+   "y": 350,
+   "width": 440,
+   "height": 90,
+   "label": "恢复行动",
+   "sublabel": "己方单位恢复行动，家恢复移动机会",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "flat": true
+  },
+  {
+   "id": "n-resource",
+   "kind": "rect",
+   "x": 180,
+   "y": 500,
+   "width": 440,
+   "height": 90,
+   "label": "资源结算",
+   "sublabel": "按开关清零或累积，结算家与场上产出",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "flat": true
+  },
+  {
+   "id": "n-upkeep",
+   "kind": "rect",
+   "x": 180,
+   "y": 650,
+   "width": 440,
+   "height": 90,
+   "label": "按部署顺序支付维持费",
+   "sublabel": "欠费只禁止行动，不关闭星门部署扩展",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "flat": true
+  },
+  {
+   "id": "n-draw",
+   "kind": "rect",
+   "x": 180,
+   "y": 800,
+   "width": 440,
+   "height": 90,
+   "label": "抽牌",
+   "sublabel": "抽牌堆耗尽时先洗回墓地再继续抽",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "flat": true
+  },
+  {
+   "id": "n-operate",
+   "kind": "rect",
+   "x": 180,
+   "y": 950,
+   "width": 440,
+   "height": 90,
+   "label": "玩家操作",
+   "sublabel": "出牌 · 移动 · 攻击 · 互换 · 家移动一格",
+   "fill": "#ecfdf5",
+   "stroke": "#10b981",
+   "flat": true
+  },
+  {
+   "id": "n-endturn",
+   "kind": "rect",
+   "x": 180,
+   "y": 1100,
+   "width": 440,
+   "height": 90,
+   "label": "结束回合",
+   "sublabel": "出牌次数耗尽或主动结束",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "flat": true
+  },
+  {
+   "id": "n-limit",
+   "kind": "hexagon",
+   "x": 180,
+   "y": 1250,
+   "width": 440,
+   "height": 90,
+   "label": "手牌是否超过上限",
+   "sublabel": "默认上限 5 张",
+   "fill": "#fff7ed",
+   "stroke": "#f97316",
+   "flat": true
+  },
+  {
+   "id": "n-discard",
+   "kind": "rect",
+   "x": 180,
+   "y": 1400,
+   "width": 440,
+   "height": 90,
+   "label": "弃牌至上限",
+   "sublabel": "完成后才进入对手回合",
+   "fill": "#fff7ed",
+   "stroke": "#f97316",
+   "flat": true
+  },
+  {
+   "id": "n-note",
+   "kind": "rect",
+   "x": 880,
+   "y": 230,
+   "width": 440,
+   "height": 140,
+   "label": "先手顺序与左右镜像",
+   "sublabel": "firstSide 决定先手方；playerSide 决定家与区域方向",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "flat": true
+  },
+  {
+   "id": "n-boss-restore",
+   "kind": "rect",
+   "x": 880,
+   "y": 950,
+   "width": 440,
+   "height": 90,
+   "label": "恢复行动",
+   "sublabel": "Boss 单位恢复行动，忽略资源与维持费",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "flat": true
+  },
+  {
+   "id": "n-boss-spawn",
+   "kind": "rect",
+   "x": 880,
+   "y": 1100,
+   "width": 440,
+   "height": 90,
+   "label": "首次部署或到期补兵",
+   "sublabel": "兵位独立计时，无空位则下次重试",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "flat": true
+  },
+  {
+   "id": "n-boss-act",
+   "kind": "rect",
+   "x": 880,
+   "y": 1250,
+   "width": 440,
+   "height": 90,
+   "label": "按部署顺序逐个行动",
+   "sublabel": "AI 决策或玩家手动操作",
+   "fill": "#ecfdf5",
+   "stroke": "#10b981",
+   "flat": true
+  },
+  {
+   "id": "n-boss-end",
+   "kind": "rect",
+   "x": 880,
+   "y": 1400,
+   "width": 440,
+   "height": 90,
+   "label": "Boss 回合自动结束",
+   "sublabel": "手动模式由玩家提交结束",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "flat": true
+  },
+  {
+   "id": "n-check",
+   "kind": "hexagon",
+   "x": 860,
+   "y": 1580,
+   "width": 480,
+   "height": 90,
+   "label": "胜负是否已确定",
+   "sublabel": "每次行动后检查，确定后停止行动与补兵",
+   "fill": "#fef2f2",
+   "stroke": "#dc2626",
+   "flat": true
+  },
+  {
+   "id": "n-outcome",
+   "kind": "rect",
+   "x": 860,
+   "y": 1740,
+   "width": 480,
+   "height": 90,
+   "label": "对局结束：胜负或平局",
+   "sublabel": "停止后续行动与补兵，界面显示结果",
+   "fill": "#fee2e2",
+   "stroke": "#dc2626"
+  },
+  {
+   "id": "n-next",
+   "kind": "rect",
+   "x": 180,
+   "y": 1740,
+   "width": 480,
+   "height": 90,
+   "label": "进入下一回合",
+   "sublabel": "双方各行动一次后回合号递增",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "flat": true
+  }
+ ],
+ "arrows": [
+  {
+   "id": "e-start-restore",
+   "source": "n-start",
+   "target": "n-restore",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "control",
+   "label": "回合开始"
+  },
+  {
+   "id": "e-restore-resource",
+   "source": "n-restore",
+   "target": "n-resource",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "control",
+   "label": "恢复完成"
+  },
+  {
+   "id": "e-resource-upkeep",
+   "source": "n-resource",
+   "target": "n-upkeep",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "control",
+   "label": "产出先于维持费"
+  },
+  {
+   "id": "e-upkeep-draw",
+   "source": "n-upkeep",
+   "target": "n-draw",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "control",
+   "label": "支付后抽牌"
+  },
+  {
+   "id": "e-draw-operate",
+   "source": "n-draw",
+   "target": "n-operate",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "control",
+   "label": "进入操作阶段"
+  },
+  {
+   "id": "e-operate-endturn",
+   "source": "n-operate",
+   "target": "n-endturn",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "control",
+   "label": "玩家结束回合"
+  },
+  {
+   "id": "e-endturn-limit",
+   "source": "n-endturn",
+   "target": "n-limit",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "control",
+   "label": "检查手牌"
+  },
+  {
+   "id": "e-limit-discard",
+   "source": "n-limit",
+   "target": "n-discard",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "control",
+   "label": "超过上限"
+  },
+  {
+   "id": "e-limit-boss",
+   "source": "n-limit",
+   "target": "n-boss-restore",
+   "source_port": "right",
+   "target_port": "left",
+   "flow": "neutral",
+   "label": "未超限：直接进入对方回合",
+   "corridor_x": [
+    800
+   ]
+  },
+  {
+   "id": "e-discard-boss",
+   "source": "n-discard",
+   "target": "n-boss-restore",
+   "source_port": "right",
+   "target_port": "left",
+   "flow": "control",
+   "label": "弃牌完成后进入对方回合",
+   "route_points": [
+    [
+     700,
+     1445
+    ],
+    [
+     700,
+     986
+    ]
+   ]
+  },
+  {
+   "id": "e-boss-restore-spawn",
+   "source": "n-boss-restore",
+   "target": "n-boss-spawn",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "control",
+   "label": "恢复完成"
+  },
+  {
+   "id": "e-boss-spawn-act",
+   "source": "n-boss-spawn",
+   "target": "n-boss-act",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "control",
+   "label": "补齐兵位"
+  },
+  {
+   "id": "e-boss-act-end",
+   "source": "n-boss-act",
+   "target": "n-boss-end",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "control",
+   "label": "行动完毕"
+  },
+  {
+   "id": "e-boss-end-check",
+   "source": "n-boss-end",
+   "target": "n-check",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "read",
+   "label": "检查胜负"
+  },
+  {
+   "id": "e-check-outcome",
+   "source": "n-check",
+   "target": "n-outcome",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "read",
+   "label": "已确定：对局结束"
+  },
+  {
+   "id": "e-check-next",
+   "source": "n-check",
+   "target": "n-next",
+   "source_port": "left",
+   "target_port": "right",
+   "flow": "feedback",
+   "label": "未确定"
+  },
+  {
+   "id": "e-next-start",
+   "source": "n-next",
+   "target": "n-start",
+   "source_port": "left",
+   "target_port": "left",
+   "flow": "feedback",
+   "label": "下一回合由先手方重新开始"
+  }
+ ],
+ "legend_orientation": "horizontal",
+ "legend_y": 1850,
+ "legend": [
+  {
+   "flow": "control",
+   "label": "回合内固定结算顺序"
+  },
+  {
+   "flow": "neutral",
+   "label": "未超限时直接跳过"
+  },
+  {
+   "flow": "read",
+   "label": "胜负检查与结束"
+  },
+  {
+   "flow": "feedback",
+   "label": "进入下一回合"
+  }
+ ],
+ "footer": "Spotlight · 回合与胜负流程 · 由 fireworks-tech-graph Style 1 生成",
+ "footer_y": 1930
+}

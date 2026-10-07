@@ -1,0 +1,53 @@
+# PR 测试流水线：在 GitHub Action 中运行 Unity EditMode 测试。
+# 为什么需要：AGENTS.md 要求每个功能都留下可在 PR 上自动执行的测试；
+# 规则内核与配置编译器都不依赖场景，因此用 EditMode 测试即可覆盖主要回归面。
+name: Unity EditMode Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  editmode-tests:
+    name: EditMode 测试（Unity ${{ matrix.unityVersion }}）
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        unityVersion: [ '2022.3.62f1' ]
+        testMode: [ EditMode ]
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: 缓存 Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-${{ matrix.unityVersion }}-${{ hashFiles('Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: |
+            Library-${{ matrix.unityVersion }}-
+
+      - name: 运行测试
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion: ${{ matrix.unityVersion }}
+          testMode: ${{ matrix.testMode }}
+          artifactsPath: test-results-${{ matrix.testMode }}
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          checkName: EditMode 测试结果
+
+      - name: 上传测试结果
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.testMode }}
+          path: test-results-${{ matrix.testMode }}

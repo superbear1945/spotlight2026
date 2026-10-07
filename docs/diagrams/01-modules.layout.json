@@ -1,0 +1,361 @@
+{
+  "canvas": {
+    "height": 900.0,
+    "width": 1600.0
+  },
+  "composition": {
+    "limits": {
+      "max_bends_per_edge": 12,
+      "max_bridged_crossings": 8,
+      "max_route_stretch": 5.0,
+      "max_total_bends": 100,
+      "min_container_gutter": 0.0,
+      "min_label_clearance": 2.0,
+      "min_node_gap": 0.0,
+      "min_segment_length": 0.0,
+      "profile": "standard"
+    },
+    "metrics": {
+      "bridged_crossings": 1,
+      "max_route_stretch": 1.223,
+      "minimum_container_gutter": 22.0,
+      "minimum_node_gap": 72.0,
+      "shortest_segment": 9.0,
+      "total_bends": 10
+    },
+    "ok": true,
+    "profile": "standard",
+    "score": 86,
+    "violations": []
+  },
+  "edges": [
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-runtime-core",
+      "length": 100.0,
+      "route": [
+        [
+          470.0,
+          236.0
+        ],
+        [
+          370.0,
+          236.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-runtime",
+      "source_port": [
+        470.0,
+        236.0
+      ],
+      "target": "n-core",
+      "target_port": [
+        370.0,
+        236.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 1,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-editor-runtime",
+      "length": 109.0,
+      "route": [
+        [
+          850.0,
+          236.0
+        ],
+        [
+          750.0,
+          236.0
+        ],
+        [
+          750.0,
+          227.0
+        ],
+        [
+          750.0,
+          227.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-editor",
+      "source_port": [
+        850.0,
+        236.0
+      ],
+      "target": "n-runtime",
+      "target_port": [
+        750.0,
+        227.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-editor-excel",
+      "length": 100.0,
+      "route": [
+        [
+          1130.0,
+          236.0
+        ],
+        [
+          1230.0,
+          236.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-editor",
+      "source_port": [
+        1130.0,
+        236.0
+      ],
+      "target": "n-excel",
+      "target_port": [
+        1230.0,
+        236.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-runtime-dotween",
+      "length": 607.0,
+      "route": [
+        [
+          750.0,
+          245.0
+        ],
+        [
+          763.0,
+          245.0
+        ],
+        [
+          763.0,
+          372.0
+        ],
+        [
+          1230.0,
+          372.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-runtime",
+      "source_port": [
+        750.0,
+        245.0
+      ],
+      "target": "n-dotween",
+      "target_port": [
+        1230.0,
+        372.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 3,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-tests-runtime",
+      "length": 386.36,
+      "route": [
+        [
+          610.0,
+          584.0
+        ],
+        [
+          645.18,
+          584.0
+        ],
+        [
+          645.18,
+          288.4
+        ],
+        [
+          610.0,
+          288.4
+        ],
+        [
+          610.0,
+          268.0
+        ]
+      ],
+      "route_stretch": 1.223,
+      "source": "n-tests",
+      "source_port": [
+        610.0,
+        584.0
+      ],
+      "target": "n-runtime",
+      "target_port": [
+        610.0,
+        268.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 1,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-tests-core",
+      "length": 588.0,
+      "route": [
+        [
+          470.0,
+          616.0
+        ],
+        [
+          230.0,
+          616.0
+        ],
+        [
+          230.0,
+          268.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-tests",
+      "source_port": [
+        470.0,
+        616.0
+      ],
+      "target": "n-core",
+      "target_port": [
+        230.0,
+        268.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 3,
+      "bridges": [
+        [
+          770.4,
+          372.0
+        ]
+      ],
+      "crossings": [
+        [
+          770.4,
+          372.0
+        ]
+      ],
+      "id": "e-tests-editor",
+      "length": 588.0,
+      "route": [
+        [
+          750.0,
+          616.0
+        ],
+        [
+          770.4,
+          616.0
+        ],
+        [
+          770.4,
+          292.0
+        ],
+        [
+          990.0,
+          292.0
+        ],
+        [
+          990.0,
+          268.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-tests",
+      "source_port": [
+        750.0,
+        616.0
+      ],
+      "target": "n-editor",
+      "target_port": [
+        990.0,
+        268.0
+      ],
+      "waypoints": []
+    }
+  ],
+  "input_schema": "v1",
+  "issues": [
+    {
+      "code": "EDGE_CROSSING_BRIDGED",
+      "coordinates": [
+        [
+          770.4,
+          372.0
+        ]
+      ],
+      "element": "e-tests-editor",
+      "severity": "info"
+    }
+  ],
+  "mode": "architecture",
+  "ok": true,
+  "palette": {
+    "below_target": [],
+    "minimum_target": 4.5,
+    "ratios": {
+      "section_sub_fill": 4.76,
+      "text_muted": 4.76,
+      "text_primary": 17.74,
+      "text_secondary": 4.83
+    },
+    "scope": "default opaque canvas text tokens; not a full rendered accessibility audit",
+    "unsupported_tokens": []
+  },
+  "placements": {
+    "legend": {
+      "actual": [
+        42.0,
+        750.0
+      ],
+      "bounds": [
+        32.0,
+        736.0,
+        526.0,
+        782.0
+      ],
+      "moved": false,
+      "requested": [
+        42.0,
+        750.0
+      ]
+    }
+  },
+  "schema_version": 1,
+  "semantics": {
+    "details": {},
+    "ok": true,
+    "profile": "generic",
+    "style": 1,
+    "visual_theme": "Flat Icon"
+  },
+  "style": {
+    "id": 1,
+    "name": "Flat Icon"
+  },
+  "summary": {
+    "bridged_crossings": 1,
+    "edges": 7,
+    "nodes": 6
+  },
+  "text_metrics": "heuristic-v1",
+  "typography": {
+    "complete_text": true,
+    "hint": null,
+    "metrics": "heuristic widths; inspect the actual rendered font",
+    "truncated": []
+  }
+}

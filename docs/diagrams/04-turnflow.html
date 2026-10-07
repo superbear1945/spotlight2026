@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: blob:">
+  <title>Spotlight 回合与胜负流程</title>
+  <style>
+    :root { color-scheme: dark; --page:#0f0f1a; --panel:#0f172a; --border:#334155; --text:#e2e8f0; --muted:#94a3b8; --accent:#a855f7; }
+    html[data-theme="light"] { color-scheme:light; --page:#f8fafc; --panel:#fff; --border:#cbd5e1; --text:#0f172a; --muted:#475569; --accent:#7c3aed; }
+    * { box-sizing:border-box; }
+    html,body { width:100%; height:100%; margin:0; overflow:hidden; background:linear-gradient(135deg,var(--page),#1a1a2e); color:var(--text); font-family:'SF Mono','Fira Code',ui-monospace,monospace; }
+    body { display:grid; grid-template-rows:auto 1fr; }
+    .toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:10px 14px; background:color-mix(in srgb,var(--panel) 92%,transparent); border-bottom:1px solid var(--border); z-index:2; }
+    .title { margin-right:auto; font-size:13px; font-weight:700; }
+    button,select { min-height:34px; padding:6px 10px; color:var(--text); background:var(--panel); border:1px solid var(--border); border-radius:8px; font:inherit; cursor:pointer; }
+    button:hover,button:focus-visible,select:focus-visible { border-color:var(--accent); outline:2px solid color-mix(in srgb,var(--accent) 35%,transparent); outline-offset:1px; }
+    #stage { position:relative; overflow:hidden; touch-action:none; cursor:grab; }
+    #stage.dragging { cursor:grabbing; }
+    #canvas { width:100%; height:100%; display:grid; place-items:center; transform-origin:0 0; will-change:transform; }
+    #canvas svg { max-width:calc(100vw - 40px); max-height:calc(100vh - 92px); width:auto; height:auto; filter:drop-shadow(0 22px 60px rgba(0,0,0,.28)); user-select:none; }
+    #status { min-width:76px; color:var(--muted); font-size:12px; text-align:center; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    @media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto!important; transition:none!important; } }
+  </style>
+</head>
+<body>
+  <header class="toolbar" aria-label="Diagram controls">
+    <span class="title">Spotlight 回合与胜负流程</span>
+    <button type="button" data-action="zoom-out" aria-label="Zoom out">−</button>
+    <button type="button" data-action="reset" aria-label="Reset view">Reset</button>
+    <button type="button" data-action="zoom-in" aria-label="Zoom in">+</button>
+    <span id="status" aria-live="polite">100%</span>
+    <button type="button" data-action="theme" aria-label="Toggle theme">Theme</button>
+    <button type="button" data-action="copy" aria-label="Copy SVG source">Copy SVG</button>
+    <select id="scale" aria-label="Raster export scale"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option><option value="4">4×</option></select>
+    <select id="format" aria-label="Export format"><option>SVG</option><option>PNG</option><option>JPEG</option><option>WebP</option></select>
+    <button type="button" data-action="download">Export</button>
+  </header>
+  <main id="stage" tabindex="0" aria-label="Interactive diagram. Drag to pan; use plus and minus to zoom.">
+    <div id="canvas"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1980" width="1500" height="1980" data-generator="fireworks-tech-graph" data-schema-version="1" data-text-metrics="heuristic-v1" data-style-id="1" data-visual-theme="Flat Icon" data-diagram-type="flowchart" data-motion-scene="" data-semantic-profile="generic" data-semantic-valid="true" data-quality-profile="standard" data-max-bends-per-edge="12" data-max-total-bends="100" data-max-route-stretch="5.0" data-max-bridged-crossings="8" data-min-node-gap="0.0" data-min-container-gutter="0.0" data-min-label-clearance="2.0" data-min-segment-length="0.0" role="img" focusable="false">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed" />
+    </marker>
+    <marker id="arrowB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981" />
+    </marker>
+    <marker id="arrowC" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb" />
+    </marker>
+    <marker id="arrowE" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316" />
+    </marker>
+    <marker id="arrowF" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed" />
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" />
+    </marker>
+    <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280" />
+    </marker>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12" />
+    </filter>
+    <filter id="shadowGlass" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#020617" flood-opacity="0.28" />
+    </filter>
+    <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+    .title { font-size: 30px; font-weight: 700; fill: #111827; }
+    .subtitle { font-size: 14px; font-weight: 500; fill: #6b7280; }
+    .section { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: 1.4px; }
+    .section-sub { font-size: 12px; font-weight: 500; fill: #64748b; }
+    .node-title { font-weight: 700; fill: #111827; }
+    .node-sub { font-weight: 500; fill: #6b7280; }
+    .node-type { font-size: 12px; font-weight: 700; fill: #64748b; letter-spacing: 0.08em; }
+    .arrow-label { font-size: 12px; font-weight: 600; fill: #6b7280; }
+    .legend { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .footnote { font-size: 12px; font-weight: 500; fill: #64748b; }
+    .metric-label { font-size: 8.5px; font-weight: 700; fill: #64748b; text-transform: uppercase; }
+    .metric-value { font-size: 9.5px; font-weight: 700; fill: #111827; }
+    </style>
+  </defs>
+  <rect data-graph-role="background" width="1500.0" height="1980.0" fill="#ffffff" />
+  <text x="750.0" y="56" text-anchor="middle" class="title">Spotlight 回合与胜负流程</text>
+  <text x="750.0" y="82" text-anchor="middle" class="subtitle">玩家回合：恢复行动 → 资源结算 → 维持费 → 抽牌 → 操作 → 超限弃牌；Boss 回合自动执行</text>
+  <g id="c-player" data-graph-role="container" data-container-id="c-player" data-semantic-role="boundary" data-graph-bounds="140,130,660,1530">
+  <rect data-graph-role="container" x="140.0" y="130.0" width="520.0" height="1400.0" rx="16.0" fill="none" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="6 5" />
+  <text x="158.0" y="154.0" class="section">玩家回合</text>
+  <text x="158.0" y="174.0" class="section-sub">rules.firstSide = player 时的执行顺序</text>
+    <rect id="c-player-header" data-graph-role="reserved" data-reserved-kind="container-header" x="148" y="136" width="252.48" height="54" fill="none" stroke="none" />
+  </g>
+  <g id="c-boss" data-graph-role="container" data-container-id="c-boss" data-semantic-role="boundary" data-graph-bounds="840,130,1360,1530">
+  <rect data-graph-role="container" x="840.0" y="130.0" width="520.0" height="1400.0" rx="16.0" fill="none" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="6 5" />
+  <text x="858.0" y="154.0" class="section">Boss 回合</text>
+  <text x="858.0" y="174.0" class="section-sub">补齐兵位后逐个行动，然后自动结束</text>
+    <rect id="c-boss-header" data-graph-role="reserved" data-reserved-kind="container-header" x="848" y="136" width="222" height="54" fill="none" stroke="none" />
+  </g>
+  <path id="e-discard-boss" data-graph-role="edge" data-edge-id="e-discard-boss" data-source="n-discard" data-target="n-boss-restore" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="2" data-route-stretch="1.0" data-bridges="" d="M 620,1445 L 700,1445 L 700,986 L 880,986" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="e-start-restore" data-graph-role="edge" data-edge-id="e-start-restore" data-source="n-start" data-target="n-restore" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 400,290 L 400,350" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="e-restore-resource" data-graph-role="edge" data-edge-id="e-restore-resource" data-source="n-restore" data-target="n-resource" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 400,440 L 400,500" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="e-resource-upkeep" data-graph-role="edge" data-edge-id="e-resource-upkeep" data-source="n-resource" data-target="n-upkeep" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 400,590 L 400,650" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="e-upkeep-draw" data-graph-role="edge" data-edge-id="e-upkeep-draw" data-source="n-upkeep" data-target="n-draw" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 400,740 L 400,800" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="e-draw-operate" data-graph-role="edge" data-edge-id="e-draw-operate" data-source="n-draw" data-target="n-operate" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 400,890 L 400,950" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="e-operate-endturn" data-graph-role="edge" data-edge-id="e-operate-endturn" data-source="n-operate" data-target="n-endturn" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 400,1040 L 400,1100" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="e-endturn-limit" data-graph-role="edge" data-edge-id="e-endturn-limit" data-source="n-endturn" data-target="n-limit" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 400,1190 L 400,1250" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="e-limit-discard" data-graph-role="edge" data-edge-id="e-limit-discard" data-source="n-limit" data-target="n-discard" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 400,1340 L 400,1400" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="e-limit-boss-bridge-mask" data-graph-role="bridge-mask" data-owner="e-limit-boss" d="M 620,1295 L 695,1295 A 5 5 0 0 0 705,1295 L 800,1295 L 800,1004 L 880,1004" fill="none" stroke="#ffffff" stroke-width="6.9" stroke-linecap="round" stroke-linejoin="round" />
+  <path id="e-limit-boss" data-graph-role="edge" data-edge-id="e-limit-boss" data-source="n-limit" data-target="n-boss-restore" data-edge-kind="flow" data-topic-id="" data-flow="neutral" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="2" data-route-stretch="1.0" data-bridges="700,1295" d="M 620,1295 L 695,1295 A 5 5 0 0 0 705,1295 L 800,1295 L 800,1004 L 880,1004" fill="none" stroke="#6b7280" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowH)" />
+  <path id="e-boss-restore-spawn" data-graph-role="edge" data-edge-id="e-boss-restore-spawn" data-source="n-boss-restore" data-target="n-boss-spawn" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 1100,1040 L 1100,1100" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="e-boss-spawn-act" data-graph-role="edge" data-edge-id="e-boss-spawn-act" data-source="n-boss-spawn" data-target="n-boss-act" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 1100,1190 L 1100,1250" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="e-boss-act-end" data-graph-role="edge" data-edge-id="e-boss-act-end" data-source="n-boss-act" data-target="n-boss-end" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 1100,1340 L 1100,1400" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="e-boss-end-check" data-graph-role="edge" data-edge-id="e-boss-end-check" data-source="n-boss-end" data-target="n-check" data-edge-kind="flow" data-topic-id="" data-flow="read" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 1100,1490 L 1100,1580" fill="none" stroke="#2563eb" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowC)" />
+  <path id="e-check-outcome" data-graph-role="edge" data-edge-id="e-check-outcome" data-source="n-check" data-target="n-outcome" data-edge-kind="flow" data-topic-id="" data-flow="read" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 1100,1670 L 1100,1740" fill="none" stroke="#2563eb" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowC)" />
+  <path id="e-check-next" data-graph-role="edge" data-edge-id="e-check-next" data-source="n-check" data-target="n-next" data-edge-kind="flow" data-topic-id="" data-flow="feedback" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="1" data-route-stretch="1.0" data-bridges="" d="M 860,1625 L 660,1625 L 660,1785 L 660,1785" fill="none" stroke="#ef4444" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowG)" />
+  <path id="e-next-start" data-graph-role="edge" data-edge-id="e-next-start" data-source="n-next" data-target="n-start" data-edge-kind="flow" data-topic-id="" data-flow="feedback" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="2" data-route-stretch="1.031" data-bridges="" d="M 180,1785 L 156,1785 L 156,245 L 180,245" fill="none" stroke="#ef4444" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowG)" />
+  <g id="node-n-start" data-graph-role="node" data-node-id="n-start" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="180,200,620,290">
+  <rect x="180.0" y="200.0" width="440.0" height="90.0" rx="10.0" fill="#eff6ff" stroke="#2563eb" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="回合开始" data-text-max-width="416.0" x="400.0" y="245.0" text-anchor="middle" class="node-title" font-size="18">回合开始</text>
+  <text data-text-role="subtitle" data-full-text="回合号从 1 开始，双方各行动一次后递增" data-text-max-width="416.0" x="400.0" y="267.0" text-anchor="middle" class="node-sub" font-size="12">回合号从 1 开始，双方各行动一次后递增</text>
+  </g>
+  <g id="node-n-restore" data-graph-role="node" data-node-id="n-restore" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="180,350,620,440">
+  <rect x="180.0" y="350.0" width="440.0" height="90.0" rx="10.0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="恢复行动" data-text-max-width="416.0" x="400.0" y="395.0" text-anchor="middle" class="node-title" font-size="18">恢复行动</text>
+  <text data-text-role="subtitle" data-full-text="己方单位恢复行动，家恢复移动机会" data-text-max-width="416.0" x="400.0" y="417.0" text-anchor="middle" class="node-sub" font-size="12">己方单位恢复行动，家恢复移动机会</text>
+  </g>
+  <g id="node-n-resource" data-graph-role="node" data-node-id="n-resource" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="180,500,620,590">
+  <rect x="180.0" y="500.0" width="440.0" height="90.0" rx="10.0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="资源结算" data-text-max-width="416.0" x="400.0" y="545.0" text-anchor="middle" class="node-title" font-size="18">资源结算</text>
+  <text data-text-role="subtitle" data-full-text="按开关清零或累积，结算家与场上产出" data-text-max-width="416.0" x="400.0" y="567.0" text-anchor="middle" class="node-sub" font-size="12">按开关清零或累积，结算家与场上产出</text>
+  </g>
+  <g id="node-n-upkeep" data-graph-role="node" data-node-id="n-upkeep" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="180,650,620,740">
+  <rect x="180.0" y="650.0" width="440.0" height="90.0" rx="10.0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="按部署顺序支付维持费" data-text-max-width="416.0" x="400.0" y="695.0" text-anchor="middle" class="node-title" font-size="18">按部署顺序支付维持费</text>
+  <text data-text-role="subtitle" data-full-text="欠费只禁止行动，不关闭星门部署扩展" data-text-max-width="416.0" x="400.0" y="717.0" text-anchor="middle" class="node-sub" font-size="12">欠费只禁止行动，不关闭星门部署扩展</text>
+  </g>
+  <g id="node-n-draw" data-graph-role="node" data-node-id="n-draw" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="180,800,620,890">
+  <rect x="180.0" y="800.0" width="440.0" height="90.0" rx="10.0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="抽牌" data-text-max-width="416.0" x="400.0" y="845.0" text-anchor="middle" class="node-title" font-size="18">抽牌</text>
+  <text data-text-role="subtitle" data-full-text="抽牌堆耗尽时先洗回墓地再继续抽" data-text-max-width="416.0" x="400.0" y="867.0" text-anchor="middle" class="node-sub" font-size="12">抽牌堆耗尽时先洗回墓地再继续抽</text>
+  </g>
+  <g id="node-n-operate" data-graph-role="node" data-node-id="n-operate" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="180,950,620,1040">
+  <rect x="180.0" y="950.0" width="440.0" height="90.0" rx="10.0" fill="#ecfdf5" stroke="#10b981" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="玩家操作" data-text-max-width="416.0" x="400.0" y="995.0" text-anchor="middle" class="node-title" font-size="18">玩家操作</text>
+  <text data-text-role="subtitle" data-full-text="出牌 · 移动 · 攻击 · 互换 · 家移动一格" data-text-max-width="416.0" x="400.0" y="1017.0" text-anchor="middle" class="node-sub" font-size="12">出牌 · 移动 · 攻击 · 互换 · 家移动一格</text>
+  </g>
+  <g id="node-n-endturn" data-graph-role="node" data-node-id="n-endturn" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="180,1100,620,1190">
+  <rect x="180.0" y="1100.0" width="440.0" height="90.0" rx="10.0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="结束回合" data-text-max-width="416.0" x="400.0" y="1145.0" text-anchor="middle" class="node-title" font-size="18">结束回合</text>
+  <text data-text-role="subtitle" data-full-text="出牌次数耗尽或主动结束" data-text-max-width="416.0" x="400.0" y="1167.0" text-anchor="middle" class="node-sub" font-size="12">出牌次数耗尽或主动结束</text>
+  </g>
+  <g id="node-n-limit" data-graph-role="node" data-node-id="n-limit" data-semantic-role="hexagon" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="180,1250,620,1340">
+  <path d="M 202.0 1250.0 L 598.0 1250.0 L 620.0 1295.0 L 598.0 1340.0 L 202.0 1340.0 L 180.0 1295.0 Z" fill="#fff7ed" stroke="#f97316" stroke-width="2.0" />
+  <text data-text-role="title" data-full-text="手牌是否超过上限" data-text-max-width="388.0" x="400.0" y="1295.0" text-anchor="middle" class="node-title" font-size="18">手牌是否超过上限</text>
+  <text data-text-role="subtitle" data-full-text="默认上限 5 张" data-text-max-width="388.0" x="400.0" y="1317.0" text-anchor="middle" class="node-sub" font-size="12">默认上限 5 张</text>
+  </g>
+  <g id="node-n-discard" data-graph-role="node" data-node-id="n-discard" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="180,1400,620,1490">
+  <rect x="180.0" y="1400.0" width="440.0" height="90.0" rx="10.0" fill="#fff7ed" stroke="#f97316" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="弃牌至上限" data-text-max-width="416.0" x="400.0" y="1445.0" text-anchor="middle" class="node-title" font-size="18">弃牌至上限</text>
+  <text data-text-role="subtitle" data-full-text="完成后才进入对手回合" data-text-max-width="416.0" x="400.0" y="1467.0" text-anchor="middle" class="node-sub" font-size="12">完成后才进入对手回合</text>
+  </g>
+  <g id="node-n-note" data-graph-role="node" data-node-id="n-note" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="880,230,1320,370">
+  <rect x="880.0" y="230.0" width="440.0" height="140.0" rx="10.0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="先手顺序与左右镜像" data-text-max-width="416.0" x="1100.0" y="300.0" text-anchor="middle" class="node-title" font-size="18">先手顺序与左右镜像</text>
+  <text data-text-role="subtitle" data-full-text="firstSide 决定先手方；playerSide 决定家与区域方向" data-text-max-width="416.0" x="1100.0" y="322.0" text-anchor="middle" class="node-sub" font-size="12">firstSide 决定先手方；playerSide 决定家与区域方向</text>
+  </g>
+  <g id="node-n-boss-restore" data-graph-role="node" data-node-id="n-boss-restore" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="880,950,1320,1040">
+  <rect x="880.0" y="950.0" width="440.0" height="90.0" rx="10.0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="恢复行动" data-text-max-width="416.0" x="1100.0" y="995.0" text-anchor="middle" class="node-title" font-size="18">恢复行动</text>
+  <text data-text-role="subtitle" data-full-text="Boss 单位恢复行动，忽略资源与维持费" data-text-max-width="416.0" x="1100.0" y="1017.0" text-anchor="middle" class="node-sub" font-size="12">Boss 单位恢复行动，忽略资源与维持费</text>
+  </g>
+  <g id="node-n-boss-spawn" data-graph-role="node" data-node-id="n-boss-spawn" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="880,1100,1320,1190">
+  <rect x="880.0" y="1100.0" width="440.0" height="90.0" rx="10.0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="首次部署或到期补兵" data-text-max-width="416.0" x="1100.0" y="1145.0" text-anchor="middle" class="node-title" font-size="18">首次部署或到期补兵</text>
+  <text data-text-role="subtitle" data-full-text="兵位独立计时，无空位则下次重试" data-text-max-width="416.0" x="1100.0" y="1167.0" text-anchor="middle" class="node-sub" font-size="12">兵位独立计时，无空位则下次重试</text>
+  </g>
+  <g id="node-n-boss-act" data-graph-role="node" data-node-id="n-boss-act" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="880,1250,1320,1340">
+  <rect x="880.0" y="1250.0" width="440.0" height="90.0" rx="10.0" fill="#ecfdf5" stroke="#10b981" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="按部署顺序逐个行动" data-text-max-width="416.0" x="1100.0" y="1295.0" text-anchor="middle" class="node-title" font-size="18">按部署顺序逐个行动</text>
+  <text data-text-role="subtitle" data-full-text="AI 决策或玩家手动操作" data-text-max-width="416.0" x="1100.0" y="1317.0" text-anchor="middle" class="node-sub" font-size="12">AI 决策或玩家手动操作</text>
+  </g>
+  <g id="node-n-boss-end" data-graph-role="node" data-node-id="n-boss-end" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="880,1400,1320,1490">
+  <rect x="880.0" y="1400.0" width="440.0" height="90.0" rx="10.0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="Boss 回合自动结束" data-text-max-width="416.0" x="1100.0" y="1445.0" text-anchor="middle" class="node-title" font-size="18">Boss 回合自动结束</text>
+  <text data-text-role="subtitle" data-full-text="手动模式由玩家提交结束" data-text-max-width="416.0" x="1100.0" y="1467.0" text-anchor="middle" class="node-sub" font-size="12">手动模式由玩家提交结束</text>
+  </g>
+  <g id="node-n-check" data-graph-role="node" data-node-id="n-check" data-semantic-role="hexagon" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="860,1580,1340,1670">
+  <path d="M 882.0 1580.0 L 1318.0 1580.0 L 1340.0 1625.0 L 1318.0 1670.0 L 882.0 1670.0 L 860.0 1625.0 Z" fill="#fef2f2" stroke="#dc2626" stroke-width="2.0" />
+  <text data-text-role="title" data-full-text="胜负是否已确定" data-text-max-width="428.0" x="1100.0" y="1625.0" text-anchor="middle" class="node-title" font-size="18">胜负是否已确定</text>
+  <text data-text-role="subtitle" data-full-text="每次行动后检查，确定后停止行动与补兵" data-text-max-width="428.0" x="1100.0" y="1647.0" text-anchor="middle" class="node-sub" font-size="12">每次行动后检查，确定后停止行动与补兵</text>
+  </g>
+  <g id="node-n-outcome" data-graph-role="node" data-node-id="n-outcome" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="860,1740,1340,1830">
+  <rect x="860.0" y="1740.0" width="480.0" height="90.0" rx="10.0" fill="#fee2e2" stroke="#dc2626" stroke-width="1.8" filter="url(#shadowSoft)" />
+  <text data-text-role="title" data-full-text="对局结束：胜负或平局" data-text-max-width="456.0" x="1100.0" y="1785.0" text-anchor="middle" class="node-title" font-size="18">对局结束：胜负或平局</text>
+  <text data-text-role="subtitle" data-full-text="停止后续行动与补兵，界面显示结果" data-text-max-width="456.0" x="1100.0" y="1807.0" text-anchor="middle" class="node-sub" font-size="12">停止后续行动与补兵，界面显示结果</text>
+  </g>
+  <g id="node-n-next" data-graph-role="node" data-node-id="n-next" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="180,1740,660,1830">
+  <rect x="180.0" y="1740.0" width="480.0" height="90.0" rx="10.0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="进入下一回合" data-text-max-width="456.0" x="420.0" y="1785.0" text-anchor="middle" class="node-title" font-size="18">进入下一回合</text>
+  <text data-text-role="subtitle" data-full-text="双方各行动一次后回合号递增" data-text-max-width="456.0" x="420.0" y="1807.0" text-anchor="middle" class="node-sub" font-size="12">双方各行动一次后回合号递增</text>
+  </g>
+  <g id="e-start-restore-label" data-graph-role="label" data-owner="e-start-restore" data-graph-bounds="335,306,397,326">
+  <rect x="335.0" y="306.0" width="62.0" height="20" rx="6" fill="#ffffff" opacity="0.94" />
+  <text x="366.0" y="320.0" text-anchor="middle" class="arrow-label">回合开始</text>
+  </g>
+  <g id="e-restore-resource-label" data-graph-role="label" data-owner="e-restore-resource" data-graph-bounds="335,456,397,476">
+  <rect x="335.0" y="456.0" width="62.0" height="20" rx="6" fill="#ffffff" opacity="0.94" />
+  <text x="366.0" y="470.0" text-anchor="middle" class="arrow-label">恢复完成</text>
+  </g>
+  <g id="e-resource-upkeep-label" data-graph-role="label" data-owner="e-resource-upkeep" data-graph-bounds="299,606,397,626">
+  <rect x="299.0" y="606.0" width="98.0" height="20" rx="6" fill="#ffffff" opacity="0.94" />
+  <text x="348.0" y="620.0" text-anchor="middle" class="arrow-label">产出先于维持费</text>
+  </g>
+  <g id="e-upkeep-draw-label" data-graph-role="label" data-owner="e-upkeep-draw" data-graph-bounds="323,756,397,776">
+  <rect x="323.0" y="756.0" width="74.0" height="20" rx="6" fill="#ffffff" opacity="0.94" />
+  <text x="360.0" y="770.0" text-anchor="middle" class="arrow-label">支付后抽牌</text>
+  </g>
+  <g id="e-draw-operate-label" data-graph-role="label" data-owner="e-draw-operate" data-graph-bounds="311,906,397,926">
+  <rect x="311.0" y="906.0" width="86.0" height="20" rx="6" fill="#ffffff" opacity="0.94" />
+  <text x="354.0" y="920.0" text-anchor="middle" class="arrow-label">进入操作阶段</text>
+  </g>
+  <g id="e-operate-endturn-label" data-graph-role="label" data-owner="e-operate-endturn" data-graph-bounds="311,1056,397,1076">
+  <rect x="311.0" y="1056.0" width="86.0" height="20" rx="6" fill="#ffffff" opacity="0.94" />
+  <text x="354.0" y="1070.0" text-anchor="middle" class="arrow-label">玩家结束回合</text>
+  </g>
+  <g id="e-endturn-limit-label" data-graph-role="label" data-owner="e-endturn-limit" data-graph-bounds="335,1206,397,1226">
+  <rect x="335.0" y="1206.0" width="62.0" height="20" rx="6" fill="#ffffff" opacity="0.94" />
+  <text x="366.0" y="1220.0" text-anchor="middle" class="arrow-label">检查手牌</text>
+  </g>
+  <g id="e-limit-discard-label" data-graph-role="label" data-owner="e-limit-discard" data-graph-bounds="335,1356,397,1376">
+  <rect x="335.0" y="1356.0" width="62.0" height="20" rx="6" fill="#ffffff" opacity="0.94" />
+  <text x="366.0" y="1370.0" text-anchor="middle" class="arrow-label">超过上限</text>
+  </g>
+  <g id="e-limit-boss-label" data-graph-role="label" data-owner="e-limit-boss" data-graph-bounds="803,1197.7,961,1217.7">
+  <rect x="803.0" y="1197.7" width="158.0" height="20" rx="6" fill="#ffffff" opacity="0.94" />
+  <text x="882.0" y="1211.7" text-anchor="middle" class="arrow-label">未超限：直接进入对方回合</text>
+  </g>
+  <g id="e-discard-boss-label" data-graph-role="label" data-owner="e-discard-boss" data-graph-bounds="551,1201.5,697,1221.5">
+  <rect x="551.0" y="1201.5" width="146.0" height="20" rx="6" fill="#ffffff" opacity="0.94" />
+  <text x="624.0" y="1215.5" text-anchor="middle" class="arrow-label">弃牌完成后进入对方回合</text>
+  </g>
+  <g id="e-boss-restore-spawn-label" data-graph-role="label" data-owner="e-boss-restore-spawn" data-graph-bounds="1035,1056,1097,1076">
+  <rect x="1035.0" y="1056.0" width="62.0" height="20" rx="6" fill="#ffffff" opacity="0.94" />
+  <text x="1066.0" y="1070.0" text-anchor="middle" class="arrow-label">恢复完成</text>
+  </g>
+  <g id="e-boss-spawn-act-label" data-graph-role="label" data-owner="e-boss-spawn-act" data-graph-bounds="1035,1206,1097,1226">
+  <rect x="1035.0" y="1206.0" width="62.0" height="20" rx="6" fill="#ffffff" opacity="0.94" />
+  <text x="1066.0" y="1220.0" text-anchor="middle" class="arrow-label">补齐兵位</text>
+  </g>
+  <g id="e-boss-act-end-label" data-graph-role="label" data-owner="e-boss-act-end" data-graph-bounds="1035,1356,1097,1376">
+  <rect x="1035.0" y="1356.0" width="62.0" height="20" rx="6" fill="#ffffff" opacity="0.94" />
+  <text x="1066.0" y="1370.0" text-anchor="middle" class="arrow-label">行动完毕</text>
+  </g>
+  <g id="e-boss-end-check-label" data-graph-role="label" data-owner="e-boss-end-check" data-graph-bounds="1035,1521,1097,1541">
+  <rect x="1035.0" y="1521.0" width="62.0" height="20" rx="6" fill="#ffffff" opacity="0.94" />
+  <text x="1066.0" y="1535.0" text-anchor="middle" class="arrow-label">检查胜负</text>
+  </g>
+  <g id="e-check-outcome-label" data-graph-role="label" data-owner="e-check-outcome" data-graph-bounds="987,1691,1097,1711">
+  <rect x="987.0" y="1691.0" width="110.0" height="20" rx="6" fill="#ffffff" opacity="0.94" />
+  <text x="1042.0" y="1705.0" text-anchor="middle" class="arrow-label">已确定：对局结束</text>
+  </g>
+  <g id="e-check-next-label" data-graph-role="label" data-owner="e-check-next" data-graph-bounds="735,1594,785,1614">
+  <rect x="735.0" y="1594.0" width="50.0" height="20" rx="6" fill="#ffffff" opacity="0.94" />
+  <text x="760.0" y="1608.0" text-anchor="middle" class="arrow-label">未确定</text>
+  </g>
+  <g id="e-next-start-label" data-graph-role="label" data-owner="e-next-start" data-graph-bounds="13,1001,171,1021">
+  <rect x="13.0" y="1001.0" width="158.0" height="20" rx="6" fill="#ffffff" opacity="0.94" />
+  <text x="92.0" y="1015.0" text-anchor="middle" class="arrow-label">下一回合由先手方重新开始</text>
+  </g>
+  <g id="legend" data-graph-role="legend">
+    <rect id="legend-zone" data-graph-role="reserved" data-reserved-kind="legend" x="32" y="1836" width="634" height="46" rx="10" fill="none" stroke="none" />
+    <line data-graph-role="decoration" x1="42.0" y1="1850.0" x2="72.0" y2="1850.0" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)" />
+    <text data-graph-role="decoration" x="82.0" y="1854.0" class="legend">回合内固定结算顺序</text>
+    <line data-graph-role="decoration" x1="218.0" y1="1850.0" x2="248.0" y2="1850.0" stroke="#6b7280" stroke-width="2.4" marker-end="url(#arrowH)" />
+    <text data-graph-role="decoration" x="258.0" y="1854.0" class="legend">未超限时直接跳过</text>
+    <line data-graph-role="decoration" x1="382.0" y1="1850.0" x2="412.0" y2="1850.0" stroke="#2563eb" stroke-width="2.4" marker-end="url(#arrowC)" />
+    <text data-graph-role="decoration" x="422.0" y="1854.0" class="legend">胜负检查与结束</text>
+    <line data-graph-role="decoration" x1="534.0" y1="1850.0" x2="564.0" y2="1850.0" stroke="#ef4444" stroke-width="2.4" marker-end="url(#arrowG)" />
+    <text data-graph-role="decoration" x="574.0" y="1854.0" class="legend">进入下一回合</text>
+  </g>
+  <g id="footer" data-graph-role="reserved" data-graph-bounds="42,1918,427,1934">
+  <text x="42.0" y="1930.0" class="footnote">Spotlight · 回合与胜负流程 · 由 fireworks-tech-graph Style 1 生成</text>
+  </g>
+</svg></div>
+    <p class="sr-only">Keyboard shortcuts: plus and minus zoom, zero resets, T toggles theme, S exports.</p>
+  </main>
+  <script>
+  (() => {
+    'use strict';
+    const metadata = {"slug": "spotlight-turnflow"};
+    const stage = document.getElementById('stage');
+    const canvas = document.getElementById('canvas');
+    const svg = canvas.querySelector('svg');
+    const status = document.getElementById('status');
+    const scaleSelect = document.getElementById('scale');
+    const formatSelect = document.getElementById('format');
+    let view = { x:0, y:0, scale:1 };
+    let drag = null;
+    const clamp = value => Math.max(.2, Math.min(8, value));
+    const render = () => {
+      canvas.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.scale})`;
+      status.textContent = `${Math.round(view.scale * 100)}%`;
+    };
+    const zoom = (factor, originX=stage.clientWidth/2, originY=stage.clientHeight/2) => {
+      const next = clamp(view.scale * factor);
+      const ratio = next / view.scale;
+      view.x = originX - (originX - view.x) * ratio;
+      view.y = originY - (originY - view.y) * ratio;
+      view.scale = next; render();
+    };
+    const reset = () => { view = {x:0,y:0,scale:1}; render(); };
+    stage.addEventListener('wheel', event => { event.preventDefault(); const rect=stage.getBoundingClientRect(); zoom(event.deltaY < 0 ? 1.12 : .89, event.clientX-rect.left, event.clientY-rect.top); }, {passive:false});
+    stage.addEventListener('pointerdown', event => { drag={id:event.pointerId,x:event.clientX,y:event.clientY,vx:view.x,vy:view.y}; stage.setPointerCapture(event.pointerId); stage.classList.add('dragging'); });
+    stage.addEventListener('pointermove', event => { if(!drag||drag.id!==event.pointerId)return; view.x=drag.vx+event.clientX-drag.x; view.y=drag.vy+event.clientY-drag.y; render(); });
+    const endDrag = () => { drag=null; stage.classList.remove('dragging'); };
+    stage.addEventListener('pointerup', endDrag); stage.addEventListener('pointercancel', endDrag);
+    const source = () => new XMLSerializer().serializeToString(svg);
+    const saveBlob = (blob, extension) => { const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`${(metadata.slug||'fireworks-tech-graph')}.${extension}`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); };
+    const copySource = async () => {
+      const value=source();
+      try { await navigator.clipboard.writeText(value); status.textContent='Copied'; return; } catch {}
+      const area=document.createElement('textarea'); area.value=value; area.setAttribute('readonly',''); area.style.position='fixed'; area.style.opacity='0'; document.body.appendChild(area); area.select();
+      status.textContent=document.execCommand('copy')?'Copied':'Copy failed'; area.remove();
+    };
+    const exportDiagram = async () => {
+      const format = formatSelect.value.toLowerCase();
+      if(format==='svg') { saveBlob(new Blob([source()],{type:'image/svg+xml;charset=utf-8'}),'svg'); return; }
+      const scale = Math.max(1,Math.min(4,Number(scaleSelect.value)||2));
+      const box = svg.viewBox.baseVal; const width=box.width||svg.clientWidth; const height=box.height||svg.clientHeight;
+      const image = new Image(); const url=URL.createObjectURL(new Blob([source()],{type:'image/svg+xml'}));
+      await new Promise((resolve,reject)=>{ image.onload=resolve; image.onerror=reject; image.src=url; });
+      const raster=document.createElement('canvas'); raster.width=Math.round(width*scale); raster.height=Math.round(height*scale);
+      const ctx=raster.getContext('2d'); if(format==='jpeg'){ctx.fillStyle='#ffffff';ctx.fillRect(0,0,raster.width,raster.height);} ctx.drawImage(image,0,0,raster.width,raster.height); URL.revokeObjectURL(url);
+      const mime=format==='jpeg'?'image/jpeg':format==='webp'?'image/webp':'image/png';
+      const blob=await new Promise(resolve=>raster.toBlob(resolve,mime,.94)); if(blob) saveBlob(blob,format==='jpeg'?'jpg':format);
+    };
+    document.querySelector('.toolbar').addEventListener('click', async event => {
+      const action=event.target.closest('[data-action]')?.dataset.action; if(!action)return;
+      if(action==='zoom-in')zoom(1.2); else if(action==='zoom-out')zoom(.83); else if(action==='reset')reset();
+      else if(action==='theme')document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';
+      else if(action==='download')await exportDiagram();
+      else if(action==='copy') await copySource();
+    });
+    document.addEventListener('keydown', event => {
+      if(event.target.matches('select'))return;
+      if(event.key==='+'||event.key==='=')zoom(1.2); else if(event.key==='-')zoom(.83); else if(event.key==='0'||event.key.toLowerCase()==='r')reset();
+      else if(event.key.toLowerCase()==='t')document.querySelector('[data-action=theme]').click(); else if(event.key.toLowerCase()==='s'){event.preventDefault();exportDiagram();}
+    });
+    render();
+  })();
+  </script>
+</body>
+</html>

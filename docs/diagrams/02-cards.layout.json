@@ -1,0 +1,749 @@
+{
+  "canvas": {
+    "height": 1720.0,
+    "width": 1600.0
+  },
+  "composition": {
+    "limits": {
+      "max_bends_per_edge": 12,
+      "max_bridged_crossings": 8,
+      "max_route_stretch": 5.0,
+      "max_total_bends": 100,
+      "min_container_gutter": 0.0,
+      "min_label_clearance": 2.0,
+      "min_node_gap": 0.0,
+      "min_segment_length": 0.0,
+      "profile": "standard"
+    },
+    "metrics": {
+      "bridged_crossings": 3,
+      "max_route_stretch": 2.058,
+      "minimum_container_gutter": 50.0,
+      "minimum_node_gap": 60.0,
+      "shortest_segment": 4.0,
+      "total_bends": 29
+    },
+    "ok": true,
+    "profile": "standard",
+    "score": 50,
+    "violations": []
+  },
+  "edges": [
+    {
+      "bends": 2,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-def-combat",
+      "length": 532.0,
+      "route": [
+        [
+          732.0,
+          300.0
+        ],
+        [
+          732.0,
+          320.4
+        ],
+        [
+          260.0,
+          320.4
+        ],
+        [
+          260.0,
+          360.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-definition",
+      "source_port": [
+        732.0,
+        300.0
+      ],
+      "target": "n-combat-cfg",
+      "target_port": [
+        260.0,
+        360.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-def-resource",
+      "length": 130.0,
+      "route": [
+        [
+          750.0,
+          300.0
+        ],
+        [
+          750.0,
+          330.0
+        ],
+        [
+          680.0,
+          330.0
+        ],
+        [
+          680.0,
+          360.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-definition",
+      "source_port": [
+        750.0,
+        300.0
+      ],
+      "target": "n-resource-cfg",
+      "target_port": [
+        680.0,
+        360.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-def-teleport",
+      "length": 392.0,
+      "route": [
+        [
+          768.0,
+          300.0
+        ],
+        [
+          768.0,
+          309.0
+        ],
+        [
+          1100.0,
+          309.0
+        ],
+        [
+          1100.0,
+          360.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-definition",
+      "source_port": [
+        768.0,
+        300.0
+      ],
+      "target": "n-teleport-cfg",
+      "target_port": [
+        1100.0,
+        360.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-combat-comp-cfg",
+      "length": 130.0,
+      "route": [
+        [
+          260.0,
+          600.0
+        ],
+        [
+          260.0,
+          470.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-combat-comp",
+      "source_port": [
+        260.0,
+        600.0
+      ],
+      "target": "n-combat-cfg",
+      "target_port": [
+        260.0,
+        470.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-resource-comp-cfg",
+      "length": 130.0,
+      "route": [
+        [
+          680.0,
+          600.0
+        ],
+        [
+          680.0,
+          470.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-resource-comp",
+      "source_port": [
+        680.0,
+        600.0
+      ],
+      "target": "n-resource-cfg",
+      "target_port": [
+        680.0,
+        470.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-teleport-comp-cfg",
+      "length": 130.0,
+      "route": [
+        [
+          1100.0,
+          600.0
+        ],
+        [
+          1100.0,
+          470.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-teleport-comp",
+      "source_port": [
+        1100.0,
+        600.0
+      ],
+      "target": "n-teleport-cfg",
+      "target_port": [
+        1100.0,
+        470.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-def-card",
+      "length": 1338.0,
+      "route": [
+        [
+          900.0,
+          245.0
+        ],
+        [
+          1244.0,
+          245.0
+        ],
+        [
+          1244.0,
+          895.0
+        ],
+        [
+          900.0,
+          895.0
+        ]
+      ],
+      "route_stretch": 2.058,
+      "source": "n-definition",
+      "source_port": [
+        900.0,
+        245.0
+      ],
+      "target": "n-card",
+      "target_port": [
+        900.0,
+        895.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [
+        [
+          453.0,
+          320.4
+        ]
+      ],
+      "crossings": [
+        [
+          453.0,
+          320.4
+        ]
+      ],
+      "id": "e-card-def",
+      "length": 904.0,
+      "route": [
+        [
+          560.0,
+          895.0
+        ],
+        [
+          453.0,
+          895.0
+        ],
+        [
+          453.0,
+          245.0
+        ],
+        [
+          600.0,
+          245.0
+        ]
+      ],
+      "route_stretch": 1.31,
+      "source": "n-card",
+      "source_port": [
+        560.0,
+        895.0
+      ],
+      "target": "n-definition",
+      "target_port": [
+        600.0,
+        245.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [
+        [
+          453.0,
+          734.0
+        ]
+      ],
+      "crossings": [
+        [
+          453.0,
+          734.0
+        ]
+      ],
+      "id": "e-card-combat",
+      "length": 582.0,
+      "route": [
+        [
+          712.0,
+          840.0
+        ],
+        [
+          712.0,
+          734.0
+        ],
+        [
+          260.0,
+          734.0
+        ],
+        [
+          260.0,
+          710.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-card",
+      "source_port": [
+        712.0,
+        840.0
+      ],
+      "target": "n-combat-comp",
+      "target_port": [
+        260.0,
+        710.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-card-resource",
+      "length": 180.0,
+      "route": [
+        [
+          730.0,
+          840.0
+        ],
+        [
+          730.0,
+          730.4
+        ],
+        [
+          680.0,
+          730.4
+        ],
+        [
+          680.0,
+          710.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-card",
+      "source_port": [
+        730.0,
+        840.0
+      ],
+      "target": "n-resource-comp",
+      "target_port": [
+        680.0,
+        710.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-card-teleport",
+      "length": 482.0,
+      "route": [
+        [
+          748.0,
+          840.0
+        ],
+        [
+          748.0,
+          734.0
+        ],
+        [
+          1100.0,
+          734.0
+        ],
+        [
+          1100.0,
+          710.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-card",
+      "source_port": [
+        748.0,
+        840.0
+      ],
+      "target": "n-teleport-comp",
+      "target_port": [
+        1100.0,
+        710.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-card-unit",
+      "length": 221.0,
+      "route": [
+        [
+          739.0,
+          950.0
+        ],
+        [
+          739.0,
+          970.4
+        ],
+        [
+          790.0,
+          970.4
+        ],
+        [
+          790.0,
+          1120.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-card",
+      "source_port": [
+        739.0,
+        950.0
+      ],
+      "target": "n-unit",
+      "target_port": [
+        790.0,
+        1120.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 9,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-card-record",
+      "length": 789.0,
+      "route": [
+        [
+          721.0,
+          950.0
+        ],
+        [
+          721.0,
+          990.0
+        ],
+        [
+          520.0,
+          990.0
+        ],
+        [
+          520.0,
+          1096.0
+        ],
+        [
+          524.0,
+          1096.0
+        ],
+        [
+          524.0,
+          1410.0
+        ],
+        [
+          520.0,
+          1410.0
+        ],
+        [
+          520.0,
+          1420.0
+        ],
+        [
+          599.6,
+          1420.0
+        ],
+        [
+          599.6,
+          1410.0
+        ],
+        [
+          620.0,
+          1410.0
+        ]
+      ],
+      "route_stretch": 1.406,
+      "source": "n-card",
+      "source_port": [
+        721.0,
+        950.0
+      ],
+      "target": "n-record",
+      "target_port": [
+        620.0,
+        1410.0
+      ],
+      "waypoints": [
+        [
+          721.0,
+          990.0
+        ],
+        [
+          520.0,
+          990.0
+        ],
+        [
+          520.0,
+          1410.0
+        ]
+      ]
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-unit-record",
+      "length": 110.0,
+      "route": [
+        [
+          790.0,
+          1240.0
+        ],
+        [
+          790.0,
+          1350.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-unit",
+      "source_port": [
+        790.0,
+        1240.0
+      ],
+      "target": "n-record",
+      "target_port": [
+        790.0,
+        1350.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [
+        [
+          524.0,
+          1180.0
+        ]
+      ],
+      "crossings": [
+        [
+          524.0,
+          1180.0
+        ]
+      ],
+      "id": "e-session-unit",
+      "length": 120.0,
+      "route": [
+        [
+          500.0,
+          1180.0
+        ],
+        [
+          620.0,
+          1180.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-session",
+      "source_port": [
+        500.0,
+        1180.0
+      ],
+      "target": "n-unit",
+      "target_port": [
+        620.0,
+        1180.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-session-home",
+      "length": 1438.0,
+      "route": [
+        [
+          320.0,
+          1240.0
+        ],
+        [
+          320.0,
+          1494.0
+        ],
+        [
+          1250.0,
+          1494.0
+        ],
+        [
+          1250.0,
+          1240.0
+        ]
+      ],
+      "route_stretch": 1.546,
+      "source": "n-session",
+      "source_port": [
+        320.0,
+        1240.0
+      ],
+      "target": "n-home",
+      "target_port": [
+        1250.0,
+        1240.0
+      ],
+      "waypoints": []
+    }
+  ],
+  "input_schema": "v1",
+  "issues": [
+    {
+      "code": "EDGE_CROSSING_BRIDGED",
+      "coordinates": [
+        [
+          453.0,
+          320.4
+        ]
+      ],
+      "element": "e-card-def",
+      "severity": "info"
+    },
+    {
+      "code": "EDGE_CROSSING_BRIDGED",
+      "coordinates": [
+        [
+          453.0,
+          734.0
+        ]
+      ],
+      "element": "e-card-combat",
+      "severity": "info"
+    },
+    {
+      "code": "EDGE_CROSSING_BRIDGED",
+      "coordinates": [
+        [
+          524.0,
+          1180.0
+        ]
+      ],
+      "element": "e-session-unit",
+      "severity": "info"
+    }
+  ],
+  "mode": "er-diagram",
+  "ok": true,
+  "palette": {
+    "below_target": [],
+    "minimum_target": 4.5,
+    "ratios": {
+      "section_sub_fill": 4.76,
+      "text_muted": 4.76,
+      "text_primary": 17.74,
+      "text_secondary": 4.83
+    },
+    "scope": "default opaque canvas text tokens; not a full rendered accessibility audit",
+    "unsupported_tokens": []
+  },
+  "placements": {
+    "legend": {
+      "actual": [
+        42.0,
+        1580.0
+      ],
+      "bounds": [
+        32.0,
+        1566.0,
+        478.0,
+        1612.0
+      ],
+      "moved": false,
+      "requested": [
+        42.0,
+        1580.0
+      ]
+    }
+  },
+  "schema_version": 1,
+  "semantics": {
+    "details": {},
+    "ok": true,
+    "profile": "generic",
+    "style": 1,
+    "visual_theme": "Flat Icon"
+  },
+  "style": {
+    "id": 1,
+    "name": "Flat Icon"
+  },
+  "summary": {
+    "bridged_crossings": 3,
+    "edges": 16,
+    "nodes": 12
+  },
+  "text_metrics": "heuristic-v1",
+  "typography": {
+    "complete_text": true,
+    "hint": null,
+    "metrics": "heuristic widths; inspect the actual rendered font",
+    "truncated": []
+  }
+}
