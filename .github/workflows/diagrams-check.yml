@@ -1,0 +1,35 @@
+# 架构图产物检查：确保 docs/diagrams 下的图纸 JSON 仍能生成结构完整的 draw.io 文件。
+# 为什么需要：draw.io 文件是人工长期维护的入口，如果 JSON 改动后忘记重新生成，
+# 或者脚本本身被改坏，边会指向不存在的顶点，这里可以在 PR 阶段直接拦住。
+name: Diagrams Check
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'docs/diagrams/**'
+      - '.github/workflows/diagrams-check.yml'
+  pull_request:
+    paths:
+      - 'docs/diagrams/**'
+      - '.github/workflows/diagrams-check.yml'
+  workflow_dispatch:
+
+jobs:
+  drawio-check:
+    name: 图纸 JSON → draw.io 校验
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 准备 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 重新生成并校验 .drawio
+        run: python docs/diagrams/spec-to-drawio.py docs/diagrams
+
+      - name: 确认生成结果已提交（无未跟踪改动）
+        run: git diff --exit-code -- docs/diagrams
