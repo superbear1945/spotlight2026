@@ -189,40 +189,245 @@
     margin-bottom: 16px;
 }
 
-/* 调试面板 */
-.debug-panel {
-    /* 默认隐藏：面板只能由“配置/调试”按钮打开。
-       用 USS 而不是只靠代码隐藏，可以避免绑定时机变化时露出面板。 */
+/* ── 对局配置面板（表单式） ──────────────────────────────────────────────
+   视觉与既有网页版配置界面一致：深色面板、分区标题、自适应字段网格、卡片式卡种编辑框。
+   面板默认隐藏，只能由“配置/调试”按钮打开；遮罩本身会拦截点击，规则层另有输入闸门。 */
+
+.cfg-mask {
     display: none;
     position: absolute;
-    left: 40px;
-    top: 40px;
-    right: 40px;
-    bottom: 40px;
-    background-color: rgba(8, 12, 20, 0.97);
-}
-
-.debug-scroll {
-    flex-grow: 1;
-}
-
-.debug-columns {
-    flex-direction: row;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(4, 8, 16, 0.72);
     align-items: flex-start;
+    justify-content: center;
+    padding: 24px;
 }
 
-.debug-column {
+.cfg-panel {
+    width: 880px;
+    max-width: 100%;
+    max-height: 100%;
+    background-color: #151c2b;
+    border-width: 1px;
+    border-color: #2a3448;
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+}
+
+.cfg-head {
+    flex-direction: column;
+    padding: 14px 16px;
+    border-bottom-width: 1px;
+    border-bottom-color: #2a3448;
+    background-color: #151c2b;
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+}
+
+.cfg-head-top {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cfg-title {
+    font-size: 16px;
+    color: #e6ecff;
+    -unity-font-style: bold;
+}
+
+.cfg-head-actions {
+    flex-direction: row;
+}
+
+.cfg-head-actions Button {
+    margin-left: 8px;
+}
+
+.cfg-error {
+    color: #ef4444;
+    font-size: 12px;
+    white-space: normal;
+    margin-top: 8px;
+    display: none;
+}
+
+.cfg-body {
     flex-grow: 1;
-    flex-basis: 0;
-    margin-right: 16px;
+    padding: 8px 16px 20px;
 }
 
-.debug-json {
-    height: 420px;
+.cfg-scroll {
+    flex-grow: 1;
+}
+
+/* 分区 */
+.cfg-section {
+    padding: 12px 0;
+    border-bottom-width: 1px;
+    border-bottom-color: #2a3448;
+}
+
+.cfg-section-head {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.cfg-section-title {
+    font-size: 13.5px;
+    color: #9fb6de;
+    -unity-font-style: bold;
+}
+
+.cfg-note {
+    font-size: 12px;
+    color: #6f86ad;
+    white-space: normal;
+    margin-top: 8px;
+}
+
+.cfg-deck-summary {
+    font-size: 13px;
+    color: #c6d2e8;
+    margin-top: 4px;
+}
+
+/* 字段网格：等价于 repeat(auto-fill, minmax(200px, 1fr)) */
+.cfg-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.cfg-field {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 190px;
+    min-width: 170px;
+    margin-right: 10px;
+    margin-bottom: 10px;
+}
+
+.cfg-field-label {
+    font-size: 12.5px;
+    color: #8b97b0;
+    margin-bottom: 4px;
+}
+
+/* 输入控件 */
+.cfg-input {
+    font-size: 13px;
+    color: #e6ecff;
+}
+
+.cfg-input .unity-base-field__input,
+.cfg-input .unity-text-field__input,
+.cfg-input .unity-integer-field__input,
+.cfg-input .unity-base-text-field__input {
+    background-color: #0f1624;
+    border-width: 1px;
+    border-color: #2a3448;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+    padding: 6px 8px;
+    color: #e6ecff;
+}
+
+/* 复选框行 */
+.cfg-toggle {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.cfg-toggle-label {
+    font-size: 13px;
+    color: #c6d2e8;
+    margin-left: 8px;
     white-space: normal;
 }
 
-.button-row {
+.cfg-toggles {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.cfg-toggles .cfg-toggle {
+    flex-grow: 1;
+    flex-basis: 280px;
+    min-width: 260px;
+}
+
+/* 卡种编辑卡片 */
+.cfg-card {
+    margin-top: 12px;
+    padding: 12px;
+    border-width: 1px;
+    border-color: #2a3448;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.cfg-card-title {
+    font-size: 14px;
+    color: #e6ecff;
+    -unity-font-style: bold;
+    margin-bottom: 10px;
+}
+
+/* 按钮 */
+.cfg-panel Button {
+    border-width: 1px;
+    border-color: #2a3448;
+    background-color: #1c2436;
+    color: #e6ecff;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    -unity-text-align: middle-center;
+}
+
+.cfg-panel Button:hover {
+    border-color: #3d4d6b;
+    background-color: #232e44;
+}
+
+.cfg-panel Button.primary {
+    background-color: #2f63d6;
+    border-color: #4f8cff;
+    -unity-font-style: bold;
+}
+
+.cfg-panel Button.primary:hover {
+    background-color: #3a70e6;
+}
+
+/* JSON 导入导出 */
+.cfg-json-actions {
     flex-direction: row;
     margin-top: 8px;
+    margin-bottom: 8px;
 }
+
+.cfg-json-actions Button {
+    margin-right: 8px;
+}
+
+.cfg-json {
+    min-height: 180px;
+    font-size: 12px;
+}
+

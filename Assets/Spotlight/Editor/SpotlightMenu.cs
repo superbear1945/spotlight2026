@@ -277,6 +277,21 @@ namespace Spotlight.EditorTools
         }
 
         /// <summary>
+        /// 在运行中打开对局配置面板。
+        /// 输入：无（仅在 Play 模式下有效）；输出：无。
+        /// 为什么需要：面板只能由界面按钮打开，开发时想直接在运行中查看/调整配置比较麻烦，
+        /// 因此提供一个仅编辑器可用的快捷入口，不改变正式构建的入口限制。
+        /// </summary>
+        [MenuItem("Tools/Spotlight/在运行中打开配置面板", priority = 41)]
+        public static void OpenConfigPanelInPlayMode()
+        {
+            if (!Application.isPlaying) { Debug.LogWarning("请先进入 Play 模式。"); return; }
+            var panel = Object.FindObjectOfType<ConfigDebugPanel>();
+            if (panel == null) { Debug.LogWarning("当前场景中没有 ConfigDebugPanel。"); return; }
+            panel.Open();
+        }
+
+        /// <summary>
         /// 确保格子 Prefab 存在。
         /// 输入：无；输出：BoardCellView 引用（用于棋盘视图的实例化模板）。
         /// </summary>

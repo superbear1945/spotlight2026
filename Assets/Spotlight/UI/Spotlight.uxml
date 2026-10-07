@@ -53,49 +53,44 @@
         <!-- 模态遮罩：配置面板打开时挡住棋盘视觉，真正的输入拦截由规则层完成 -->
         <ui:VisualElement name="modal-overlay" class="overlay modal-overlay" />
 
-        <!-- 配置调试面板 -->
-        <ui:VisualElement name="debug-panel" class="panel debug-panel">
-            <ui:Label text="配置草稿（仅本次运行有效，不写回 Excel）" class="title-label" />
-            <ui:ScrollView class="debug-scroll">
-                <ui:VisualElement class="debug-columns">
-                    <ui:VisualElement class="debug-column">
-                        <ui:Label text="JSON 草稿" class="section-label" />
-                        <ui:TextField name="debug-json" multiline="true" class="debug-json" />
-                        <ui:VisualElement class="button-row">
-                            <ui:Button name="debug-export-button" text="导出" class="action-button" />
-                            <ui:Button name="debug-import-button" text="导入" class="action-button" />
-                            <ui:Button name="debug-reset-button" text="恢复默认" class="action-button" />
+        <!-- 对局配置面板：表单式逐项编辑，字段分组与既有网页版配置界面保持一致。
+             分区骨架固定，逐卡种卡片由 ConfigDebugPanel 在运行时生成。 -->
+        <ui:VisualElement name="debug-panel" class="cfg-mask">
+            <ui:VisualElement class="cfg-panel">
+                <ui:VisualElement class="cfg-head">
+                    <ui:VisualElement class="cfg-head-top">
+                        <ui:Label text="⚙ 对局配置" class="cfg-title" />
+                        <ui:VisualElement class="cfg-head-actions">
+                            <ui:Button name="debug-reset-button" text="恢复默认" />
+                            <ui:Button name="debug-close-button" text="关闭" />
+                            <ui:Button name="debug-apply-button" text="应用并重开" class="primary" />
                         </ui:VisualElement>
                     </ui:VisualElement>
-
-                    <ui:VisualElement class="debug-column">
-                        <ui:Label text="临时新增卡种" class="section-label" />
-                        <ui:TextField name="debug-new-id" label="ID" />
-                        <ui:TextField name="debug-new-name" label="名称" />
-                        <ui:DropdownField name="debug-new-category" label="分类" />
-                        <ui:TextField name="debug-new-viewkey" label="外观键" value="default" />
-                        <ui:IntegerField name="debug-new-hp" label="生命" value="1" />
-                        <ui:IntegerField name="debug-new-atk" label="攻击" value="0" />
-                        <ui:IntegerField name="debug-new-range" label="射程" value="0" />
-                        <ui:IntegerField name="debug-new-move" label="移动" value="0" />
-                        <ui:IntegerField name="debug-new-produce" label="产出" value="0" />
-                        <ui:IntegerField name="debug-new-upkeep" label="维持费" value="0" />
-                        <ui:Button name="debug-add-card-button" text="新增卡种" class="action-button" />
-
-                        <ui:Label text="卡组数量" class="section-label" />
-                        <ui:TextField name="debug-deck-id" label="卡种 ID" />
-                        <ui:IntegerField name="debug-deck-count" label="数量" value="0" />
-                        <ui:Button name="debug-deck-set-button" text="设置数量" class="action-button" />
-
-                        <ui:Label text="卡种与卡组" class="section-label" />
-                        <ui:Label name="debug-card-summary" text="" class="detail-label" />
-                    </ui:VisualElement>
+                    <ui:Label name="debug-error" class="cfg-error" />
                 </ui:VisualElement>
-            </ui:ScrollView>
-            <ui:Label name="debug-status" text="" class="detail-label" />
-            <ui:VisualElement class="button-row">
-                <ui:Button name="debug-apply-button" text="应用并重开" class="action-button primary" />
-                <ui:Button name="debug-close-button" text="关闭" class="action-button" />
+                <ui:VisualElement class="cfg-body">
+                    <ui:ScrollView name="debug-scroll" class="cfg-scroll" mode="Vertical">
+                        <ui:Label class="cfg-note" text="修改仅在“应用并重开”后生效。关闭后保留草稿，重新打开可继续编辑。" />
+                        <ui:VisualElement name="debug-board" />
+                        <ui:VisualElement name="debug-home" />
+                        <ui:VisualElement name="debug-deck" />
+                        <ui:VisualElement name="debug-cards" />
+                        <ui:VisualElement name="debug-boss" />
+                        <ui:VisualElement name="debug-turn" />
+                        <ui:VisualElement name="debug-toggles" />
+
+                        <ui:VisualElement class="cfg-section">
+                            <ui:Label text="JSON 导入 / 导出" class="cfg-section-title" />
+                            <ui:Label class="cfg-note" text="cardTypes 声明 category（resource / attack / special）与 stats（名字、生命、攻防、射程、移动、产出、维持费）；rules 声明回合与开关；deck 配置数量清单。" />
+                            <ui:VisualElement class="cfg-json-actions">
+                                <ui:Button name="debug-export-button" text="导出到下方" />
+                                <ui:Button name="debug-import-button" text="从下方导入" />
+                            </ui:VisualElement>
+                            <ui:TextField name="debug-json" multiline="true" class="cfg-json" />
+                            <ui:Label name="debug-json-status" class="cfg-note" />
+                        </ui:VisualElement>
+                    </ui:ScrollView>
+                </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>

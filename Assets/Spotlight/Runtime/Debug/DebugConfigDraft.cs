@@ -115,6 +115,113 @@ namespace Spotlight
         }
 
         /// <summary>
+        /// 按卡种 ID 查找卡行。
+        /// 输入：卡种 ID；输出：卡行，找不到时为 null。
+        /// </summary>
+        public CardRow FindCard(string cardTypeId)
+        {
+            if (string.IsNullOrEmpty(cardTypeId) || _document.cards == null) return null;
+            foreach (var card in _document.cards)
+                if (card != null && card.id == cardTypeId) return card;
+            return null;
+        }
+
+        /// <summary>
+        /// 读取某卡种的卡组数量。
+        /// 输入：卡种 ID；输出：数量（未登记时为 0）。
+        /// </summary>
+        public int GetDeckCount(string cardTypeId)
+        {
+            if (_document.deck == null) return 0;
+            foreach (var entry in _document.deck)
+                if (entry != null && entry.cardType == cardTypeId) return entry.count;
+            return 0;
+        }
+
+        /// <summary>
+        /// 直接把卡组数量写入草稿（不抛异常，供面板逐键编辑）。
+        /// 输入：卡种 ID 与非负数量；输出：无。
+        /// 未登记的卡种会自动补一条卡组条目，保证“新增卡默认 0 张”也能被编辑。
+        /// </summary>
+        public void SetDeckCountValue(string cardTypeId, int count)
+        {
+            if (string.IsNullOrEmpty(cardTypeId)) return;
+            var value = count < 0 ? 0 : count;
+            var deck = new List<DeckRow>(_document.deck ?? Array.Empty<DeckRow>());
+            var entry = deck.Find(e => e != null && e.cardType == cardTypeId);
+            if (entry == null) deck.Add(new DeckRow { cardType = cardTypeId, count = value });
+            else entry.count = value;
+            _document.deck = deck.ToArray();
+        }
+
+        /// <summary>
+        /// 按分类新增一个临时卡种。
+        /// 输入：分类（resource/attack/special）；输出：新建的卡行。
+        /// 命名与参考配置界面一致：ID 为 custom_分类_序号，名字为“新资源卡N/新战斗卡N/新特殊卡N”，
+        /// 均避让已有ID与重名；默认 1 血 0 攻 0 移动，卡组数量 0。
+        /// </summary>
+        public CardRow AddCardType(string category)
+        {
+            var normalized = category == "attack" || category == "special" ? category : "resource";
+            var prefix = normalized == "resource" ? "新资源卡" : normalized == "special" ? "新特殊卡" : "新战斗卡";
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var card in _document.cards ?? Array.Empty<CardRow>())
+                if (card != null && !string.IsNullOrWhiteSpace(card.name)) names.Add(card.name.Trim());
+            var index = 1;
+            while (FindCard($"custom_{normalized}_{index}") != null || names.Contains(prefix + index)) index++;
+            var row = new CardRow
+            {
+                id = $"custom_{normalized}_{index}",
+                name = prefix + index,
+                category = normalized,
+                viewKey = "default",
+                hp = 1,
+                moveDistance = 0,
+                requiresUpgrade = false,
+                upgradeFrom = string.Empty
+            };
+            var cards = new List<CardRow>(_document.cards ?? Array.Empty<CardRow>()) { row };
+            _document.cards = cards.ToArray();
+            SetDeckCountValue(row.id, 0);
+            return row;
+        }
+
+        /// <summary>
+        /// 统计卡组构成。
+        /// 输入：无；输出：总数与资源/战斗/特殊三类张数（分类未注册的卡计入战斗）。
+        /// 用途：让规划者一眼看到“共 N 张”的结构是否符合预期。
+        /// </summary>
+        public (int Total, int Resource, int Combat, int Special) GetDeckSummary()
+        {
+            var total = 0;
+            var resource = 0;
+            var combat = 0;
+            var special = 0;
+            foreach (var entry in _document.deck ?? Array.Empty<DeckRow>())
+            {
+                if (entry == null) continue;
+                var count = entry.count < 0 ? 0 : entry.count;
+                total += count;
+                var card = FindCard(entry.cardType);
+                if (card == null) { combat += count; continue; }
+                if (card.category == "resource") resource += count;
+                else if (card.category == "special") special += count;
+                else combat += count;
+            }
+            return (total, resource, combat, special);
+        }
+
+        /// <summary>
+        /// 读取 Boss 卡种行。
+        /// 输入：无；输出：rules[0].bossCardType 指向的卡行（缺失时为 null）。
+        /// </summary>
+        public CardRow GetBossCard()
+        {
+            if (_document.rules == null || _document.rules.Length == 0 || _document.rules[0] == null) return null;
+            return FindCard(_document.rules[0].bossCardType);
+        }
+
+        /// <summary>
         /// 新增一个临时卡种。
         /// 输入：卡种字段（由面板收集）；输出：是否成功与错误文本。
         /// 说明：临时卡种同样进入草稿，不写入任何资产；数量默认 0，需要在卡组中另行引用。
