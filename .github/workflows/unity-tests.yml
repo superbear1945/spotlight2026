@@ -1,7 +1,9 @@
-# PR 测试流水线：在 GitHub Action 中运行 Unity EditMode 测试。
+# PR 测试流水线：在 GitHub Action 中运行 Unity EditMode 与 PlayMode 测试。
 # 为什么需要：AGENTS.md 要求每个功能都留下可在 PR 上自动执行的测试；
-# 规则内核与配置编译器都不依赖场景，因此用 EditMode 测试即可覆盖主要回归面。
-name: Unity EditMode Tests
+# 规则内核与配置编译器不依赖场景，用 EditMode 即可覆盖；
+# 而棋盘渲染、点击落点与 DOTween 动效只有在真实帧循环（PlayMode）里才能验证，
+# 因此两种模式都要在流水线上跑，避免“日志说移动了、界面却没动”这类问题再次漏过。
+name: Unity Tests
 
 on:
   push:
@@ -10,14 +12,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  editmode-tests:
-    name: EditMode 测试（Unity ${{ matrix.unityVersion }}）
+  unity-tests:
+    name: ${{ matrix.testMode }} 测试（Unity ${{ matrix.unityVersion }}）
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         unityVersion: [ '2022.3.62f1' ]
-        testMode: [ EditMode ]
+        testMode: [ EditMode, PlayMode ]
     steps:
       - name: 检出仓库
         uses: actions/checkout@v4
@@ -43,7 +45,7 @@ jobs:
           testMode: ${{ matrix.testMode }}
           artifactsPath: test-results-${{ matrix.testMode }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
-          checkName: EditMode 测试结果
+          checkName: ${{ matrix.testMode }} 测试结果
 
       - name: 上传测试结果
         if: always()

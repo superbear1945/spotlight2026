@@ -3,7 +3,14 @@
 
 * text=auto
 
-# Unity YAML assets are text and mergeable with UnityYAMLMerge
+# Unity YAML assets are text.
+# NOTE: `diff=unity` 只在本地配置了 [diff "unity"] 驱动时才生效；
+# 未配置时会被 git 静默忽略（无副作用）。需要的话执行：
+#   git config diff.unity.xfuncname '^[^# ].*$'
+# 若还要用 UnityYAMLMerge 做二路合并，再加：
+#   git config merge.unity.driver 'UnityYAMLMerge merge -p %O %B %A %A'
+#   git config merge.unity.name 'Unity YAML merge'
+# 并在 .gitattributes 中将对应行改为 text diff=unity merge=unity
 *.meta   text diff=unity
 *.unity  text diff=unity
 *.prefab text diff=unity
@@ -20,6 +27,20 @@
 *.mixer  text diff=unity
 *.shadervariants text diff=unity
 
+# 其余 Unity YAML 文本资产（同属可文本化、可合并的序列化格式，
+# 现在未被任何规则覆盖，一旦引入就是嗅探状态）
+*.asmref    text diff=unity
+*.playable  text diff=unity
+*.mask      text diff=unity
+*.lighting  text diff=unity
+*.signal    text diff=unity
+*.terrainlayer text diff=unity
+*.shadergraph    text diff=unity
+*.shadersubgraph text diff=unity
+*.vfx       text diff=unity
+*.vfxblock  text diff=unity
+*.vfxoperator text diff=unity
+
 # C# / shader / config files
 *.cs      text diff=csharp
 *.shader  text
@@ -27,12 +48,36 @@
 *.hlsl    text
 *.compute text
 *.json    text
+*.inputactions text
 *.xml     text
 *.yml     text
 *.yaml    text
 *.asmdef  text
 *.rsp     text
 *.txt     text
+
+# 文档 / 脚本 / UI Toolkit —— 这些在仓库里都是纯 UTF-8 文本。
+# 显式声明以避免依赖 * text=auto 的内容嗅探（含被工具生成的图与页面）。
+*.md      text
+*.py      text
+*.svg     text
+*.drawio  text
+*.html    text diff=html
+*.uxml    text
+*.uss     text
+*.tss     text
+*.props   text
+*.targets text
+*.gradle  text
+
+# 大小写显式声明：gitattributes 的匹配是**大小写敏感**的，
+# 仓库里真实存在 DOTween.XML / ExcelDataReader.xml 两种写法；
+# 在 core.ignorecase=false 的 Linux/CI 上 *.xml 无法匹配 *.XML，故单独列出。
+*.XML     text
+
+# .gitattributes / .gitignore 自身（工作区可能被写成 CRLF）
+.gitattributes text
+.gitignore     text
 
 # Binary assets – must not be interpreted as text
 *.png  binary
@@ -84,6 +129,22 @@
 *.cubemap binary
 *.physicMaterial binary
 *.physicsMaterial binary
+*.psb   binary
+
+# Unity 二进制/容器型资产（不依赖内容嗅探）
+*.bytes binary
+
+# 插件 / 构建产物容器（.gitignore 已排除构建输出，此处兜底）
+*.jar   binary
+*.aar   binary
+
+# 文档与 Office 文件：均为 zip/OLE 容器，既不可 diff 也不该被当文本处理
+*.pdf   binary
+*.xlsx  binary
+*.xls   binary
+*.docx  binary
+*.pptx  binary
+
 
 # Git LFS (uncomment after running `git lfs install` and `git lfs track`)
 # *.psd   filter=lfs diff=lfs merge=lfs -text
