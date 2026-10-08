@@ -1,0 +1,38 @@
+# 仓库体积卫生检查：拦住"大二进制文件以普通 blob 形式入库"的提交。
+#
+# 为什么需要：blob 一旦进入 git 历史，之后删文件也回收不了体积（除非重写历史），
+# 而 GitHub 还有 100 MB 的单文件硬上限，超了就直接推不上去。
+# 一次误提交的大贴图/大视频就足以把仓库永久撑大，所以必须在 PR 阶段拦下来。
+#
+# 与 .gitattributes 的 Git LFS 小节配套：合规的大二进制会以约 130 字节的 LFS
+# 指针入库，因此不会触碰大小阈值；未被 LFS 覆盖的类型若体积超标则直接报错。
+name: Repo Hygiene
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+  workflow_dispatch:
+
+# 只读检查，不需要写权限
+permissions:
+  contents: read
+
+jobs:
+  repo-hygiene:
+    name: 大文件与 LFS 一致性检查
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          # 不拉取 LFS 内容：本检查只看指针文本与 blob 大小，省带宽也更快
+          lfs: false
+
+      - name: 大文件与 LFS 一致性检查
+        env:
+          MAX_FILE_MB: '5'
+        run: bash scripts/check-repo-hygiene.sh
+
+      - name: 校验检查脚本自身（3 个用例）
+        run: bash scripts/check-repo-hygiene.sh --self-test
