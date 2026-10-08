@@ -1,0 +1,13 @@
+{
+  "name": "Spotlight.Tests.PlayMode",
+  "rootNamespace": "Spotlight.Tests",
+  "references": [
+    "Spotlight.Core",
+    "Spotlight.Runtime"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

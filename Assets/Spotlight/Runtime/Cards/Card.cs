@@ -1,6 +1,7 @@
 // 卡牌视图组件：唯一同时用于“手牌实例”和“棋盘单位”的显示载体。
 // 设计约束：具体卡种不建立子类，Card 只持有组件引用、绑定身份并协调显示。
 // 身份有两种：CardRecord（牌库/手牌/墓地中的来源卡）与 UnitState（棋盘上的战斗实体）。
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -49,6 +50,8 @@ namespace Spotlight
         Color _baseColor = Color.white;
         /// <summary>是否使用自定义文本（家没有 CardDefinitionSO，不能由 Refresh 覆盖）。</summary>
         bool _customText;
+        /// <summary>是否正在播放“回到格心”的移动动画；视图据此决定要不要重新校准格内位置。</summary>
+        bool _moveAnimating;
 
         /// <summary>卡种定义资产。</summary>
         public CardDefinitionSO Definition => _definition;
@@ -223,5 +226,43 @@ namespace Spotlight
 
         /// <summary>当前是否选中。输入：无；输出：选中状态。用于视图的点击去重。</summary>
         public bool IsSelected => _selected;
+
+        /// <summary>是否正在播放移动动画。输入：无；输出：动画状态。</summary>
+        public bool IsMoveAnimating => _moveAnimating;
+
+        /// <summary>
+        /// 标记移动动画状态。
+        /// 输入：是否正在播放；输出：无。
+        /// 为什么需要：棋盘视图只在“没有动画在跑”的时候重新校准卡牌位置，
+        /// 这样动画不会被反复打断，而动画被中断后残留的偏移又一定会被下一次渲染纠正。
+        /// </summary>
+        public void SetMoveAnimating(bool value) => _moveAnimating = value;
+
+        /// <summary>
+        /// 设置整张卡牌（含子物体文本）是否参与 UGUI 射线检测。
+        /// 输入：是否参与射线检测；输出：无。
+        /// 为什么需要：棋盘上的卡牌只是显示层，点击必须落到所在格子（BoardCellView 的 Button）上；
+        /// 而模板上的 Image 与三个文本在 UGUI 里默认都会挡住点击，
+        /// 不关闭就会出现“点在棋子上没有任何反应”的交互死角；手牌则必须保留射线检测以便点选。
+        /// </summary>
+        public void SetRaycastTarget(bool value)
+        {
+            if (_body != null) _body.raycastTarget = value;
+            if (_highlight != null) _highlight.raycastTarget = value;
+            foreach (var graphic in GetComponentsInChildren<Graphic>(true)) graphic.raycastTarget = value;
+        }
+
+        /// <summary>
+        /// 组件销毁时停止自身动画。
+        /// 输入：无；输出：无。
+        /// 为什么需要：DOTween 补间会在下一帧继续访问已经销毁的 RectTransform，
+        /// 打印“RectTransform has been destroyed”之类的警告（例如手牌打出后被回收）。
+        /// 这里只做“停止”，不做“补完”，以免在对象已销毁时写回属性。
+        /// </summary>
+        void OnDestroy()
+        {
+            if (!Application.isPlaying) return;
+            transform.DOKill();
+        }
     }
 }

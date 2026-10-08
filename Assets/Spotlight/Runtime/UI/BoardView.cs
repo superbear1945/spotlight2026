@@ -214,13 +214,20 @@ namespace Spotlight
             }
         }
 
-        /// <summary>把实体视图放到指定格；不存在时先创建。输入：ID、坐标与创建委托；输出：无。</summary>
+        /// <summary>
+        /// 把实体视图放到指定格；不存在时先创建。
+        /// 输入：ID、坐标与创建委托；输出：无。
+        /// 不变式：只要没有正在播放的移动动画，卡牌最终一定挂在快照坐标对应的格子上且偏移为零。
+        /// 因此规则层只要移动了单位，界面就必然跟着移动，不会因为动画被中断而把棋子留在旧格。
+        /// </summary>
         void Place(long id, Cell cell, Func<Card> create)
         {
             if (!_unitCards.TryGetValue(id, out var card) || card == null)
             {
                 card = create();
                 if (card == null) return;
+                // 棋盘卡牌只负责显示：关掉射线检测，让点击穿透到格子（BoardCellView）上。
+                card.SetRaycastTarget(false);
                 _unitCards[id] = card;
                 _lastPositions[id] = cell;
             }
@@ -236,6 +243,12 @@ namespace Spotlight
                 rt.anchoredPosition = Vector2.zero;
                 rt.localScale = Vector3.one;
                 rt.localRotation = Quaternion.identity;
+            }
+            else if (!card.IsMoveAnimating && rt.anchoredPosition != Vector2.zero)
+            {
+                // 位置校准：动画被中断（或补间根本没启动）时，卡牌可能停留在旧格附近；
+                // 没有动画在跑就必须立刻回到格心，避免出现“日志说移动了、棋子却还在原地”。
+                rt.anchoredPosition = Vector2.zero;
             }
             // 每次同步都刷新尺寸：格子尺寸会在首次布局完成后变化。
             // 注意：中心锚点下 sizeDelta 就是绝对尺寸，不能用负数偏移。
