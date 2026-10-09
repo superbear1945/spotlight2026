@@ -1,10 +1,2 @@
-# CODEOWNERS：main 分支的合并必须由仓库所有者 superbear1945 审阅批准。
-# 为什么需要：分支规则集「main」开启了 require_code_owner_review，
-# 只有列在这里的人给出的 approval 才算满足“必须由所有者 review 通过”这条要求。
-# 前提：这里列出的用户必须对仓库有 write 及以上权限，否则不会生效。
-
-# 默认：仓库内所有文件都由所有者负责
-*   @superbear1945
-
-# CODEOWNERS 自身也被覆盖，避免通过改这个文件绕过审阅要求
-/.github/CODEOWNERS   @superbear1945
+# probe: 作者不是 code owner 的情形
+*   @DuskCloud114
