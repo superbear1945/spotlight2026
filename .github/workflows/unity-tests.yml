@@ -36,21 +36,50 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        unityVersion: [ '2022.3.62f1' ]
+        # 必须与 ProjectSettings/ProjectVersion.txt 完全一致，含中国版后缀。
+        # 为什么不再写 '2022.3.62f1'：那是国际版版本号。Unity 遇到项目版本与编辑器版本
+        # 不一致时会判定“项目由另一版本创建过”并整库重导入，于是出现“CI 绿、本地炸”——
+        # CI 通过只代表通过在国际版上，没验证过开发实际使用的中国版。
+        unityVersion: [ '2022.3.62f3c1' ]
         testMode: [ EditMode, PlayMode ]
+    env:
+      # 中国版编辑器镜像地址，从仓库 Variables 读取（Settings → Secrets and variables
+      # → Actions → Variables，变量名 UNITY_CHINA_IMAGE）。
+      # 为什么需要单独一个变量：Unity 中国版（版本号带 c1 后缀）不在 Unity 国际版发行源里，
+      # game-ci 的 unityci/editor 因此不会发布 ubuntu-2022.3.62f3c1-* 标签，
+      # 必须自建镜像；把地址放 Variables 后，切换镜像不需要再改本文件。
+      # 留空时下面的前置检查会提前给出中文指引，而不是抛一句 manifest unknown。
+      UNITY_IMAGE: ${{ vars.UNITY_CHINA_IMAGE }}
     steps:
       - name: 检出仓库
         uses: actions/checkout@v4
         with:
           lfs: true
 
+      - name: 前置检查中国版编辑器镜像
+        # 为什么需要：官方 unityci/editor 不发布中国版标签，直接跑会在 docker pull 阶段失败，
+        # 日志只有“manifest unknown”，看不出该做什么。这里提前几秒给出结论与自建方式。
+        if: ${{ env.UNITY_IMAGE == '' }}
+        run: |
+          echo "::error::未配置中国版编辑器镜像（仓库 Variables 的 UNITY_CHINA_IMAGE 为空）"
+          echo "2022.3.62f3c1 是 Unity 中国版，不在 Unity 国际版发行源里（国际 API 查该版本返回 0 条），"
+          echo "game-ci 官方镜像不会发布对应标签，因此必须自建并推送到一个可拉取的仓库，例如："
+          echo "  ghcr.io/<组织>/unity-china:2022.3.62f3c1"
+          echo "自建所需文件（revision 与 ProjectVersion.txt 的 1623fc0bbb97 一致）："
+          echo "  编辑器     https://download.unitychina.cn/download_unity/1623fc0bbb97/LinuxEditorInstaller/Unity-2022.3.62f3c1.tar.xz"
+          echo "  IL2CPP模块 https://download.unitychina.cn/download_unity/1623fc0bbb97/LinuxEditorTargetInstaller/UnitySetup-Linux-IL2CPP-Support-for-Editor-2022.3.62f3c1.tar.xz"
+          echo "镜像就绪后，把地址写入 Variables: UNITY_CHINA_IMAGE，本文件无需改动。"
+          exit 1
+
       - name: 缓存 Library
         uses: actions/cache@v4
         with:
           path: Library
-          key: Library-${{ matrix.unityVersion }}-${{ hashFiles('Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
+          # Library 与编辑器版本强绑定，缓存键必须带上镜像地址：换成中国版镜像后
+          # 若复用国际版构建的 Library，会出现无法解释的重导入与偶发失败。
+          key: Library-${{ matrix.unityVersion }}-${{ env.UNITY_IMAGE || 'official' }}-${{ hashFiles('Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
           restore-keys: |
-            Library-${{ matrix.unityVersion }}-
+            Library-${{ matrix.unityVersion }}-${{ env.UNITY_IMAGE || 'official' }}-
 
       - name: 运行测试
         # 为什么固定到 v4.4.0：@v4 会跟随上游发布，而 v4.4.0 起该 action 已改成
@@ -70,6 +99,8 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           unityVersion: ${{ matrix.unityVersion }}
+          # 指向自建的中国版镜像；为空时退回 game-ci 官方镜像（已被上面的前置检查拦住）。
+          customImage: ${{ env.UNITY_IMAGE }}
           testMode: ${{ matrix.testMode }}
           # 为什么只跑本项目自己的测试（命名空间 Spotlight.Tests）：
           # Packages/manifest.json 里以 git 地址引入的第三方包 com.besty.unity-skills 自带 1600+ 个
