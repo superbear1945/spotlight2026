@@ -15,7 +15,7 @@ on:
 # 而 unity-test-runner 会用 githubToken 创建 check run 来汇报测试结果（对应下面的 checkName），
 # 权限不足时会直接以 ##[error]Resource not accessible by integration 让整个 job 失败，
 # 表现为“测试全部通过、job 却是红的”这种假失败（PlayMode 4/4 Passed 仍失败即此原因）。
-# 只在中请所需的最小集合，避免把仓库全局默认改成读写。
+# 只声明所需的最小集合，避免把仓库全局默认改成读写。
 permissions:
   contents: read
   checks: write
