@@ -35,9 +35,19 @@ jobs:
             Library-${{ matrix.unityVersion }}-
 
       - name: 运行测试
-        uses: game-ci/unity-test-runner@v4
+        # 为什么固定到 v4.4.0：@v4 会跟随上游发布，而 v4.4.0 起该 action 已改成
+        # game-ci/cli 的 thin wrapper，授权实现与旧版完全不同；固定版本才能在出问题时定位，
+        # 也避免上游再次发生 #309 那种“同一个大版本内行为改变”的回归。升级前请先在 PR 上验证授权与测试都跑通。
+        uses: game-ci/unity-test-runner@v4.4.0
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          # 为什么不再提供 UNITY_LICENSE：Unity 已取消个人版（Personal）的离线手工激活，
+          # .ulf 里的 MachineBindings 会把它绑死到申请它的那台机器上；hosted runner 每次都是新机器，
+          # 直接加载该文件必然失败（日志表现为 Code 400 TimeStamp validation failed /
+          # No ULF license found, Token not found in cache），而 CLI v0.1.72 的永久失败兜底只识别
+          # "Machine bindings don't match" 这一种措辞，不会自动回退到账号激活，只会白重试 5 次（约 5 分钟）后退出。
+          # 只给账号密码时，激活方式按 file → serial → floating → personal 解析为 personal，
+          # CLI 会用 Unity.Licensing.Client --activate-all --include-personal 直接认领一个个人席位，与机器无关。
+          # 注意：该账号不能依赖 2FA/设备验证（headless 无法应答），建议使用专用的 CI 账号。
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
