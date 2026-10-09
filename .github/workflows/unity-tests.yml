@@ -11,11 +11,19 @@ on:
   pull_request:
   workflow_dispatch:
 
+# 同一 ref 只保留一次运行：反复推修复时避免多个运行叠在一起（实测同时跑了 3 个），
+# 白白消耗 CI 时间，也让“哪次失败对应哪个 commit”变得难查。
+# 刻意不设 cancel-in-progress：个人版授权是“席位”制，中途取消正在运行的 job 可能来不及归还席位
+# （CLI 只在 EXIT trap 能执行完时归还），泄漏的席位会让该账号之后所有运行报 no available seats。
+# 默认行为只会取消“排队中”的旧运行，正在执行的那次不受影响。
+concurrency:
+  group: unity-tests-${{ github.ref }}
+
 # 为什么需要显式声明权限：仓库默认的 Workflow permissions 是「只读」，
 # 而 unity-test-runner 会用 githubToken 创建 check run 来汇报测试结果（对应下面的 checkName），
 # 权限不足时会直接以 ##[error]Resource not accessible by integration 让整个 job 失败，
 # 表现为“测试全部通过、job 却是红的”这种假失败（PlayMode 4/4 Passed 仍失败即此原因）。
-# 只在中请所需的最小集合，避免把仓库全局默认改成读写。
+# 只声明所需的最小集合，避免把仓库全局默认改成读写。
 permissions:
   contents: read
   checks: write

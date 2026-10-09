@@ -70,3 +70,6 @@ Thumbs.db
 
 # 截图目录（运行验证时按需生成，不入库）
 /[Aa]ssets/[Ss]creenshots/
+
+# 临时内容，本地临时存储，不进仓库
+/temp/
