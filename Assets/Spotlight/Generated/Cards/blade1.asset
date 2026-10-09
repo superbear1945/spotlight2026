@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-9041642930630790501
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f46270952f46ef441a82ecbe84dc9fd9, type: 3}
+  m_Name: blade1_Resource
+  m_EditorClassIdentifier: 
+  _produce: 0
+  _upkeep: 2
+--- !u!114 &-5706356636863007052
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3099d18b4ff55c4cbe7732b2d6561a9, type: 3}
+  m_Name: blade1_Combat
+  m_EditorClassIdentifier: 
+  _hp: 2
+  _attack: 1
+  _range: 1
+  _moveDistance: 1
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f286b130caf66f84cbd77f9f1a0c2cc5, type: 3}
+  m_Name: blade1
+  m_EditorClassIdentifier: 
+  _id: blade1
+  _name: "\u5C16\u52001"
+  _category: attack
+  _viewKey: default
+  _requiresUpgrade: 0
+  _upgradeFrom: 
+  _deployHomeOnly: 0
+  _avoidAdjacentSameType: 0
+  _combat: {fileID: -5706356636863007052}
+  _resource: {fileID: -9041642930630790501}
+  _teleport: {fileID: 0}
+  _prefab: {fileID: 7662927895243477926, guid: a6ca66a7bf3aafb499d0010f3515a41a, type: 3}
+  _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
+  _sourceSheet: Cards

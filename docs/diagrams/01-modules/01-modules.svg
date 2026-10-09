@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" data-generator="fireworks-tech-graph" data-schema-version="1" data-text-metrics="heuristic-v1" data-style-id="1" data-visual-theme="Flat Icon" data-diagram-type="architecture" data-motion-scene="" data-semantic-profile="generic" data-semantic-valid="true" data-quality-profile="standard" data-max-bends-per-edge="12" data-max-total-bends="100" data-max-route-stretch="5.0" data-max-bridged-crossings="8" data-min-node-gap="0.0" data-min-container-gutter="0.0" data-min-label-clearance="2.0" data-min-segment-length="0.0">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+    </marker>
+    <marker id="arrowC" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowE" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
+    </marker>
+    <marker id="arrowF" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+    </marker>
+    <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <filter id="shadowGlass" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#020617" flood-opacity="0.28"/>
+    </filter>
+    <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+    .title { font-size: 30px; font-weight: 700; fill: #111827; }
+    .subtitle { font-size: 14px; font-weight: 500; fill: #6b7280; }
+    .section { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: 1.4px; }
+    .section-sub { font-size: 12px; font-weight: 500; fill: #64748b; }
+    .node-title { font-weight: 700; fill: #111827; }
+    .node-sub { font-weight: 500; fill: #6b7280; }
+    .node-type { font-size: 12px; font-weight: 700; fill: #64748b; letter-spacing: 0.08em; }
+    .arrow-label { font-size: 12px; font-weight: 600; fill: #6b7280; }
+    .legend { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .footnote { font-size: 12px; font-weight: 500; fill: #64748b; }
+    .metric-label { font-size: 8.5px; font-weight: 700; fill: #64748b; text-transform: uppercase; }
+    .metric-value { font-size: 9.5px; font-weight: 700; fill: #111827; }
+    </style>
+  </defs>
+  <rect data-graph-role="background" width="1600.0" height="900.0" fill="#ffffff"/>
+  <text x="800.0" y="56" text-anchor="middle" class="title">Spotlight 模块架构与程序集依赖</text>
+  <text x="800.0" y="82" text-anchor="middle" class="subtitle">规则内核 → 运行层 → 编辑器工具；测试程序集依赖三者，Plugins 按编辑器与运行时分离</text>
+  <g id="c-core" data-graph-role="container" data-container-id="c-core" data-semantic-role="boundary" data-graph-bounds="60,140,400,290">
+  <rect data-graph-role="container" x="60.0" y="140.0" width="340.0" height="150.0" rx="16.0" fill="none" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="6 5"/>
+  <text x="78.0" y="164.0" class="section">Spotlight.Core</text>
+  <text x="78.0" y="184.0" class="section-sub">纯 C# 规则内核，不引用 UnityEngine</text>
+    <rect id="c-core-header" data-graph-role="reserved" data-reserved-kind="container-header" x="68" y="146" width="238.08" height="54" fill="none" stroke="none"/>
+  </g>
+  <g id="c-runtime" data-graph-role="container" data-container-id="c-runtime" data-semantic-role="boundary" data-graph-bounds="440,140,780,290">
+  <rect data-graph-role="container" x="440.0" y="140.0" width="340.0" height="150.0" rx="16.0" fill="none" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="6 5"/>
+  <text x="458.0" y="164.0" class="section">Spotlight.Runtime</text>
+  <text x="458.0" y="184.0" class="section-sub">运行层：组件 · SO · UI · 调试</text>
+    <rect id="c-runtime-header" data-graph-role="reserved" data-reserved-kind="container-header" x="448" y="146" width="197.52" height="54" fill="none" stroke="none"/>
+  </g>
+  <g id="c-editor" data-graph-role="container" data-container-id="c-editor" data-semantic-role="boundary" data-graph-bounds="820,140,1160,290">
+  <rect data-graph-role="container" x="820.0" y="140.0" width="340.0" height="150.0" rx="16.0" fill="none" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="6 5"/>
+  <text x="838.0" y="164.0" class="section">Spotlight.Editor</text>
+  <text x="838.0" y="184.0" class="section-sub">仅编辑器：编译 · 菜单 · 门禁</text>
+    <rect id="c-editor-header" data-graph-role="reserved" data-reserved-kind="container-header" x="828" y="146" width="193.2" height="54" fill="none" stroke="none"/>
+  </g>
+  <g id="c-plugins" data-graph-role="container" data-container-id="c-plugins" data-semantic-role="boundary" data-graph-bounds="1200,140,1540,440">
+  <rect data-graph-role="container" x="1200.0" y="140.0" width="340.0" height="300.0" rx="16.0" fill="none" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="6 5"/>
+  <text x="1218.0" y="164.0" class="section">Assets/Plugins</text>
+  <text x="1218.0" y="184.0" class="section-sub">第三方依赖，按用途分离</text>
+    <rect id="c-plugins-header" data-graph-role="reserved" data-reserved-kind="container-header" x="1208" y="146" width="162" height="54" fill="none" stroke="none"/>
+  </g>
+  <g id="c-tests" data-graph-role="container" data-container-id="c-tests" data-semantic-role="boundary" data-graph-bounds="440,520,780,670">
+  <rect data-graph-role="container" x="440.0" y="520.0" width="340.0" height="150.0" rx="16.0" fill="none" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="6 5"/>
+  <text x="458.0" y="544.0" class="section">Spotlight.Tests.EditMode</text>
+  <text x="458.0" y="564.0" class="section-sub">EditMode 行为与配置测试</text>
+    <rect id="c-tests-header" data-graph-role="reserved" data-reserved-kind="container-header" x="448" y="526" width="197.18" height="54" fill="none" stroke="none"/>
+  </g>
+  <path id="e-runtime-core" data-graph-role="edge" data-edge-id="e-runtime-core" data-source="n-runtime" data-target="n-core" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 470,236 L 370,236" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)"/>
+  <path id="e-editor-runtime" data-graph-role="edge" data-edge-id="e-editor-runtime" data-source="n-editor" data-target="n-runtime" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="1" data-route-stretch="1.0" data-bridges="" d="M 850,236 L 750,236 L 750,227 L 750,227" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)"/>
+  <path id="e-editor-excel" data-graph-role="edge" data-edge-id="e-editor-excel" data-source="n-editor" data-target="n-excel" data-edge-kind="flow" data-topic-id="" data-flow="data" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 1130,236 L 1230,236" fill="none" stroke="#f97316" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowE)"/>
+  <path id="e-runtime-dotween" data-graph-role="edge" data-edge-id="e-runtime-dotween" data-source="n-runtime" data-target="n-dotween" data-edge-kind="flow" data-topic-id="" data-flow="write" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="2" data-route-stretch="1.0" data-bridges="" d="M 750,245 L 763,245 L 763,372 L 1230,372" fill="none" stroke="#10b981" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowB)"/>
+  <path id="e-tests-runtime" data-graph-role="edge" data-edge-id="e-tests-runtime" data-source="n-tests" data-target="n-runtime" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="3" data-route-stretch="1.223" data-bridges="" d="M 610,584 L 645.18,584 L 645.18,288.4 L 610,288.4 L 610,268" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)"/>
+  <path id="e-tests-core" data-graph-role="edge" data-edge-id="e-tests-core" data-source="n-tests" data-target="n-core" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="1" data-route-stretch="1.0" data-bridges="" d="M 470,616 L 230,616 L 230,268" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)"/>
+  <path id="e-tests-editor-bridge-mask" data-graph-role="bridge-mask" data-owner="e-tests-editor" d="M 750,616 L 770.4,616 L 770.4,377 A 5 5 0 0 0 770.4,367 L 770.4,292 L 990,292 L 990,268" fill="none" stroke="#ffffff" stroke-width="6.9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path id="e-tests-editor" data-graph-role="edge" data-edge-id="e-tests-editor" data-source="n-tests" data-target="n-editor" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="3" data-route-stretch="1.0" data-bridges="770.4,372" d="M 750,616 L 770.4,616 L 770.4,377 A 5 5 0 0 0 770.4,367 L 770.4,292 L 990,292 L 990,268" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)"/>
+  <g id="node-n-core" data-graph-role="node" data-node-id="n-core" data-semantic-role="double_rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="90,204,370,268">
+  <rect x="90.0" y="204.0" width="280.0" height="64.0" rx="10.0" fill="#eff6ff" stroke="#2563eb" stroke-width="2.0"/>
+  <rect x="96.0" y="210.0" width="268.0" height="52.0" rx="7.0" fill="none" stroke="#2563eb" stroke-width="1.2" opacity="0.65"/>
+  <text data-text-role="title" data-full-text="规则内核与配置契约" data-text-max-width="248.0" x="230.0" y="236.0" text-anchor="middle" class="node-title" font-size="18">规则内核与配置契约</text>
+  <text data-text-role="subtitle" data-full-text="Configuration · GameSession" data-text-max-width="248.0" x="230.0" y="258.0" text-anchor="middle" class="node-sub" font-size="12">Configuration · GameSession</text>
+  </g>
+  <g id="node-n-runtime" data-graph-role="node" data-node-id="n-runtime" data-semantic-role="double_rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="470,204,750,268">
+  <rect x="470.0" y="204.0" width="280.0" height="64.0" rx="10.0" fill="#faf5ff" stroke="#7c3aed" stroke-width="2.0"/>
+  <rect x="476.0" y="210.0" width="268.0" height="52.0" rx="7.0" fill="none" stroke="#7c3aed" stroke-width="1.2" opacity="0.65"/>
+  <text data-text-role="title" data-full-text="运行层与视图" data-text-max-width="248.0" x="610.0" y="236.0" text-anchor="middle" class="node-title" font-size="18">运行层与视图</text>
+  <text data-text-role="subtitle" data-full-text="Card · 三个组件 · UI · 调试面板" data-text-max-width="248.0" x="610.0" y="258.0" text-anchor="middle" class="node-sub" font-size="12">Card · 三个组件 · UI · 调试面板</text>
+  </g>
+  <g id="node-n-editor" data-graph-role="node" data-node-id="n-editor" data-semantic-role="double_rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="850,204,1130,268">
+  <rect x="850.0" y="204.0" width="280.0" height="64.0" rx="10.0" fill="#fff7ed" stroke="#f97316" stroke-width="2.0"/>
+  <rect x="856.0" y="210.0" width="268.0" height="52.0" rx="7.0" fill="none" stroke="#f97316" stroke-width="1.2" opacity="0.65"/>
+  <text data-text-role="title" data-full-text="编辑器工具" data-text-max-width="248.0" x="990.0" y="236.0" text-anchor="middle" class="node-title" font-size="18">编辑器工具</text>
+  <text data-text-role="subtitle" data-full-text="Excel 编译 · 工作簿 · 构建门禁" data-text-max-width="248.0" x="990.0" y="258.0" text-anchor="middle" class="node-sub" font-size="12">Excel 编译 · 工作簿 · 构建门禁</text>
+  </g>
+  <g id="node-n-excel" data-graph-role="node" data-node-id="n-excel" data-semantic-role="cylinder" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1230,204,1510,268">
+  <ellipse cx="1370.0" cy="212.0" rx="140.0" ry="8.0" fill="#f0fdfa" stroke="#0d9488" stroke-width="2.2"/>
+  <rect x="1230.0" y="212.0" width="280.0" height="48.0" fill="#f0fdfa" stroke="#0d9488" stroke-width="2.2"/>
+  <ellipse cx="1370.0" cy="260.0" rx="140.0" ry="8.0" fill="#f0fdfa" stroke="#0d9488" stroke-width="2.2"/>
+  <ellipse cx="1370.0" cy="228.32" rx="140.0" ry="8.0" fill="none" stroke="#0d9488" stroke-opacity="0.45" stroke-width="1.2"/>
+  <ellipse cx="1370.0" cy="242.4" rx="140.0" ry="8.0" fill="none" stroke="#0d9488" stroke-opacity="0.25" stroke-width="1.2"/>
+  <text data-text-role="title" data-full-text="ExcelDataReader 3.9.0" data-text-max-width="256.0" x="1370.0" y="230.0" text-anchor="middle" class="node-title" font-size="18">ExcelDataReader 3.9.0</text>
+  <text data-text-role="subtitle" data-full-text="仅编辑器引用，不进正式包" data-text-max-width="256.0" x="1370.0" y="254.0" text-anchor="middle" class="node-sub" font-size="12">仅编辑器引用，不进正式包</text>
+  </g>
+  <g id="node-n-dotween" data-graph-role="node" data-node-id="n-dotween" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1230,340,1510,404">
+  <rect x="1230.0" y="340.0" width="280.0" height="64.0" rx="10.0" fill="#fef2f2" stroke="#dc2626" stroke-width="1.8"/>
+  <text data-text-role="title" data-full-text="DOTween Free 1.2.765" data-text-max-width="256.0" x="1370.0" y="372.0" text-anchor="middle" class="node-title" font-size="18">DOTween Free 1.2.765</text>
+  <text data-text-role="subtitle" data-full-text="运行时表现反馈与清理" data-text-max-width="256.0" x="1370.0" y="394.0" text-anchor="middle" class="node-sub" font-size="12">运行时表现反馈与清理</text>
+  </g>
+  <g id="node-n-tests" data-graph-role="node" data-node-id="n-tests" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="470,584,750,648">
+  <rect x="470.0" y="584.0" width="280.0" height="64.0" rx="10.0" fill="#ecfdf5" stroke="#10b981" stroke-width="1.8"/>
+  <text data-text-role="title" data-full-text="EditMode 测试程序集" data-text-max-width="256.0" x="610.0" y="616.0" text-anchor="middle" class="node-title" font-size="18">EditMode 测试程序集</text>
+  <text data-text-role="subtitle" data-full-text="引用 Core / Runtime / Editor" data-text-max-width="256.0" x="610.0" y="638.0" text-anchor="middle" class="node-sub" font-size="12">引用 Core / Runtime / Editor</text>
+  </g>
+  <g id="e-runtime-core-label" data-graph-role="label" data-owner="e-runtime-core" data-graph-bounds="377,205,463,225">
+  <rect x="377.0" y="205.0" width="86.0" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="420.0" y="219.0" text-anchor="middle" class="arrow-label">引用规则内核</text>
+  </g>
+  <g id="e-editor-runtime-label" data-graph-role="label" data-owner="e-editor-runtime" data-graph-bounds="763,205,837,225">
+  <rect x="763.0" y="205.0" width="74.0" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="800.0" y="219.0" text-anchor="middle" class="arrow-label">引用运行层</text>
+  </g>
+  <g id="e-editor-excel-label" data-graph-role="label" data-owner="e-editor-excel" data-graph-bounds="1144.56,205,1215.44,225">
+  <rect x="1144.56" y="205.0" width="70.88" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="1180.0" y="219.0" text-anchor="middle" class="arrow-label">读取 .xlsx</text>
+  </g>
+  <g id="e-runtime-dotween-label" data-graph-role="label" data-owner="e-runtime-dotween" data-graph-bounds="959.5,341,1033.5,361">
+  <rect x="959.5" y="341.0" width="74.0" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="996.5" y="355.0" text-anchor="middle" class="arrow-label">运行时调用</text>
+  </g>
+  <g id="e-tests-runtime-label" data-graph-role="label" data-owner="e-tests-runtime" data-graph-bounds="568.18,422.2,642.18,442.2">
+  <rect x="568.18" y="422.2" width="74.0" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="605.18" y="436.2" text-anchor="middle" class="arrow-label">运行层测试</text>
+  </g>
+  <g id="e-tests-core-label" data-graph-role="label" data-owner="e-tests-core" data-graph-bounds="165,428,227,448">
+  <rect x="165.0" y="428.0" width="62.0" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="196.0" y="442.0" text-anchor="middle" class="arrow-label">规则测试</text>
+  </g>
+  <g id="e-tests-editor-label" data-graph-role="label" data-owner="e-tests-editor" data-graph-bounds="681.4,440,767.4,460">
+  <rect x="681.4" y="440.0" width="86.0" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="724.4" y="454.0" text-anchor="middle" class="arrow-label">配置编译测试</text>
+  </g>
+  <g id="legend" data-graph-role="legend">
+    <rect id="legend-zone" data-graph-role="reserved" data-reserved-kind="legend" x="32" y="736" width="494" height="46" rx="10" fill="none" stroke="none"/>
+    <line data-graph-role="decoration" x1="42.0" y1="750.0" x2="72.0" y2="750.0" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+    <text data-graph-role="decoration" x="82.0" y="754.0" class="legend">程序集依赖与测试引用</text>
+    <line data-graph-role="decoration" x1="230.0" y1="750.0" x2="260.0" y2="750.0" stroke="#f97316" stroke-width="2.4" marker-end="url(#arrowE)"/>
+    <text data-graph-role="decoration" x="270.0" y="754.0" class="legend">Excel 数据读取</text>
+    <line data-graph-role="decoration" x1="382.0" y1="750.0" x2="412.0" y2="750.0" stroke="#10b981" stroke-width="2.4" marker-end="url(#arrowB)"/>
+    <text data-graph-role="decoration" x="422.0" y="754.0" class="legend">运行时表现反馈</text>
+  </g>
+  <g id="footer" data-graph-role="reserved" data-graph-bounds="42,838,434,854">
+  <text x="42.0" y="850.0" class="footnote">Spotlight · 模块与程序集依赖 · 由 fireworks-tech-graph Style 1 生成</text>
+  </g>
+</svg>

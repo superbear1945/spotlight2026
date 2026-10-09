@@ -1,0 +1,15 @@
+{
+  "name": "Spotlight.Tests.EditMode",
+  "rootNamespace": "Spotlight.Tests",
+  "references": [
+    "Spotlight.Core",
+    "Spotlight.Runtime",
+    "Spotlight.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

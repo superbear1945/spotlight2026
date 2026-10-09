@@ -1,0 +1,83 @@
+# PR 测试流水线：在 GitHub Action 中运行 Unity EditMode 与 PlayMode 测试。
+# 为什么需要：AGENTS.md 要求每个功能都留下可在 PR 上自动执行的测试；
+# 规则内核与配置编译器不依赖场景，用 EditMode 即可覆盖；
+# 而棋盘渲染、点击落点与 DOTween 动效只有在真实帧循环（PlayMode）里才能验证，
+# 因此两种模式都要在流水线上跑，避免“日志说移动了、界面却没动”这类问题再次漏过。
+name: Unity Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+  workflow_dispatch:
+
+# 为什么需要显式声明权限：仓库默认的 Workflow permissions 是「只读」，
+# 而 unity-test-runner 会用 githubToken 创建 check run 来汇报测试结果（对应下面的 checkName），
+# 权限不足时会直接以 ##[error]Resource not accessible by integration 让整个 job 失败，
+# 表现为“测试全部通过、job 却是红的”这种假失败（PlayMode 4/4 Passed 仍失败即此原因）。
+# 只在中请所需的最小集合，避免把仓库全局默认改成读写。
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  unity-tests:
+    name: ${{ matrix.testMode }} 测试（Unity ${{ matrix.unityVersion }}）
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        unityVersion: [ '2022.3.62f1' ]
+        testMode: [ EditMode, PlayMode ]
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: 缓存 Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-${{ matrix.unityVersion }}-${{ hashFiles('Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: |
+            Library-${{ matrix.unityVersion }}-
+
+      - name: 运行测试
+        # 为什么固定到 v4.4.0：@v4 会跟随上游发布，而 v4.4.0 起该 action 已改成
+        # game-ci/cli 的 thin wrapper，授权实现与旧版完全不同；固定版本才能在出问题时定位，
+        # 也避免上游再次发生 #309 那种“同一个大版本内行为改变”的回归。升级前请先在 PR 上验证授权与测试都跑通。
+        uses: game-ci/unity-test-runner@v4.4.0
+        env:
+          # 为什么不再提供 UNITY_LICENSE：Unity 已取消个人版（Personal）的离线手工激活，
+          # .ulf 里的 MachineBindings 会把它绑死到申请它的那台机器上；hosted runner 每次都是新机器，
+          # 直接加载该文件必然失败（日志表现为 Code 400 TimeStamp validation failed /
+          # No ULF license found, Token not found in cache），而 CLI v0.1.72 的永久失败兜底只识别
+          # "Machine bindings don't match" 这一种措辞，不会自动回退到账号激活，只会白重试 5 次（约 5 分钟）后退出。
+          # 只给账号密码时，激活方式按 file → serial → floating → personal 解析为 personal，
+          # CLI 会用 Unity.Licensing.Client --activate-all --include-personal 直接认领一个个人席位，与机器无关。
+          # 注意：该账号不能依赖 2FA/设备验证（headless 无法应答），建议使用专用的 CI 账号。
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion: ${{ matrix.unityVersion }}
+          testMode: ${{ matrix.testMode }}
+          # 为什么只跑本项目自己的测试（命名空间 Spotlight.Tests）：
+          # Packages/manifest.json 里以 git 地址引入的第三方包 com.besty.unity-skills 自带 1600+ 个
+          # Editor 测试，其中 PerceptionSkillsTests.SceneSummarize_CountsObjectsCorrectly 依赖
+          # 批处理模式下不存在的默认场景对象（Camera/Light）而必然断言失败，
+          # 会把与本项目无关的红灯带到每个 PR 上（也白白多花几分钟）。
+          # 注意：unity-test-runner v4.4.0 已不再暴露 testFilter 输入，
+          # 只能用 customParameters 追加 Unity CLI 原生的 -testFilter 参数。
+          customParameters: -testFilter Spotlight.Tests
+          artifactsPath: test-results-${{ matrix.testMode }}
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          checkName: ${{ matrix.testMode }} 测试结果
+
+      - name: 上传测试结果
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.testMode }}
+          path: test-results-${{ matrix.testMode }}

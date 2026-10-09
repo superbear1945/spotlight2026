@@ -63,3 +63,10 @@ crashlytics-build.properties
 Thumbs.db
 *.swp
 *~
+
+# UnitySkills 包在运行自身测试时创建的临时资源目录
+/[Aa]ssets/[Tt]emp/
+/[Aa]ssets/UnitySkillsTests_Temp/
+
+# 截图目录（运行验证时按需生成，不入库）
+/[Aa]ssets/[Ss]creenshots/

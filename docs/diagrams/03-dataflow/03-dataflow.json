@@ -1,0 +1,388 @@
+{
+ "schema_version": 1,
+ "mode": "data-flow",
+ "template_type": "data-flow",
+ "style": 1,
+ "quality_profile": "standard",
+ "text_policy": "strict",
+ "width": 1500,
+ "height": 1960,
+ "title": "Spotlight 配置数据流与调试分支",
+ "subtitle": "Excel 编译生成只读资产，配置加载后建立对局；调试草稿只在内存生效，应用失败保留原对局",
+ "containers": [
+  {
+   "id": "c-assets",
+   "x": 140,
+   "y": 830,
+   "width": 1220,
+   "height": 200,
+   "label": "生成资产",
+   "subtitle": "Assets/Spotlight/Generated · 只读产物，不要手工修改",
+   "preserve_case": true
+  }
+ ],
+ "nodes": [
+  {
+   "id": "n-xlsx",
+   "kind": "rect",
+   "x": 460,
+   "y": 170,
+   "width": 480,
+   "height": 100,
+   "label": "Spotlight.xlsx 默认工作簿",
+   "sublabel": "策划填写；正式单元格禁止公式",
+   "fill": "#fff7ed",
+   "stroke": "#f97316",
+   "flat": true
+  },
+  {
+   "id": "n-reader",
+   "kind": "rect",
+   "x": 460,
+   "y": 350,
+   "width": 480,
+   "height": 100,
+   "label": "WorkbookReader · XlsxInspector",
+   "sublabel": "逐单元格读取并检查公式与合并",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "flat": true
+  },
+  {
+   "id": "n-validator",
+   "kind": "rect",
+   "x": 460,
+   "y": 530,
+   "width": 480,
+   "height": 100,
+   "label": "TableSchema · ConfigValidation",
+   "sublabel": "结构校验与业务校验一次汇总",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "flat": true
+  },
+  {
+   "id": "n-compiler",
+   "kind": "double_rect",
+   "x": 460,
+   "y": 710,
+   "width": 480,
+   "height": 100,
+   "label": "ConfigCompiler",
+   "sublabel": "构造 ConfigDocument 并生成资产",
+   "fill": "#faf5ff",
+   "stroke": "#7c3aed",
+   "flat": true
+  },
+  {
+   "id": "n-manifest",
+   "kind": "cylinder",
+   "x": 180,
+   "y": 900,
+   "width": 300,
+   "height": 100,
+   "label": "ConfigManifest",
+   "sublabel": "源摘要 · GUID · 版本",
+   "fill": "#f0fdfa",
+   "stroke": "#0d9488"
+  },
+  {
+   "id": "n-cards-so",
+   "kind": "rect",
+   "x": 540,
+   "y": 900,
+   "width": 320,
+   "height": 100,
+   "label": "卡种 SO 与组件 SO",
+   "sublabel": "只读 Inspector，提示源表位置",
+   "fill": "#ecfdf5",
+   "stroke": "#10b981",
+   "flat": true
+  },
+  {
+   "id": "n-prefab",
+   "kind": "rect",
+   "x": 920,
+   "y": 900,
+   "width": 340,
+   "height": 100,
+   "label": "卡种 Prefab",
+   "sublabel": "外观模板 + 组件与 SO 引用",
+   "fill": "#ecfdf5",
+   "stroke": "#10b981",
+   "flat": true
+  },
+  {
+   "id": "n-loader",
+   "kind": "double_rect",
+   "x": 460,
+   "y": 1090,
+   "width": 480,
+   "height": 100,
+   "label": "ConfigLoader 配置加载",
+   "sublabel": "校验源摘要与生成配置",
+   "fill": "#faf5ff",
+   "stroke": "#7c3aed",
+   "flat": true
+  },
+  {
+   "id": "n-session",
+   "kind": "double_rect",
+   "x": 460,
+   "y": 1270,
+   "width": 480,
+   "height": 100,
+   "label": "GameSession 建立对局",
+   "sublabel": "加载有效配置后创建候选对局",
+   "fill": "#eff6ff",
+   "stroke": "#2563eb",
+   "flat": true
+  },
+  {
+   "id": "n-snapshot",
+   "kind": "rect",
+   "x": 460,
+   "y": 1450,
+   "width": 480,
+   "height": 100,
+   "label": "GetSnapshot 只读快照",
+   "sublabel": "手牌 · 棋盘 · 日志 · 兵位计时",
+   "fill": "#eff6ff",
+   "stroke": "#2563eb",
+   "flat": true
+  },
+  {
+   "id": "n-ui",
+   "kind": "rect",
+   "x": 460,
+   "y": 1630,
+   "width": 480,
+   "height": 100,
+   "label": "UXML / UGUI 界面",
+   "sublabel": "点击选牌到提交命令",
+   "fill": "#ffffff",
+   "stroke": "#d1d5db",
+   "flat": true
+  },
+  {
+   "id": "n-draft",
+   "kind": "rect",
+   "x": 1080,
+   "y": 1250,
+   "width": 360,
+   "height": 100,
+   "label": "DebugConfigDraft 调试草稿",
+   "sublabel": "内存克隆，仅本次运行有效",
+   "fill": "#fef2f2",
+   "stroke": "#dc2626",
+   "flat": true
+  },
+  {
+   "id": "n-json",
+   "kind": "rect",
+   "x": 1080,
+   "y": 1430,
+   "width": 360,
+   "height": 100,
+   "label": "JSON 导入／导出",
+   "sublabel": "旧格式字段迁移并提示",
+   "fill": "#fef2f2",
+   "stroke": "#dc2626",
+   "flat": true
+  },
+  {
+   "id": "n-apply",
+   "kind": "rect",
+   "x": 1080,
+   "y": 1630,
+   "width": 360,
+   "height": 100,
+   "label": "应用并重开",
+   "sublabel": "先创建候选对局，成功后替换",
+   "fill": "#fef2f2",
+   "stroke": "#dc2626",
+   "flat": true
+  }
+ ],
+ "arrows": [
+  {
+   "id": "e-xlsx-reader",
+   "source": "n-xlsx",
+   "target": "n-reader",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "data",
+   "label": "读取工作表"
+  },
+  {
+   "id": "e-reader-validator",
+   "source": "n-reader",
+   "target": "n-validator",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "control",
+   "label": "结构校验"
+  },
+  {
+   "id": "e-validator-compiler",
+   "source": "n-validator",
+   "target": "n-compiler",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "write",
+   "label": "通过后编译"
+  },
+  {
+   "id": "e-compiler-manifest",
+   "source": "n-compiler",
+   "target": "n-manifest",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "write",
+   "label": "写入摘要"
+  },
+  {
+   "id": "e-compiler-so",
+   "source": "n-compiler",
+   "target": "n-cards-so",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "write",
+   "label": "生成 SO"
+  },
+  {
+   "id": "e-compiler-prefab",
+   "source": "n-compiler",
+   "target": "n-prefab",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "write",
+   "label": "生成 Prefab"
+  },
+  {
+   "id": "e-so-loader",
+   "source": "n-cards-so",
+   "target": "n-loader",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "read",
+   "label": "只读 SO 组装配置"
+  },
+  {
+   "id": "e-manifest-loader",
+   "source": "n-manifest",
+   "target": "n-loader",
+   "source_port": "bottom",
+   "target_port": "left",
+   "flow": "control",
+   "label": "校验摘要"
+  },
+  {
+   "id": "e-loader-session",
+   "source": "n-loader",
+   "target": "n-session",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "control",
+   "label": "创建对局"
+  },
+  {
+   "id": "e-session-snapshot",
+   "source": "n-session",
+   "target": "n-snapshot",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "read",
+   "label": "输出快照"
+  },
+  {
+   "id": "e-snapshot-ui",
+   "source": "n-snapshot",
+   "target": "n-ui",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "read",
+   "label": "更新界面"
+  },
+  {
+   "id": "e-ui-draft",
+   "source": "n-ui",
+   "target": "n-draft",
+   "source_port": "right",
+   "target_port": "left",
+   "flow": "control",
+   "label": "打开调试面板编辑草稿"
+  },
+  {
+   "id": "e-loader-draft",
+   "source": "n-loader",
+   "target": "n-draft",
+   "source_port": "right",
+   "target_port": "left",
+   "flow": "control",
+   "label": "加载正式配置作草稿基线"
+  },
+  {
+   "id": "e-draft-json",
+   "source": "n-draft",
+   "target": "n-json",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "data",
+   "label": "导入／导出"
+  },
+  {
+   "id": "e-json-apply",
+   "source": "n-json",
+   "target": "n-apply",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "control",
+   "label": "确认后应用"
+  },
+  {
+   "id": "e-apply-session",
+   "source": "n-apply",
+   "target": "n-session",
+   "source_port": "left",
+   "target_port": "right",
+   "flow": "control",
+   "label": "创建候选对局并替换"
+  },
+  {
+   "id": "e-apply-draft",
+   "source": "n-apply",
+   "target": "n-draft",
+   "source_port": "right",
+   "target_port": "right",
+   "flow": "feedback",
+   "label": "失败保留原对局与草稿"
+  }
+ ],
+ "legend_orientation": "horizontal",
+ "legend_y": 1810,
+ "legend": [
+  {
+   "flow": "data",
+   "label": "Excel 与 JSON 数据"
+  },
+  {
+   "flow": "control",
+   "label": "控制与流程"
+  },
+  {
+   "flow": "write",
+   "label": "生成资产"
+  },
+  {
+   "flow": "read",
+   "label": "加载与显示"
+  },
+  {
+   "flow": "feedback",
+   "label": "失败回退"
+  }
+ ],
+ "footer": "Spotlight · 配置数据流与调试分支 · 由 fireworks-tech-graph Style 1 生成",
+ "footer_y": 1900
+}

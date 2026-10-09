@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57ed49d65c5ea9d458449a832e2b641f, type: 3}
+  m_Name: ConfigManifest
+  m_EditorClassIdentifier: 
+  _sourceWorkbookPath: Assets/Spotlight/Config/Spotlight.xlsx
+  _sourceHash: 9f0bc8578b6aa5194ba42961425c34852f12a10755bfa4ecc8f632841e41aabe
+  _compiledAtUtc: 2026-10-07T08:13:07.9998695Z
+  _generatedPaths:
+  - Assets/Spotlight/Generated/Cards/ge1.asset
+  - Assets/Spotlight/Generated/Cards/ge1.prefab
+  - Assets/Spotlight/Generated/Cards/ge12.asset
+  - Assets/Spotlight/Generated/Cards/ge12.prefab
+  - Assets/Spotlight/Generated/Cards/blade1.asset
+  - Assets/Spotlight/Generated/Cards/blade1.prefab
+  - Assets/Spotlight/Generated/Cards/rabbit2.asset
+  - Assets/Spotlight/Generated/Cards/rabbit2.prefab
+  - Assets/Spotlight/Generated/Cards/odysseus1.asset
+  - Assets/Spotlight/Generated/Cards/odysseus1.prefab
+  - Assets/Spotlight/Generated/Cards/gate.asset
+  - Assets/Spotlight/Generated/Cards/gate.prefab
+  - Assets/Spotlight/Generated/Cards/bossCombat.asset
+  - Assets/Spotlight/Generated/Cards/bossCombat.prefab
+  - Assets/Spotlight/Generated/Resources/SpotlightConfig.asset

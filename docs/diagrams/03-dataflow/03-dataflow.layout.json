@@ -1,0 +1,692 @@
+{
+  "canvas": {
+    "height": 1960.0,
+    "width": 1500.0
+  },
+  "composition": {
+    "limits": {
+      "max_bends_per_edge": 12,
+      "max_bridged_crossings": 8,
+      "max_route_stretch": 5.0,
+      "max_total_bends": 100,
+      "min_container_gutter": 0.0,
+      "min_label_clearance": 2.0,
+      "min_node_gap": 0.0,
+      "min_segment_length": 0.0,
+      "profile": "standard"
+    },
+    "metrics": {
+      "bridged_crossings": 2,
+      "max_route_stretch": 1.126,
+      "minimum_container_gutter": 30.0,
+      "minimum_node_gap": 60.0,
+      "shortest_segment": 2.0,
+      "total_bends": 16
+    },
+    "ok": true,
+    "profile": "standard",
+    "score": 84,
+    "violations": []
+  },
+  "edges": [
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-xlsx-reader",
+      "length": 80.0,
+      "route": [
+        [
+          700.0,
+          270.0
+        ],
+        [
+          700.0,
+          350.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-xlsx",
+      "source_port": [
+        700.0,
+        270.0
+      ],
+      "target": "n-reader",
+      "target_port": [
+        700.0,
+        350.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-reader-validator",
+      "length": 80.0,
+      "route": [
+        [
+          700.0,
+          450.0
+        ],
+        [
+          700.0,
+          530.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-reader",
+      "source_port": [
+        700.0,
+        450.0
+      ],
+      "target": "n-validator",
+      "target_port": [
+        700.0,
+        530.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-validator-compiler",
+      "length": 80.0,
+      "route": [
+        [
+          700.0,
+          630.0
+        ],
+        [
+          700.0,
+          710.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-validator",
+      "source_port": [
+        700.0,
+        630.0
+      ],
+      "target": "n-compiler",
+      "target_port": [
+        700.0,
+        710.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 4,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-compiler-manifest",
+      "length": 442.0,
+      "route": [
+        [
+          682.0,
+          810.0
+        ],
+        [
+          682.0,
+          830.4
+        ],
+        [
+          500.32,
+          830.4
+        ],
+        [
+          500.32,
+          892.86
+        ],
+        [
+          330.0,
+          892.86
+        ],
+        [
+          330.0,
+          900.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-compiler",
+      "source_port": [
+        682.0,
+        810.0
+      ],
+      "target": "n-manifest",
+      "target_port": [
+        330.0,
+        900.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-compiler-so",
+      "length": 108.0,
+      "route": [
+        [
+          718.0,
+          810.0
+        ],
+        [
+          718.0,
+          812.0
+        ],
+        [
+          700.0,
+          812.0
+        ],
+        [
+          700.0,
+          900.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-compiler",
+      "source_port": [
+        718.0,
+        810.0
+      ],
+      "target": "n-cards-so",
+      "target_port": [
+        700.0,
+        900.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 1,
+      "bridges": [
+        [
+          718.0,
+          810.0
+        ]
+      ],
+      "crossings": [
+        [
+          718.0,
+          810.0
+        ]
+      ],
+      "id": "e-compiler-prefab",
+      "length": 480.0,
+      "route": [
+        [
+          700.0,
+          810.0
+        ],
+        [
+          1090.0,
+          810.0
+        ],
+        [
+          1090.0,
+          900.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-compiler",
+      "source_port": [
+        700.0,
+        810.0
+      ],
+      "target": "n-prefab",
+      "target_port": [
+        1090.0,
+        900.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-so-loader",
+      "length": 90.0,
+      "route": [
+        [
+          700.0,
+          1000.0
+        ],
+        [
+          700.0,
+          1090.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-cards-so",
+      "source_port": [
+        700.0,
+        1000.0
+      ],
+      "target": "n-loader",
+      "target_port": [
+        700.0,
+        1090.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 1,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-manifest-loader",
+      "length": 270.0,
+      "route": [
+        [
+          330.0,
+          1000.0
+        ],
+        [
+          330.0,
+          1140.0
+        ],
+        [
+          460.0,
+          1140.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-manifest",
+      "source_port": [
+        330.0,
+        1000.0
+      ],
+      "target": "n-loader",
+      "target_port": [
+        460.0,
+        1140.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-loader-session",
+      "length": 80.0,
+      "route": [
+        [
+          700.0,
+          1190.0
+        ],
+        [
+          700.0,
+          1270.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-loader",
+      "source_port": [
+        700.0,
+        1190.0
+      ],
+      "target": "n-session",
+      "target_port": [
+        700.0,
+        1270.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-session-snapshot",
+      "length": 80.0,
+      "route": [
+        [
+          700.0,
+          1370.0
+        ],
+        [
+          700.0,
+          1450.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-session",
+      "source_port": [
+        700.0,
+        1370.0
+      ],
+      "target": "n-snapshot",
+      "target_port": [
+        700.0,
+        1450.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-snapshot-ui",
+      "length": 80.0,
+      "route": [
+        [
+          700.0,
+          1550.0
+        ],
+        [
+          700.0,
+          1630.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-snapshot",
+      "source_port": [
+        700.0,
+        1550.0
+      ],
+      "target": "n-ui",
+      "target_port": [
+        700.0,
+        1630.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-ui-draft",
+      "length": 511.0,
+      "route": [
+        [
+          940.0,
+          1680.0
+        ],
+        [
+          964.0,
+          1680.0
+        ],
+        [
+          964.0,
+          1309.0
+        ],
+        [
+          1080.0,
+          1309.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-ui",
+      "source_port": [
+        940.0,
+        1680.0
+      ],
+      "target": "n-draft",
+      "target_port": [
+        1080.0,
+        1309.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-loader-draft",
+      "length": 291.0,
+      "route": [
+        [
+          940.0,
+          1140.0
+        ],
+        [
+          964.0,
+          1140.0
+        ],
+        [
+          964.0,
+          1291.0
+        ],
+        [
+          1080.0,
+          1291.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-loader",
+      "source_port": [
+        940.0,
+        1140.0
+      ],
+      "target": "n-draft",
+      "target_port": [
+        1080.0,
+        1291.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-draft-json",
+      "length": 80.0,
+      "route": [
+        [
+          1260.0,
+          1350.0
+        ],
+        [
+          1260.0,
+          1430.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-draft",
+      "source_port": [
+        1260.0,
+        1350.0
+      ],
+      "target": "n-json",
+      "target_port": [
+        1260.0,
+        1430.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-json-apply",
+      "length": 100.0,
+      "route": [
+        [
+          1260.0,
+          1530.0
+        ],
+        [
+          1260.0,
+          1630.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-json",
+      "source_port": [
+        1260.0,
+        1530.0
+      ],
+      "target": "n-apply",
+      "target_port": [
+        1260.0,
+        1630.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [
+        [
+          964.0,
+          1320.0
+        ]
+      ],
+      "crossings": [
+        [
+          964.0,
+          1320.0
+        ]
+      ],
+      "id": "e-apply-session",
+      "length": 500.0,
+      "route": [
+        [
+          1080.0,
+          1680.0
+        ],
+        [
+          985.0,
+          1680.0
+        ],
+        [
+          985.0,
+          1320.0
+        ],
+        [
+          940.0,
+          1320.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-apply",
+      "source_port": [
+        1080.0,
+        1680.0
+      ],
+      "target": "n-session",
+      "target_port": [
+        940.0,
+        1320.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 2,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-apply-draft",
+      "length": 428.0,
+      "route": [
+        [
+          1440.0,
+          1680.0
+        ],
+        [
+          1464.0,
+          1680.0
+        ],
+        [
+          1464.0,
+          1300.0
+        ],
+        [
+          1440.0,
+          1300.0
+        ]
+      ],
+      "route_stretch": 1.126,
+      "source": "n-apply",
+      "source_port": [
+        1440.0,
+        1680.0
+      ],
+      "target": "n-draft",
+      "target_port": [
+        1440.0,
+        1300.0
+      ],
+      "waypoints": []
+    }
+  ],
+  "input_schema": "v1",
+  "issues": [
+    {
+      "code": "EDGE_CROSSING_BRIDGED",
+      "coordinates": [
+        [
+          718.0,
+          810.0
+        ]
+      ],
+      "element": "e-compiler-prefab",
+      "severity": "info"
+    },
+    {
+      "code": "EDGE_CROSSING_BRIDGED",
+      "coordinates": [
+        [
+          964.0,
+          1320.0
+        ]
+      ],
+      "element": "e-apply-session",
+      "severity": "info"
+    }
+  ],
+  "mode": "data-flow",
+  "ok": true,
+  "palette": {
+    "below_target": [],
+    "minimum_target": 4.5,
+    "ratios": {
+      "section_sub_fill": 4.76,
+      "text_muted": 4.76,
+      "text_primary": 17.74,
+      "text_secondary": 4.83
+    },
+    "scope": "default opaque canvas text tokens; not a full rendered accessibility audit",
+    "unsupported_tokens": []
+  },
+  "placements": {
+    "legend": {
+      "actual": [
+        42.0,
+        1810.0
+      ],
+      "bounds": [
+        32.0,
+        1796.0,
+        698.48,
+        1842.0
+      ],
+      "moved": false,
+      "requested": [
+        42.0,
+        1810.0
+      ]
+    }
+  },
+  "schema_version": 1,
+  "semantics": {
+    "details": {},
+    "ok": true,
+    "profile": "generic",
+    "style": 1,
+    "visual_theme": "Flat Icon"
+  },
+  "style": {
+    "id": 1,
+    "name": "Flat Icon"
+  },
+  "summary": {
+    "bridged_crossings": 2,
+    "edges": 17,
+    "nodes": 14
+  },
+  "text_metrics": "heuristic-v1",
+  "typography": {
+    "complete_text": true,
+    "hint": null,
+    "metrics": "heuristic widths; inspect the actual rendered font",
+    "truncated": []
+  }
+}

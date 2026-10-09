@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-1783643114695788713
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3099d18b4ff55c4cbe7732b2d6561a9, type: 3}
+  m_Name: gate_Combat
+  m_EditorClassIdentifier: 
+  _hp: 2
+  _attack: 0
+  _range: 0
+  _moveDistance: 1
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f286b130caf66f84cbd77f9f1a0c2cc5, type: 3}
+  m_Name: gate
+  m_EditorClassIdentifier: 
+  _id: gate
+  _name: "\u661F\u95E8"
+  _category: special
+  _viewKey: default
+  _requiresUpgrade: 0
+  _upgradeFrom: 
+  _deployHomeOnly: 1
+  _avoidAdjacentSameType: 1
+  _combat: {fileID: -1783643114695788713}
+  _resource: {fileID: 6045040607372019927}
+  _teleport: {fileID: 3383924171147166296}
+  _prefab: {fileID: 2079076778610225538, guid: 7b7ce62fcaf8ca746989c45c7a109f6c, type: 3}
+  _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
+  _sourceSheet: Cards
+--- !u!114 &3383924171147166296
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b06fbccaa4c1f5d4bb7bd6223bf726c4, type: 3}
+  m_Name: gate_Teleport
+  m_EditorClassIdentifier: 
+  _permitsAttackDeploy: 1
+--- !u!114 &6045040607372019927
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f46270952f46ef441a82ecbe84dc9fd9, type: 3}
+  m_Name: gate_Resource
+  m_EditorClassIdentifier: 
+  _produce: 0
+  _upkeep: 4

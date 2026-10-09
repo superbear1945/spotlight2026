@@ -1,0 +1,382 @@
+{
+ "schema_version": 1,
+ "mode": "er-diagram",
+ "template_type": "er-diagram",
+ "style": 1,
+ "quality_profile": "standard",
+ "text_policy": "strict",
+ "width": 1600,
+ "height": 1720,
+ "title": "Spotlight 卡牌类、组件与运行状态关系",
+ "subtitle": "Card 只保存引用并绑定身份；三个能力组件持有只读配置 SO；战斗单位状态与卡牌记录分离",
+ "containers": [
+  {
+   "id": "c-asset",
+   "x": 80,
+   "y": 110,
+   "width": 1440,
+   "height": 900,
+   "label": "配置资产与显示层（编辑器生成）",
+   "subtitle": "CardDefinitionSO 与三个组件 SO 由 Excel 编译产物提供",
+   "preserve_case": true
+  },
+  {
+   "id": "c-state",
+   "x": 80,
+   "y": 1060,
+   "width": 1440,
+   "height": 460,
+   "label": "对局运行状态",
+   "subtitle": "仅本局内存；UnitState 与 CardRecord 分离，HomeState 独立",
+   "preserve_case": true
+  }
+ ],
+ "nodes": [
+  {
+   "id": "n-definition",
+   "kind": "double_rect",
+   "x": 600,
+   "y": 190,
+   "width": 300,
+   "height": 110,
+   "label": "CardDefinitionSO",
+   "type_label": "ScriptableObject",
+   "sublabel": "卡种定义：Id · CategoryText · ViewKey",
+   "fill": "#fff7ed",
+   "stroke": "#f97316",
+   "flat": true
+  },
+  {
+   "id": "n-combat-cfg",
+   "kind": "double_rect",
+   "x": 140,
+   "y": 360,
+   "width": 240,
+   "height": 110,
+   "label": "CombatConfigSO",
+   "type_label": "只读配置",
+   "sublabel": "Hp · Attack · Range · Move",
+   "fill": "#eff6ff",
+   "stroke": "#2563eb",
+   "flat": true
+  },
+  {
+   "id": "n-resource-cfg",
+   "kind": "double_rect",
+   "x": 560,
+   "y": 360,
+   "width": 240,
+   "height": 110,
+   "label": "ResourceConfigSO",
+   "type_label": "只读配置",
+   "sublabel": "Produce · Upkeep",
+   "fill": "#eff6ff",
+   "stroke": "#2563eb",
+   "flat": true
+  },
+  {
+   "id": "n-teleport-cfg",
+   "kind": "double_rect",
+   "x": 980,
+   "y": 360,
+   "width": 240,
+   "height": 110,
+   "label": "TeleportConfigSO",
+   "type_label": "只读配置",
+   "sublabel": "PermitsAttackDeploy",
+   "fill": "#eff6ff",
+   "stroke": "#2563eb",
+   "flat": true
+  },
+  {
+   "id": "n-combat-comp",
+   "kind": "double_rect",
+   "x": 140,
+   "y": 600,
+   "width": 240,
+   "height": 110,
+   "label": "CombatComponent",
+   "type_label": "MonoBehaviour",
+   "sublabel": "CurrentHp · CanAct",
+   "fill": "#faf5ff",
+   "stroke": "#7c3aed",
+   "flat": true
+  },
+  {
+   "id": "n-resource-comp",
+   "kind": "double_rect",
+   "x": 560,
+   "y": 600,
+   "width": 240,
+   "height": 110,
+   "label": "ResourceComponent",
+   "type_label": "MonoBehaviour",
+   "sublabel": "Produce · Upkeep",
+   "fill": "#faf5ff",
+   "stroke": "#7c3aed",
+   "flat": true
+  },
+  {
+   "id": "n-teleport-comp",
+   "kind": "double_rect",
+   "x": 980,
+   "y": 600,
+   "width": 240,
+   "height": 110,
+   "label": "TeleportComponent",
+   "type_label": "MonoBehaviour",
+   "sublabel": "四邻部署扩展开关",
+   "fill": "#faf5ff",
+   "stroke": "#7c3aed",
+   "flat": true
+  },
+  {
+   "id": "n-card",
+   "kind": "double_rect",
+   "x": 560,
+   "y": 840,
+   "width": 340,
+   "height": 110,
+   "label": "Card",
+   "type_label": "MonoBehaviour · 显示载体",
+   "sublabel": "_definition · 三个组件 · _record／_unit",
+   "fill": "#ecfdf5",
+   "stroke": "#10b981",
+   "flat": true
+  },
+  {
+   "id": "n-unit",
+   "kind": "rect",
+   "x": 620,
+   "y": 1120,
+   "width": 340,
+   "height": 120,
+   "label": "UnitState",
+   "type_label": "棋盘战斗单位",
+   "sublabel": "Id · Source · Position · Hp · Acted · DeploymentOrder",
+   "fill": "#f0fdfa",
+   "stroke": "#0d9488",
+   "flat": true
+  },
+  {
+   "id": "n-home",
+   "kind": "rect",
+   "x": 1080,
+   "y": 1120,
+   "width": 340,
+   "height": 120,
+   "label": "HomeState",
+   "type_label": "独立的家状态",
+   "sublabel": "Owner · Position · Hp · Acted（不进入牌库）",
+   "fill": "#f0fdfa",
+   "stroke": "#0d9488",
+   "flat": true
+  },
+  {
+   "id": "n-session",
+   "kind": "rect",
+   "x": 140,
+   "y": 1120,
+   "width": 360,
+   "height": 120,
+   "label": "GameSession",
+   "type_label": "唯一对局状态入口",
+   "sublabel": "命令 · 快照 · 回合与 AI",
+   "fill": "#fef2f2",
+   "stroke": "#dc2626",
+   "flat": true
+  },
+  {
+   "id": "n-record",
+   "kind": "rect",
+   "x": 620,
+   "y": 1350,
+   "width": 340,
+   "height": 120,
+   "label": "CardRecord",
+   "type_label": "牌库／手牌／墓地身份",
+   "sublabel": "Id · TypeId · Owner（不含伤势与位置）",
+   "fill": "#f0fdfa",
+   "stroke": "#0d9488",
+   "flat": true
+  }
+ ],
+ "arrows": [
+  {
+   "id": "e-def-combat",
+   "source": "n-definition",
+   "target": "n-combat-cfg",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "control",
+   "label": "引用"
+  },
+  {
+   "id": "e-def-resource",
+   "source": "n-definition",
+   "target": "n-resource-cfg",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "control",
+   "label": "引用"
+  },
+  {
+   "id": "e-def-teleport",
+   "source": "n-definition",
+   "target": "n-teleport-cfg",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "control",
+   "label": "引用"
+  },
+  {
+   "id": "e-combat-comp-cfg",
+   "source": "n-combat-comp",
+   "target": "n-combat-cfg",
+   "source_port": "top",
+   "target_port": "bottom",
+   "flow": "control",
+   "label": "持有配置"
+  },
+  {
+   "id": "e-resource-comp-cfg",
+   "source": "n-resource-comp",
+   "target": "n-resource-cfg",
+   "source_port": "top",
+   "target_port": "bottom",
+   "flow": "control",
+   "label": "持有配置"
+  },
+  {
+   "id": "e-teleport-comp-cfg",
+   "source": "n-teleport-comp",
+   "target": "n-teleport-cfg",
+   "source_port": "top",
+   "target_port": "bottom",
+   "flow": "control",
+   "label": "持有配置"
+  },
+  {
+   "id": "e-def-card",
+   "source": "n-definition",
+   "target": "n-card",
+   "source_port": "right",
+   "target_port": "right",
+   "flow": "write",
+   "label": "外观模板 Prefab"
+  },
+  {
+   "id": "e-card-def",
+   "source": "n-card",
+   "target": "n-definition",
+   "source_port": "left",
+   "target_port": "left",
+   "flow": "control",
+   "label": "引用卡种定义"
+  },
+  {
+   "id": "e-card-combat",
+   "source": "n-card",
+   "target": "n-combat-comp",
+   "source_port": "top",
+   "target_port": "bottom",
+   "flow": "control",
+   "label": "组件引用"
+  },
+  {
+   "id": "e-card-resource",
+   "source": "n-card",
+   "target": "n-resource-comp",
+   "source_port": "top",
+   "target_port": "bottom",
+   "flow": "control",
+   "label": "组件引用"
+  },
+  {
+   "id": "e-card-teleport",
+   "source": "n-card",
+   "target": "n-teleport-comp",
+   "source_port": "top",
+   "target_port": "bottom",
+   "flow": "control",
+   "label": "组件引用"
+  },
+  {
+   "id": "e-card-unit",
+   "source": "n-card",
+   "target": "n-unit",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "data",
+   "label": "BindUnit"
+  },
+  {
+   "id": "e-card-record",
+   "source": "n-card",
+   "target": "n-record",
+   "source_port": "bottom",
+   "target_port": "left",
+   "flow": "data",
+   "label": "BindHand",
+   "route_points": [
+    [
+     721,
+     990
+    ],
+    [
+     520,
+     990
+    ],
+    [
+     520,
+     1410
+    ]
+   ]
+  },
+  {
+   "id": "e-unit-record",
+   "source": "n-unit",
+   "target": "n-record",
+   "source_port": "bottom",
+   "target_port": "top",
+   "flow": "data",
+   "label": "Source：来源卡牌 ID"
+  },
+  {
+   "id": "e-session-unit",
+   "source": "n-session",
+   "target": "n-unit",
+   "source_port": "right",
+   "target_port": "left",
+   "flow": "control",
+   "label": "创建并持有"
+  },
+  {
+   "id": "e-session-home",
+   "source": "n-session",
+   "target": "n-home",
+   "source_port": "bottom",
+   "target_port": "bottom",
+   "flow": "control",
+   "label": "创建并持有"
+  }
+ ],
+ "legend_orientation": "horizontal",
+ "legend_y": 1580,
+ "legend": [
+  {
+   "flow": "control",
+   "label": "引用与持有"
+  },
+  {
+   "flow": "data",
+   "label": "身份绑定与卡牌来源"
+  },
+  {
+   "flow": "write",
+   "label": "生成外观模板"
+  }
+ ],
+ "footer": "Spotlight · 卡牌类与运行状态关系 · 由 fireworks-tech-graph Style 1 生成",
+ "footer_y": 1670
+}

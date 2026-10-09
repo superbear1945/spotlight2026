@@ -1,0 +1,20 @@
+{
+  "name": "Spotlight.Editor",
+  "rootNamespace": "Spotlight.EditorTools",
+  "references": [
+    "Spotlight.Core",
+    "Spotlight.Runtime",
+    "Unity.TextMeshPro"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
