@@ -3,12 +3,11 @@
 # 或者脚本本身被改坏，边会指向不存在的顶点，这里可以在 PR 阶段直接拦住。
 name: Diagrams Check
 
+# 只在 PR 上跑：main 已被分支规则集「main」锁死（必须走 PR、禁 force push、禁删除，
+# bypass 为空），不可能有绕过 PR 检查的内容落到 main，push 上再跑一遍是纯冗余。
+# 保留 paths 过滤是为了在没动图纸的 PR 上跳过本检查（也因此它不宜设为必需检查：
+# 不触发就永远 pending，会把 PR 卡死）。需要时用 workflow_dispatch 手动触发。
 on:
-  push:
-    branches: [ main, master, develop ]
-    paths:
-      - 'docs/diagrams/**'
-      - '.github/workflows/diagrams-check.yml'
   pull_request:
     paths:
       - 'docs/diagrams/**'

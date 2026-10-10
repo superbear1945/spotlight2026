@@ -156,10 +156,12 @@ Excel 配置编译（菜单 `Tools/Spotlight/*`，按顺序）：
 - EditMode 测试放 `Assets/Spotlight/Tests/EditMode/`，用于规则内核、配置编译器、视图契约；PlayMode 测试放 `Assets/Spotlight/Tests/PlayMode/`，用于真实帧循环下的渲染、点击命中与 DOTween 动画。
 - 测试通过公开命令（`Execute` / `GetLegalActions` / `GetSnapshot`）推进对局，**不得直接篡改 `GameSession` 私有状态**；测试内数值属于独立夹具，不是正式默认值。
 - 洗牌类逻辑使用 `SeededRandom` 固定种子，保证测试可复现。
-- GitHub Actions（PR 必跑）：
+- GitHub Actions（**只在 PR 上跑**，不在 main 的 `push` 上重复跑，理由见下一条）：
   - `.github/workflows/unity-tests.yml`：`game-ci/unity-test-runner`，EditMode + PlayMode 矩阵。
-  - `.github/workflows/repo-hygiene.yml`：大文件与 Git-LFS 一致性检查（`scripts/check-repo-hygiene.sh`），大二进制必须以 LFS 指针入库。
+  - `.github/workflows/repo-hygiene.yml`：大文件与 Git-LFS 一致性检查（`scripts/check-repo-hygiene.sh`）与 CI 触发配置守卫（`scripts/check-ci-config.sh`），大二进制必须以 LFS 指针入库。
   - `.github/workflows/diagrams-check.yml`：校验 `docs/diagrams` 图源 JSON 仍能生成结构完整的 drawio。
+- `main` 由分支规则集「main」保护：必须走 PR、禁 force push、禁删除、`bypass_actors` 为空，且 `strict_required_status_checks_policy` 开启。因此 PR 阶段被测的结果就是合并后落到 main 的结果，`push` 触发只会重复跑（既费时间又额外占用 Unity 授权席位）；需要临时在 main 上验证时用 `workflow_dispatch`。
+- ⚠️ ruleset 里的必需检查名与 workflow 的 **job 名 / 矩阵变量** 是字符串精确匹配（如 `EditMode 测试（Unity 2022.3.62f1）`）。改动 job 名或矩阵里的 `unityVersion` 时必须同步修改 ruleset，否则所有 PR 会**永久 pending 且没有任何报错提示**。
 
 ## 8. 编码规范
 
@@ -167,3 +169,23 @@ Excel 配置编译（菜单 `Tools/Spotlight/*`，按顺序）：
 ### 2. 私有字段一律使用"\_var"的命名方式，添加 "\_" 前缀
 ### 3. 普通变量才用小驼峰，函数名和类名使用大驼峰命名方式
 ### 4. 开发后需要一并留下对应的测试用例,使用的测试平台为github action来做pr测试
+
+## 9. 网络与环境问题处理
+
+**遇到网络不通（连接超时、DNS 解析失败、证书错误、代理拒绝等），必须立刻停下来告诉用户，不得自行绕行。**
+
+为什么禁止绕行：绕行会把“环境坏了”这个事实藏起来，把一次可以当场解决的网络问题变成别人以后要排查的怪现象；而且绕行往往要改本地配置或替换操作通道，用户不知道改过什么、也不知道怎么撤销。判断“该开代理还是该换网络”是用户的决定，不是执行者可以替他做的。
+
+明确禁止的做法（下面每一条都是在本项目真实发生过或差点发生的）：
+
+- **关掉校验让流程过关**：如 `git config lfs.<url>.locksverify false`、`filter.lfs.required false`、注释掉失败的网络相关步骤或校验脚本。
+- **偷偷改网络路径**：为某条命令临时加 `-c http.proxy=...`、改 `http.proxy`、换镜像源或第三方中转。
+- **换一个通道替原操作**：例如用 REST API 提交代替 `git push`，绕过真正失败的那一步。
+- **靠反复重试蒙过去**，或换个写法反复试到通过为止。
+
+正确做法：
+
+1. 立即停手，不要反复重试或换法子试。
+2. 一次把三件事情说清楚：**跑了什么命令**、**报什么错**（原文，带域名/端口/退出码）、**涉及哪个服务**（如 `github.com:443`、`hub.docker.com`）。
+3. 由用户决定下一步。若用户明确要求走代理，只在**当次命令**里带临时参数，不写进任何持久配置。
+4. 如果确实动了本地配置（无论多小），当次就说清楚“改了什么、怎么撤销”，并在用户确认后撤销。

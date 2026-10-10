@@ -8,9 +8,10 @@
 # 指针入库，因此不会触碰大小阈值；未被 LFS 覆盖的类型若体积超标则直接报错。
 name: Repo Hygiene
 
+# 只在 PR 上跑：main 已被分支规则集「main」锁死（必须走 PR、禁 force push、禁删除，
+# bypass 为空），不可能有绕过 PR 检查的内容落到 main，push 上再跑一遍是纯冗余。
+# 需要临时在 main 上验证时，用 workflow_dispatch 手动触发。
 on:
-  push:
-    branches: [ main, master, develop ]
   pull_request:
   workflow_dispatch:
 
@@ -20,6 +21,8 @@ permissions:
 
 jobs:
   repo-hygiene:
+    # ⚠️ 本 job 名被分支规则集「main」的必需检查（required_status_checks）按字符串精确引用，
+    # 改名必须同步修改 ruleset，否则所有 PR 会永久停在 pending 且没有任何报错提示。
     name: 大文件与 LFS 一致性检查
     runs-on: ubuntu-latest
     steps:
@@ -36,3 +39,14 @@ jobs:
 
       - name: 校验检查脚本自身（3 个用例）
         run: bash scripts/check-repo-hygiene.sh --self-test
+
+      # 与本 job 同驻的理由：都是秒级、无 Unity 依赖的仓库配置守卫。
+      # 它负责拦住“以后有人把 push 触发加回来”这类回归。
+      # 注意：脚本还有一个 --check-ruleset 模式（比对 job 名与分支规则集的必需检查），
+      # 需要 admin 权限、而 Actions 默认的 GITHUB_TOKEN 读不到规则集，因此不上流水线，
+      # 只能本地在合并前跑：bash scripts/check-ci-config.sh --check-ruleset
+      - name: CI 触发配置守卫（只允许 PR + 手动入口）
+        run: bash scripts/check-ci-config.sh
+
+      - name: 校验 CI 触发守卫脚本自身（4 个用例）
+        run: bash scripts/check-ci-config.sh --self-test
