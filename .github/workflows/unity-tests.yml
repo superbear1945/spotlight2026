@@ -5,13 +5,19 @@
 # 因此两种模式都要在流水线上跑，避免“日志说移动了、界面却没动”这类问题再次漏过。
 name: Unity Tests
 
+# 只在 PR 上跑，不在 main 的 push 上重复跑。
+# 为什么可以这样：分支规则集「main」已同时开启 required_status_checks（strict=true）、
+# pull_request（必须走 PR）、non_fast_forward（禁 force push）、deletion（禁删分支），
+# 且 bypass_actors 为空、current_user_can_bypass=never —— main 上不可能出现绕过 PR 的内容。
+# 而 strict 模式要求 PR 分支必须先与 main 同步，于是 PR 阶段被测的 merge 结果
+# 就是合并后落到 main 的那个 commit（实测两者为同一 SHA），push 再跑一遍是 100% 冗余：
+# 白花 4 分钟，还会多占一个 Unity 授权席位（席位不足会误报 no available seats）。
+# 需要临时在 main 上验证时，用 workflow_dispatch 手动触发。
 on:
-  push:
-    branches: [ main, master, develop ]
   pull_request:
   workflow_dispatch:
 
-# 同一 ref 只保留一次运行：反复推修复时避免多个运行叠在一起（实测同时跑了 3 个），
+# 同一 ref 只保留一次运行：反复往同一个 PR 推修复时避免多个运行叠在一起（实测同时跑了 3 个），
 # 白白消耗 CI 时间，也让“哪次失败对应哪个 commit”变得难查。
 # 刻意不设 cancel-in-progress：个人版授权是“席位”制，中途取消正在运行的 job 可能来不及归还席位
 # （CLI 只在 EXIT trap 能执行完时归还），泄漏的席位会让该账号之后所有运行报 no available seats。

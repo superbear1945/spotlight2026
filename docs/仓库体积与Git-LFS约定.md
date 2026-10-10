@@ -61,6 +61,9 @@ MAX_FILE_MB=10 bash scripts/check-repo-hygiene.sh
 - **检查 2**：`.gitattributes` 里声明了 `filter=lfs` 的文件，必须真的以 LFS 指针入库。
   否则它既撑大仓库，又会因为 clean filter 结果与 index 不一致而**永远显示为 modified**。
 
+同目录下的 `scripts/check-ci-config.sh` 是它的兄弟守卫，负责保证各 workflow 不会把
+已删除的 `push` 触发加回来，见 [使用说明.md](使用说明.md) 第 8 节。
+
 ## 新增了一类需要 LFS 的扩展名
 
 ```bash
