@@ -66,6 +66,8 @@ namespace Spotlight.EditorTools
         public static List<string> Evaluate(string projectRoot)
         {
             var problems = new List<string>();
+            problems.AddRange(CjkFontSetup.ValidatePanelFonts(
+                AssetDatabase.LoadAssetAtPath<UnityEngine.UIElements.PanelSettings>(CjkFontSetup.PanelSettingsPath)));
             var manifest = AssetDatabase.LoadAssetAtPath<ConfigManifest>(ConfigAssetPublisher.ManifestPath);
             if (manifest == null)
             {
