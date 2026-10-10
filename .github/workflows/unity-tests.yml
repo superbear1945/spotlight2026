@@ -36,7 +36,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        unityVersion: [ '2022.3.62f1' ]
+        # 使用 Unity 国际版，与 ProjectSettings/ProjectVersion.txt 保持一致。
+        # 2022.3.62f3 是 2022.3 LTS 的最后一个版本，game-ci 官方镜像已发布对应标签
+        # （unityci/editor:ubuntu-2022.3.62f3-linux-il2cpp-3），无需自建镜像。
+        # 为什么必须写真实版本：Unity 遇到项目版本与编辑器版本不一致时会判定“项目由另一版本
+        # 创建过”并整库重导入，写成别的版本号等于在另一个编辑器上跑绿（CI 绿、本地炸）。
+        # 项目切到国际版编辑器后 ProjectVersion.txt 会变成 2022.3.62f3，与此处一致。
+        unityVersion: [ '2022.3.62f3' ]
         testMode: [ EditMode, PlayMode ]
     steps:
       - name: 检出仓库
@@ -44,10 +50,13 @@ jobs:
         with:
           lfs: true
 
-      - name: 缓存 Library
-        uses: actions/cache@v4
+      - name: 恢复 Library 缓存
+        id: library-cache
+        uses: actions/cache/restore@v4
         with:
           path: Library
+          # Library 与编辑器版本强绑定，缓存键必须带版本号：跨版本复用会出现
+          # 无法解释的重导入与偶发失败。
           key: Library-${{ matrix.unityVersion }}-${{ hashFiles('Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
           restore-keys: |
             Library-${{ matrix.unityVersion }}-
@@ -82,6 +91,20 @@ jobs:
           artifactsPath: test-results-${{ matrix.testMode }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: ${{ matrix.testMode }} 测试结果
+
+      - name: 保存 Library 缓存
+        # 为什么拆成 restore / save 两步，而不是原来的 actions/cache@v4：
+        # 1) 明确控制保存时机：两个 job 在同一个 ref 上并行且 key 相同，只让 EditMode 保存，
+        #    就不存在两个 job 拿同一个 key 去写缓存的竞争；两者产出的 Library 等价。
+        # 2) !cancelled()：被取消的运行不保存半截 Library，而测试失败仍会刷新缓存
+        #    （下次修 bug 时才不用重新导入）。
+        # 注："减少缓存体积"靠的是下面的删除旧缓存，不是这一步——缓存按 ref 隔离，
+        # 不同 ref 的同名 key 本来就是两份，不会互相覆盖。
+        if: ${{ !cancelled() && matrix.testMode == 'EditMode' && steps.library-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: Library
+          key: ${{ steps.library-cache.outputs.cache-primary-key }}
 
       - name: 上传测试结果
         if: always()
