@@ -6,7 +6,7 @@ using NUnit.Framework;
 
 namespace Spotlight.Tests
 {
-    /// <summary>覆盖牌库守恒、回合、部署、移动、家、星门、攻击、补兵和输入权限。</summary>
+    /// <summary>覆盖抽牌堆守恒、回合、部署、移动、家、星门、攻击、补兵和输入权限。</summary>
     public class GameSessionTests
     {
         /// <summary>构造足够小且可读的隔离配置，方便每个用例只调整与断言相关的参数。</summary>
@@ -34,14 +34,14 @@ namespace Spotlight.Tests
             var card=g.GetSnapshot().Hand.First(x=>x.TypeId==type);
             var r=g.Execute(new GameCommand(CommandKind.Deploy,Side.Player,card.Id,new Cell(row,col)));
             Assert.That(r.Success,Is.True,r.Error);
-            return g.GetSnapshot().Units.Single(u=>u.Source.Id==card.Id);
+            return g.GetSnapshot().Units.Single(u=>u.SourceCardId==card.Id);
         }
         static void End(GameSession g) { var s=g.GetSnapshot(); var r=g.Execute(new GameCommand(CommandKind.EndTurn,s.ActiveSide,skipDeployment:true)); Assert.That(r.Success,Is.True,r.Error); }
         [Test] public void StartsWithOnlyHomesAndPlayerDraw() { var s=Start().GetSnapshot(); Assert.That(s.Units,Is.Empty); Assert.That(s.Hand.Count,Is.EqualTo(16)); Assert.That(s.Resources,Is.EqualTo(2)); Assert.That(s.Round,Is.EqualTo(1)); }
         [Test] public void UpgradeRecyclesSourceAndCreatesFullHealthIdentity()
         {
             var g=Start();var old=Put(g,"miner",0,0);var upgraded=Put(g,"upgrade",0,0);var s=g.GetSnapshot();
-            Assert.That(upgraded.Id,Is.Not.EqualTo(old.Id));Assert.That(upgraded.Hp,Is.EqualTo(6));Assert.That(s.Graveyard.Single().Id,Is.EqualTo(old.Source.Id));Assert.That(s.Units.Count,Is.EqualTo(1));
+            Assert.That(upgraded.Id,Is.Not.EqualTo(old.Id));Assert.That(upgraded.Hp,Is.EqualTo(6));Assert.That(s.Graveyard.Count,Is.EqualTo(2));Assert.That(s.Graveyard.Any(c=>c.Id==old.SourceCardId),Is.True);Assert.That(s.Units.Count,Is.EqualTo(1));
         }
         [Test] public void UpgradeCannotDeployOnEmptyCell() { var g=Start();var id=g.GetSnapshot().Hand.First(c=>c.TypeId=="upgrade").Id;Assert.That(g.Execute(new GameCommand(CommandKind.Deploy,Side.Player,id,new Cell(0,0))).Success,Is.False); }
         [Test] public void ZeroMoveUnitsCanSwapAndBothConsumeAction()
@@ -128,7 +128,7 @@ namespace Spotlight.Tests
         {
             var d=Document();d.cards.Single(c=>c.id=="miner").atk=2;d.cards.Single(c=>c.id=="miner").range=2;var g=Start(d);var attacker=Put(g,"miner",0,7);End(g);
             Assert.That(g.Execute(new GameCommand(CommandKind.BossDeploy,Side.Boss,target:new Cell(0,8))).Success,Is.True);End(g);
-            var enemy=g.GetSnapshot().Units.Single(u=>u.Source.Owner==Side.Boss);Assert.That(g.Execute(new GameCommand(CommandKind.Attack,Side.Player,attacker.Id,targetId:enemy.Id)).Success,Is.True);
+            var enemy=g.GetSnapshot().Units.Single(u=>u.Owner==Side.Boss);Assert.That(g.Execute(new GameCommand(CommandKind.Attack,Side.Player,attacker.Id,targetId:enemy.Id)).Success,Is.True);
             Assert.That(g.GetSnapshot().Units.Single(u=>u.Id==attacker.Id).Hp,Is.EqualTo(4));Assert.That(g.GetSnapshot().Units.Single(u=>u.Id==enemy.Id).Hp,Is.EqualTo(1));
         }
         [Test] public void BlockingPreventsStraightAttackThroughOccupiedCell()
@@ -151,5 +151,58 @@ namespace Spotlight.Tests
         }
         [Test] public void ModalBlocksCommandsAndInvalidCommandsDoNotMutateState() {var g=Start();g.SetInputBlocked(true);Assert.That(g.Execute(new GameCommand(CommandKind.EndTurn,Side.Player)).Success,Is.False);Assert.That(g.GetSnapshot().Round,Is.EqualTo(1));Assert.That(g.GetLegalActions(new Selection(SelectionKind.Hand,g.GetSnapshot().Hand[0].Id)).Deploy,Is.Empty);}
         [Test] public void DuplicateNamesAndInvalidUpgradeAreRejected() {var d=Document();d.cards[1].name=" 矿机 ";d.cards[3].upgradeFrom="upgrade";Assert.That(ConfigValidation.Validate(d).Count,Is.GreaterThanOrEqualTo(2));}
+        [Test] public void DeployMovesPlayerCardToGraveyardWithoutChangingTotalCount()
+        {
+            // 部署成功即进入墓地：卡牌从手牌转入墓地，牌堆总数不变，场上单位与墓地卡牌互不影响。
+            var d=Document();d.deck=new[]{new DeckRow{cardType="miner",count=1}};d.rules[0].drawCount=1;var g=Start(d);
+            var card=g.GetSnapshot().Hand.Single();
+            Assert.That(g.Execute(new GameCommand(CommandKind.Deploy,Side.Player,card.Id,new Cell(0,0))).Success,Is.True);
+            var s=g.GetSnapshot();
+            Assert.That(s.Units.Count,Is.EqualTo(1));
+            Assert.That(s.Hand,Is.Empty);
+            Assert.That(s.Graveyard.Select(c=>c.Id),Is.EquivalentTo(new[]{card.Id}));
+            Assert.That(s.Hand.Count+s.DrawPile.Count+s.Graveyard.Count,Is.EqualTo(1));
+        }
+        [Test] public void FailedDeployDoesNotPutCardIntoGraveyard()
+        {
+            // 校验失败时状态不得变化：升级卡不能放在空格，墓地保持为空。
+            var g=Start();var id=g.GetSnapshot().Hand.First(c=>c.TypeId=="upgrade").Id;
+            Assert.That(g.Execute(new GameCommand(CommandKind.Deploy,Side.Player,id,new Cell(0,0))).Success,Is.False);
+            Assert.That(g.GetSnapshot().Graveyard,Is.Empty);
+        }
+        [Test] public void GraveyardShuffleLetsSameCardCreateSecondIndependentUnit()
+        {
+            // 方案 A：墓地洗回后可再次部署同一张卡，生成第二个满血、独立身份的单位，牌堆总数仍为 1。
+            var d=Document();d.deck=new[]{new DeckRow{cardType="miner",count=1}};d.rules[0].drawCount=1;var g=Start(d);
+            var first=g.GetSnapshot().Hand.Single();
+            Assert.That(g.Execute(new GameCommand(CommandKind.Deploy,Side.Player,first.Id,new Cell(0,0))).Success,Is.True);
+            var firstUnit=g.GetSnapshot().Units.Single();
+            End(g);End(g);
+            Assert.That(g.GetSnapshot().Hand.Count,Is.EqualTo(1),string.Join("\n",g.GetSnapshot().Log.Select(e=>e.Message)));
+            var second=g.GetSnapshot().Hand.Single();
+            Assert.That(g.Execute(new GameCommand(CommandKind.Deploy,Side.Player,second.Id,new Cell(0,1))).Success,Is.True);
+            var s=g.GetSnapshot();
+            Assert.That(s.Units.Count,Is.EqualTo(2));
+            Assert.That(s.Units.Select(u=>u.Id).Distinct().Count(),Is.EqualTo(2));
+            Assert.That(s.Units.Any(u=>u.Id==firstUnit.Id),Is.True);
+            Assert.That(s.Units.All(u=>u.Hp==4),Is.True);
+            Assert.That(s.Hand.Count+s.DrawPile.Count+s.Graveyard.Count,Is.EqualTo(1));
+        }
+        [Test] public void PlayerUnitDeathDoesNotRecycleCardAgain()
+        {
+            // 玩家单位阵亡只移除场上单位；来源卡已在部署时入墓地，不得重复回收导致牌堆膨胀。
+            var d=Document();d.cards.Single(c=>c.id=="miner").hp=1;var g=Start(d);
+            Put(g,"miner",0,8);
+            Assert.That(g.GetSnapshot().Graveyard.Count(c=>c.TypeId=="miner"),Is.EqualTo(1));
+            End(g);
+            Assert.That(g.Execute(new GameCommand(CommandKind.BossDeploy,Side.Boss,target:new Cell(0,9))).Success,Is.True);
+            var boss=g.GetSnapshot().Units.Single(u=>u.Owner==Side.Boss);
+            var victim=g.GetSnapshot().Units.Single(u=>u.Owner==Side.Player);
+            Assert.That(g.Execute(new GameCommand(CommandKind.Attack,Side.Boss,boss.Id,targetId:victim.Id)).Success,Is.True);
+            var s=g.GetSnapshot();
+            Assert.That(s.Units.Any(u=>u.Owner==Side.Player),Is.False);
+            Assert.That(s.Graveyard.Count(c=>c.TypeId=="miner"),Is.EqualTo(1));
+            Assert.That(s.Hand.Count+s.DrawPile.Count+s.Graveyard.Count,Is.EqualTo(16));
+        }
     }
 }

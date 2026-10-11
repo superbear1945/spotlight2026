@@ -368,7 +368,7 @@ namespace Spotlight
                     }
                     if (options.Count == 0) options.Add((string.Empty, "（没有其它资源卡）"));
                     box.Add(ConfigFieldBuilder.Grid(ConfigFieldBuilder.Choice("要覆盖升级的卡", options, () => card.upgradeFrom, value => { card.upgradeFrom = value; Changed(); })));
-                    box.Add(ConfigFieldBuilder.Note("只能覆盖己方指定资源卡；原卡进入墓地，新单位满血，并遵守刚上场不能行动的开关。"));
+                    box.Add(ConfigFieldBuilder.Note("只能覆盖己方指定资源卡；原卡在部署时已进入墓地，被覆盖只移除场上单位，新单位满血并遵守刚上场不能行动的开关。"));
                 }
             }
             return box;

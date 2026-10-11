@@ -9,6 +9,7 @@ Spotlight 是一款基于卡牌的战棋对局游戏（首版为 Windows 桌面�
 - Boss 默认由 AI 控制，也可切换为玩家手动模式。
 - 所有数值来自 Excel 编译生成的**只读配置资产**，规则代码不按具体卡名分支。
 - 详细规则见 `docs/玩法.md`，实现设计见 `docs/最初版本实现方案.md`，运行步骤见 `docs/使用说明.md`。
+- 机制与身份的统一命名见 `docs/游戏内名词.md`：抽牌堆 / 手牌 / 墓地 / 卡牌记录 / 战斗单位等概念一律以该文档为准，新增文档与代码不得另造同义名称。
 
 ## 1. 技术栈
 
@@ -84,7 +85,9 @@ Assets/Spotlight/
 对局状态与命令（`Core/GameState.cs`）：
 
 - `Cell`：整数坐标值类型（第 0 行在底部），仅做曼哈顿距离；不用 `Vector2Int`。
-- 三套身份：`CardRecord`（牌库/手牌/墓地的卡牌记录）、`UnitState`（在场的可变单位）、`HomeState`（独立的家）。**三者身份不可混用**；家 ID 为负数（玩家 -1、Boss -2），单位 ID 为正数。
+- 三套身份：`CardRecord`（抽牌堆/手牌/墓地中的卡牌记录）、`UnitState`（在场的可变单位）、`HomeState`（独立的家）。**三者身份不可混用**；家 ID 为负数（玩家 -1、Boss -2），单位 ID 为正数。
+- `UnitState` 只保存来源卡牌的值副本（`SourceCardId` / `TypeId` / `Owner`），**不引用 `CardRecord`**。玩家卡在成功部署时进入墓地，单位阵亡或被覆盖升级不再重复回收，因此“抽牌堆 + 手牌 + 墓地”的卡牌总数恒定，同一张卡可以反复部署出多个互相独立的单位。
+- 名词与机制的完整定义见 `docs/游戏内名词.md`。
 - `GameCommand`：不可变操作请求，含 `CommandKind`（Deploy / BossDeploy / Move / MoveHome / Attack / Swap / Discard / EndTurn）、`Actor`、`SubjectId`、`Target`、`TargetId`、`SkipDeployment`。**Target 视为不可信输入，执行时必须复验**。
 - `Selection` / `SelectionKind`：界面选择上下文，显式区分手牌与单位身份。
 - `LegalActions`：规则层算出的合法目标（`Deploy` / `Move` / `Attack` / `Swap`）。**UI 不得自行推导合法性，高亮仅提示**。
@@ -123,11 +126,13 @@ Assets/Spotlight/
 
 ## 5. 关键名词表
 
+> 完整机制名词（卡组、抽牌堆、手牌、墓地、卡牌记录、战斗单位等）以 `docs/游戏内名词.md` 为唯一来源；下表只列代码类型与高频术语。
+
 | 名词 | 含义 |
 |---|---|
-| 卡牌记录 `CardRecord` | 仅含实例 ID / 卡种 ID / 阵营，在牌库、手牌、墓地间流转 |
-| 战斗单位 `UnitState` | 一次部署产生的可变实体，来源为 `CardRecord`；部署后与卡牌身份分离，伤势不回流牌库 |
-| 家 `HomeState` | 独立实体，不进入牌库、不参与互换、无攻击力，可被攻击与移动 |
+| 卡牌记录 `CardRecord` | 仅含实例 ID / 卡种 ID / 阵营，在抽牌堆、手牌、墓地间流转，是唯一会被洗回和再次抽到的身份 |
+| 战斗单位 `UnitState` | 一次部署产生的可变实体，只保存来源卡的值副本（`SourceCardId` / `TypeId` / `Owner`），不引用 `CardRecord`；同一张卡可反复部署出多个互相独立的单位，伤势不回流卡牌 |
+| 家 `HomeState` | 独立实体，不进入抽牌堆、不参与互换、无攻击力，可被攻击与移动 |
 | 维持费 upkeep | 单位每回合的持续消耗；不足时本回合不能行动 |
 | 产出 produce | 家或资源卡每回合提供的资源 |
 | 召唤失调 | “刚上场不能行动”，由规则开关控制 |
@@ -148,7 +153,7 @@ Excel 配置编译（菜单 `Tools/Spotlight/*`，按顺序）：
 - 运行与构建门禁由 `ConfigBuildGate` 拦截：配置缺失或非法时禁止进入 Play / 构建，并给出可读错误。
 - 调试配置面板仅通过“关闭”或成功“应用并重开”退出；“应用并重开”失败时保留原对局与面板。
 - 正式数据单元格禁止公式；编译器检查未定义列、重复表头、缺失列、公式、错误单元格、重复 ID、空/重名、非法分类、非法引用等。
-- 四张架构图（`docs/diagrams/01-modules` / `02-cards` / `03-dataflow` / `04-turnflow`）修改后需重新渲染，并由 CI 校验。
+- 架构图（`docs/diagrams/01-modules` / `02-cards` / `03-dataflow` / `04-turnflow` / `05-card-lifecycle`）修改后需按 `docs/diagrams/README.md` 重新渲染 SVG 及其导出产物（PNG/HTML/drawio），并由 CI 校验。
 
 ## 7. 测试与 CI 规范
 
