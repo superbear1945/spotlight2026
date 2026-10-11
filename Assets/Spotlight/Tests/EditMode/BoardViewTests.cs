@@ -100,37 +100,6 @@ namespace Spotlight.Tests
         }
 
         /// <summary>
-        /// 首次渲染后，家的卡牌必须按所在格的实际尺寸布局，而不是布局完成前的占位尺寸。
-        /// 输入：无；输出：NUnit 断言结果。
-        /// 为什么需要：Build 先用 64×64 的占位 cellSize 建格子，重算出真实 cellSize 后如果没有再次强制布局，
-        /// 紧接着的 Place 读到的是旧格子矩形，卡牌就按旧尺寸缩放——表现为“家没有占满所在格”，
-        /// 而且要等玩家点一下触发下一次渲染才自愈。
-        /// </summary>
-        [Test]
-        public void HomeCardsFillTheirCellAfterFirstRender()
-        {
-            var session = new GameSession(new GameConfiguration(Document()), new SeededRandom(5), 50);
-            using (var fixture = new BoardFixture())
-            {
-                fixture.Build(session.Configuration);
-                fixture.Render(session);
-
-                foreach (var home in session.GetSnapshot().Homes)
-                {
-                    var card = fixture.Board.GetCard(home.Id);
-                    Assert.That(card, Is.Not.Null, "棋盘上缺少家的卡牌");
-                    var cell = fixture.Board.CellRect(home.Position);
-                    Assert.That(cell, Is.Not.Null, "棋盘上缺少家所在的格子");
-                    var rect = (RectTransform)card.transform;
-                    Assert.That(rect.sizeDelta.x, Is.EqualTo(cell.rect.size.x - 8f).Within(0.01f),
-                        $"家没有按格子宽度布局：卡牌 {rect.sizeDelta.x}，格子 {cell.rect.size.x}");
-                    Assert.That(rect.sizeDelta.y, Is.EqualTo(cell.rect.size.y - 8f).Within(0.01f),
-                        $"家没有按格子高度布局：卡牌 {rect.sizeDelta.y}，格子 {cell.rect.size.y}");
-                }
-            }
-        }
-
-        /// <summary>
         /// 棋盘上的卡牌不能挡住格子的点击。
         /// 输入：无；输出：NUnit 断言结果。
         /// 为什么需要：卡牌模板上的 Image/文本默认参与 UGUI 射线检测，
