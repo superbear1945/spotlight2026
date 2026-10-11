@@ -15,7 +15,7 @@ Spotlight 是一款基于卡牌的战棋对局游戏（首版为 Windows 桌面�
 
 | 项目 | 版本 / 选型 | 说明 |
 |---|---|---|
-| Unity | 2022.3.62.f3（见 `ProjectSettings/ProjectVersion.txt`） | 固定版本，不得擅自升级 |
+| Unity | 2022.3.62f3（见 `ProjectSettings/ProjectVersion.txt`） | 固定版本，不得擅自升级 |
 | 语言 | C#（Unity 2022.3 对应语言版本） | 不使用 Core 之外的引擎依赖完成规则逻辑 |
 | 渲染 | URP 2D（`com.unity.render-pipelines.universal` 14.0.12） | 工程已配置 URP 全局设置 |
 | UI | UI Toolkit / UXML + USS 1.0.0（静态面板）；UGUI 1.0.0 + TextMeshPro 3.0.7（棋盘与手牌） | 两套 UI 分工不可混用 |
