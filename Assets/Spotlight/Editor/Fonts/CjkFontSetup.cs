@@ -5,6 +5,7 @@
 // 本工具同时生成两者，避免出现“棋盘中文正常、HUD 中文是方框”的不一致。
 using System.IO;
 using System.Reflection;
+using System.Collections.Generic;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -212,11 +213,31 @@ namespace Spotlight.EditorTools
             }
             var settings = AssetDatabase.LoadAssetAtPath<PanelTextSettings>(TextSettingsPath);
             if (settings == null) return;
-            var property = typeof(PanelSettings).GetProperty("textSettings", BindingFlags.Public | BindingFlags.Instance);
-            var setter = property?.GetSetMethod(true);
-            if (setter != null && !ReferenceEquals(property.GetValue(panel), settings)) setter.Invoke(panel, new object[] { settings });
+            // Unity 2022.3 的 textSettings 是公开字段，GetProperty 会返回 null 并静默漏绑。
+            panel.textSettings = settings;
             EditorUtility.SetDirty(panel);
             AssetDatabase.SaveAssets();
+        }
+
+        /// <summary>
+        /// 检查 HUD 的中文字体引用链，供运行/构建门禁与回归测试复用。
+        /// 输入：场景使用的面板设置；输出：全部字体引用问题，空列表表示引用完整。
+        /// 为什么需要：TMP 卡牌字体正常并不代表 UI Toolkit 已绑定中文字体，漏绑也可能没有运行时日志。
+        /// </summary>
+        public static List<string> ValidatePanelFonts(PanelSettings panel)
+        {
+            var problems = new List<string>();
+            const string remedy = "，请执行 Tools/Spotlight/生成中文字体资产";
+            if (panel == null) problems.Add("缺少 HUD PanelSettings" + remedy);
+            else if (panel.textSettings == null) problems.Add("HUD PanelSettings 未绑定 Text Settings" + remedy);
+            else
+            {
+                var font = panel.textSettings.defaultFontAsset;
+                if (font == null) problems.Add("HUD Text Settings 缺少默认中文字体" + remedy);
+                else if (font.atlasPopulationMode == UnityEngine.TextCore.Text.AtlasPopulationMode.Dynamic && font.sourceFontFile == null)
+                    problems.Add("HUD 动态中文字体缺少源字体文件" + remedy);
+            }
+            return problems;
         }
 
         /// <summary>确保资产所在目录存在。输入：Assets 相对路径；输出：无。</summary>

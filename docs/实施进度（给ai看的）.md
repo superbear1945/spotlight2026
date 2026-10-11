@@ -78,7 +78,7 @@
 | 图纸转 draw.io | `docs/diagrams/spec-to-drawio.py`（按子目录扫描图纸 JSON → `.drawio`，箭头为真实边，可拖动重连）＋ `--check` 结构校验 ＋ `.github/workflows/diagrams-check.yml` |
 | 策划填写说明 | `docs/策划填写说明.md` |
 | 使用说明 | `docs/使用说明.md` |
-| GitHub Action PR 测试 | `.github/workflows/unity-tests.yml`（game-ci/unity-test-runner，EditMode） |
+| GitHub Action PR 测试 | `.github/workflows/unity-tests.yml`（game-ci/unity-test-runner，`testMode` 矩阵含 EditMode + PlayMode；**只在 PR 上触发，main 的 push 不重复跑**） |
 | Windows 独立构建 | **未执行**（需要 Windows 构建授权与较长时间；门禁已就位，可在本地执行 `Tools/Spotlight/编译全部配置` 后直接 Build） |
 
 ### 模块 5：界面同步修复（移动后棋子停留在原地 / 点击棋子无反应）
