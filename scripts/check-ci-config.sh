@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# check-ci-config.sh —— GitHub Actions 触发配置守卫
+# check-ci-config.sh —— GitHub Actions 触发与 Unity 串行配置守卫
 #
 # 【作用】
 #   检查 .github/workflows/*.yml 的 `on:` 触发块是否符合本仓库的既定策略：
@@ -12,6 +12,10 @@
 #      PR 阶段被测的合并结果就是最终落到 main 的结果，push 触发是纯冗余：
 #      既多花分钟数，又会额外占用一个 Unity 授权席位（个人版席位制，席位不足
 #      会误报 no available seats，表现为与代码无关的红灯）。
+#
+#   4. unity-tests.yml 的 unity-tests job 必须设置 strategy.max-parallel: 1，
+#      避免同一矩阵的两个测试模式同时申请 / 归还共用账号的 Personal 授权。
+#      这里只保证矩阵内串行，不保证不同 PR 之间的账号级互斥。
 #
 # 【输入】
 #   无参数：扫描仓库内 .github/workflows/*.yml（相对仓库根目录）。
@@ -57,7 +61,40 @@ _on_block() {
 }
 
 # -----------------------------------------------------------------------------
-# _check_file —— 校验单个 workflow 文件的触发策略
+# CheckUnityParallelism —— 校验 Unity 测试矩阵必须串行
+# 输入：unity-tests.yml 文件路径；输出：失败时打印原因，返回 0 合规 / 1 违规。
+# 为什么需要：PR #9 在并行激活后发生授权识别失败；把串行约束变为可执行守卫，
+# 避免以后无意删除或提高并发上限。仅接受本仓库的块状缩进格式，并精确定位到
+# jobs.unity-tests.strategy，防止其他 job、matrix 或步骤中的同名键误满足检查。
+# -----------------------------------------------------------------------------
+CheckUnityParallelism() {
+  if ! awk '
+    /^[[:space:]]*(#|$)/ { next }
+    /^jobs:[[:space:]]*$/ { jobs = 1; next }
+    /^[^[:space:]]/ { jobs = 0; job = 0; strategy = 0 }
+    jobs && /^  [^[:space:]]/ {
+      job = ($0 ~ /^  unity-tests:[[:space:]]*$/)
+      strategy = 0
+      next
+    }
+    job && /^    [^[:space:]]/ {
+      strategy = ($0 ~ /^    strategy:[[:space:]]*$/)
+      next
+    }
+    strategy && /^      max-parallel:/ {
+      count++
+      if ($0 ~ /^      max-parallel:[[:space:]]*1[[:space:]]*(#.*)?$/) valid++
+    }
+    END { exit !(count == 1 && valid == 1) }
+  ' "$1"; then
+    echo "  ❌ $1：jobs.unity-tests.strategy 必须设置 max-parallel: 1，避免矩阵内并行授权竞争"
+    return 1
+  fi
+  return 0
+}
+
+# -----------------------------------------------------------------------------
+# _check_file —— 校验单个 workflow 文件的触发策略与 Unity 串行约束
 # 输入：workflow 文件路径
 # 输出：标准输出打印结论；返回 0 表示合规，1 表示存在违规
 # -----------------------------------------------------------------------------
@@ -79,6 +116,10 @@ _check_file() {
   if grep -q '^[[:space:]]*push:' <<<"$_block"; then
     echo "  ❌ $_file：存在 push 触发 —— main 已被规则集锁死，push 只会重复执行"
     _rc=1
+  fi
+
+  if [ "${_file##*/}" = "unity-tests.yml" ]; then
+    CheckUnityParallelism "$_file" || _rc=1
   fi
 
   return "$_rc"
@@ -218,9 +259,9 @@ _check_ruleset() {
 
 # -----------------------------------------------------------------------------
 # _self_test —— 本脚本自身的测试用例
-# 在临时目录里构造三份 workflow，断言“该拦的拦住、该过的放行”。
+# 在临时目录构造触发策略、矩阵展开与 Unity 串行约束的独立夹具，断言该拦的拦住。
+# 输入：无；输出：逐项断言结果，返回 0 表示全部通过，否则返回 1。
 # 为什么这样测：直接对真实仓库断言会让用例随仓库内容漂移，因此用独立 fixture。
-# 返回 0 表示三个用例全部通过。
 # -----------------------------------------------------------------------------
 _self_test() {
   local _tmp _rc=0
@@ -283,6 +324,33 @@ YAML
     _rc=1
   fi
 
+  # --- 用例 E–H：通过脚本公开入口验证串行约束，不能仅凭文件中出现该字符串放行。
+  local _case _setting _expected _actual
+  while IFS='|' read -r _case _setting _expected; do
+    printf '%s\n' \
+      'on:' \
+      '  pull_request:' \
+      '  workflow_dispatch:' \
+      'jobs:' \
+      '  unity-tests:' \
+      '    strategy:' \
+      '      fail-fast: false' >"$_tmp/unity-tests.yml"
+    printf '%b\n' "$_setting" >>"$_tmp/unity-tests.yml"
+    _actual=0
+    bash "$_self_path" "$_tmp/unity-tests.yml" >/dev/null 2>&1 || _actual=$?
+    if [ "$_actual" -eq "$_expected" ]; then
+      echo "  ✅ 自检 $_case 通过"
+    else
+      echo "  ❌ 自检 $_case 失败：期望退出码 $_expected，实际 $_actual"
+      _rc=1
+    fi
+  done <<'CASES'
+E（串行配置放行）|      max-parallel: 1 # 共用授权|0
+F（缺少并发上限拦截）|      matrix: { testMode: [EditMode, PlayMode] }|1
+G（并行配置拦截）|      max-parallel: 2|1
+H（其他 job 的串行配置不算）|  other:\n    strategy:\n      max-parallel: 1|1
+CASES
+
   return "$_rc"
 }
 
@@ -294,7 +362,7 @@ YAML
 if [ "${1:-}" = "--self-test" ]; then
   echo "== check-ci-config.sh 自检 =="
   if _self_test; then
-    echo "自检结果：4/4 通过"
+    echo "自检结果：8/8 通过"
     exit 0
   fi
   echo "自检结果：存在失败用例"
@@ -328,7 +396,7 @@ if [ "${#_targets[@]}" -eq 0 ]; then
   fi
 fi
 
-echo "== CI 触发配置检查：只保留 PR 入口 =="
+echo "== CI 配置检查：PR 入口与 Unity 矩阵串行 =="
 _fail=0
 for _f in "${_targets[@]}"; do
   _check_file "$_f" || _fail=1
@@ -346,12 +414,13 @@ fi
 
 echo
 if [ "$_fail" -ne 0 ]; then
-  echo "CI 触发配置检查：未通过"
+  echo "CI 配置检查：未通过"
   echo "  策略说明：main 由分支规则集「main」保护（必须走 PR、禁 force push、禁删除、"
   echo "  无 bypass，且开启 strict 必需检查），因此 PR 阶段测的就是合并结果，"
   echo "  push 触发只会重复跑。需要时用 workflow_dispatch 手动触发。"
+  echo "  Unity 测试矩阵还必须设置 max-parallel: 1，避免矩阵内并行授权竞争。"
   exit 1
 fi
 
-echo "CI 触发配置检查：通过（${#_targets[@]} 个 workflow 均为 PR + 手动入口）"
+echo "CI 配置检查：通过（${#_targets[@]} 个 workflow 的触发策略与 Unity 串行约束均合规）"
 exit 0

@@ -41,12 +41,12 @@ jobs:
         run: bash scripts/check-repo-hygiene.sh --self-test
 
       # 与本 job 同驻的理由：都是秒级、无 Unity 依赖的仓库配置守卫。
-      # 它负责拦住“以后有人把 push 触发加回来”这类回归。
+      # 它负责拦住“加回 push 触发”或“Unity 矩阵恢复并行授权”这类回归。
       # 注意：脚本还有一个 --check-ruleset 模式（比对 job 名与分支规则集的必需检查），
       # 需要 admin 权限、而 Actions 默认的 GITHUB_TOKEN 读不到规则集，因此不上流水线，
       # 只能本地在合并前跑：bash scripts/check-ci-config.sh --check-ruleset
-      - name: CI 触发配置守卫（只允许 PR + 手动入口）
+      - name: CI 配置守卫（PR 入口与 Unity 矩阵串行）
         run: bash scripts/check-ci-config.sh
 
-      - name: 校验 CI 触发守卫脚本自身（4 个用例）
+      - name: 校验 CI 配置守卫脚本自身（8 个用例）
         run: bash scripts/check-ci-config.sh --self-test
