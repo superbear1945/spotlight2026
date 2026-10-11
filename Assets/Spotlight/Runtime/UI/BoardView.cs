@@ -113,6 +113,11 @@ namespace Spotlight
                 Mathf.Max(16f, (size.width - _grid.spacing.x * (_columns - 1) - _grid.padding.left - _grid.padding.right) / _columns),
                 Mathf.Max(16f, (size.height - _grid.spacing.y * (_rows - 1) - _grid.padding.top - _grid.padding.bottom) / _rows));
             _needsCellSize = false;
+            // 上面那次强制布局用的是旧的占位 cellSize（Build 阶段是 64×64），改了 cellSize 之后必须再强制一次，
+            // 格子才会真正采用新尺寸；否则本帧紧接着的 Place 读到的还是旧格子矩形，
+            // 卡牌（最明显的是家的卡牌）会按旧尺寸缩放，表现为“家只占格子中间一小块”，
+            // 并且要等玩家点一下触发下一次渲染才自愈。
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_cellRoot);
         }
 
         /// <summary>显示坐标（左上起）→ 内部坐标（左下起、按玩家视角镜像）。</summary>

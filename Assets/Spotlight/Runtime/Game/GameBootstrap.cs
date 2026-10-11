@@ -43,6 +43,8 @@ namespace Spotlight
         GameConfiguration _configuration;
         /// <summary>当前界面选择上下文。</summary>
         Selection _selection;
+        /// <summary>上一次播放过选中表现的卡牌视图；用来在选中变化时把上一张牌恢复原状。</summary>
+        Card _selectedCard;
         /// <summary>上一帧快照，用于计算移动动画起点。</summary>
         GameSnapshot _previousSnapshot;
 
@@ -105,6 +107,8 @@ namespace Spotlight
             var limit = _logLimit > 0 ? _logLimit : configuration.Presentation != null ? configuration.Presentation.LogLimit : 100;
             _session = new GameSession(configuration, new SeededRandom(DebugSupport.ResolveSeed(_seed)), Mathf.Max(1, limit));
             _selection = new Selection(SelectionKind.None);
+            // 重开时旧卡牌会被重建，之前记录的选中视图属于已销毁对象，必须一并清空。
+            _selectedCard = null;
             _boardView?.Build(configuration, _configAsset);
             _handView?.Build(_configAsset, configuration);
             _hudView?.ResetLog();
@@ -151,8 +155,14 @@ namespace Spotlight
             }
             if (snapshot.ActiveSide != Side.Player) { Show("只有玩家回合可以使用手牌"); return; }
             if (snapshot.Phase != MatchPhase.Action) { Show("当前不能出牌"); return; }
+            // 再次点击同一张手牌表示取消选中：规则层用 SelectionKind.None 表示“没有选择”，
+            // 而玩家的 None 不会产生部署高亮（那条分支只服务手动 Boss 的未选单位状态），
+            // 因此部署范围会一并撤掉；放大表现由 Refresh → SyncSelectionFeedback 自动恢复。
+            // 弃牌阶段在上面已经分流，取消选中只作用于正常行动阶段。
+            if (IsSameSelection(SelectionKind.Hand, card.Record.Id)) { ClearSelection(); return; }
             _selection = new Selection(SelectionKind.Hand, card.Record.Id);
-            _feedback?.PlaySelect(card, true);
+            // 选中表现（放大新卡、恢复上一张卡）统一交给 Refresh → SyncSelectionFeedback，
+            // 这里不再单独播放，否则会绕开“旧卡一定会恢复”的唯一路径。
             Refresh();
         }
 
@@ -224,14 +234,17 @@ namespace Spotlight
             var unit = snapshot.Units.FirstOrDefault(u => u.Position == cell);
             if (unit != null)
             {
+                // 再次点击同一个单位（也包含用于查看详情的敌方单位）表示取消选中。
+                if (IsSameSelection(SelectionKind.Unit, unit.Id)) { ClearSelection(); return; }
                 _selection = new Selection(SelectionKind.Unit, unit.Id);
-                _feedback?.PlaySelect(_boardView != null ? _boardView.GetCard(unit.Id) : null, true);
                 Refresh();
                 return;
             }
             var home = snapshot.Homes.FirstOrDefault(h => h.Position == cell);
             if (home != null && home.Owner == snapshot.ActiveSide)
             {
+                // 再次点击自己的家同样取消选中，可移动格高亮随之消失。
+                if (IsSameSelection(SelectionKind.Home, home.Id)) { ClearSelection(); return; }
                 _selection = new Selection(SelectionKind.Home, home.Id);
                 Refresh();
                 return;
@@ -239,6 +252,26 @@ namespace Spotlight
             _selection = snapshot.ActiveSide == Side.Boss && snapshot.PlayerControlsBoss && snapshot.PlaysRemaining > 0
                 ? new Selection(SelectionKind.BossDeployment)
                 : new Selection(SelectionKind.None);
+            Refresh();
+        }
+
+        /// <summary>
+        /// 判断这次点击是否落在“已经选中的同一个对象”上。
+        /// 输入：选择种类与实体 ID；输出：true 表示应视为“再次点击”，即取消选中。
+        /// 为什么需要：手牌、棋盘单位与家都支持“点第二次取消选中”，
+        /// 统一成一个判断可以保证三处行为一致，也避免以后新增可选对象时漏掉其中一处。
+        /// </summary>
+        bool IsSameSelection(SelectionKind kind, long id) => _selection.Kind == kind && _selection.Id == id;
+
+        /// <summary>
+        /// 取消当前选中。
+        /// 输入：无；输出：无。
+        /// 行为：把选择置为 None 后刷新；规则层对玩家的 None 不给出任何高亮（部署高亮分支只服务手动 Boss 的未选单位状态），
+        /// 选中表现（放大补间与选中标记）由 Refresh → SyncSelectionFeedback 与各视图 Render 自动复位。
+        /// </summary>
+        void ClearSelection()
+        {
+            _selection = new Selection(SelectionKind.None);
             Refresh();
         }
 
@@ -262,6 +295,10 @@ namespace Spotlight
         void OnEndTurnRequested()
         {
             if (_session == null) return;
+            // 结束回合前先清空选中：Submit 内部的 Refresh 会以“未选中”状态渲染，
+            // 于是棋盘与手牌的选中标记、放大补间以及 HUD 详情都会随这次回合切换一起复位，
+            // 不会把本回合的选择残留到对手回合或下一回合。
+            _selection = new Selection(SelectionKind.None);
             Submit(new GameCommand(CommandKind.EndTurn, _session.GetSnapshot().ActiveSide));
         }
 
@@ -269,6 +306,8 @@ namespace Spotlight
         void OnSkipDeployRequested()
         {
             if (_session == null) return;
+            // 与“结束回合”同义：同样在结束前清空选中，避免手动 Boss 的选择残留到玩家回合。
+            _selection = new Selection(SelectionKind.None);
             Submit(new GameCommand(CommandKind.EndTurn, Side.Boss, skipDeployment: true));
         }
 
@@ -305,7 +344,12 @@ namespace Spotlight
             PlayFeedback(before, _session.GetSnapshot(), result.Events);
         }
 
-        /// <summary>刷新全部视图。输入：无；输出：无。</summary>
+        /// <summary>
+        /// 刷新全部视图与选中表现。
+        /// 输入：无；输出：无。
+        /// 顺序：先渲染三个视图（保证新选中的卡牌视图已存在、被移除的卡牌视图已销毁），
+        /// 最后统一同步选中表现，因此“上一张牌恢复原状”只在这一处发生。
+        /// </summary>
         void Refresh()
         {
             if (_session == null) return;
@@ -314,6 +358,44 @@ namespace Spotlight
             _boardView?.Render(snapshot, actions, _selection);
             _handView?.Render(snapshot, _selection);
             _hudView?.Render(snapshot, _configuration, _selection);
+            SyncSelectionFeedback();
+        }
+
+        /// <summary>
+        /// 同步选中表现：给新选中的卡牌播放放大，并把上一张已选中的卡牌恢复原状。
+        /// 输入：无（读取 _selection 与两个视图的卡牌映射）；输出：无。
+        /// 为什么必须有这一层：选中表现由两部分组成——Card.SetSelected 的选中标记（每次 Render 全量重算）
+        /// 和 CardFeedback.PlaySelect 的放大补间（只在被点击的瞬间播放过）。
+        /// 过去放大补间只在点击处调用，于是点第二张牌时第一张牌只关掉了标记、缩放永远停在放大值，
+        /// 表现上就是“第一张牌没有回到手牌里”。收敛到 Refresh 之后统一处理后，
+        /// 任何改变 _selection 的路径（点手牌、点棋盘、部署后清空、打开模态面板、重开）都会自动复位，
+        /// 不需要每条分支各自记得取消选中。
+        /// </summary>
+        void SyncSelectionFeedback()
+        {
+            var current = ResolveSelectedCard();
+            var previous = _selectedCard;
+            _selectedCard = current;
+            // 使用 UnityEngine.Object 的相等语义：已销毁的卡牌与 null 视为相同，避免操作已销毁的对象。
+            if (current == previous) return;
+            if (previous != null) _feedback?.PlaySelect(previous, false);
+            if (current != null) _feedback?.PlaySelect(current, true);
+        }
+
+        /// <summary>
+        /// 取得当前选择对应的卡牌视图。
+        /// 输入：无；输出：手牌或棋盘单位的卡牌视图；未选中实体、选中家、或视图已不存在时返回 null。
+        /// 说明：家沿用既有表现（只有选中标记、没有放大补间），所以不参与这里的放大切换；
+        /// 视图不存在（卡牌刚被部署、弃置或阵亡而销毁）同样返回 null，表示本次没有需要放大的对象。
+        /// </summary>
+        Card ResolveSelectedCard()
+        {
+            switch (_selection.Kind)
+            {
+                case SelectionKind.Hand: return _handView != null ? _handView.GetCard(_selection.Id) : null;
+                case SelectionKind.Unit: return _boardView != null ? _boardView.GetCard(_selection.Id) : null;
+                default: return null;
+            }
         }
 
         /// <summary>

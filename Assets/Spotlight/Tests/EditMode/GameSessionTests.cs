@@ -46,11 +46,30 @@ namespace Spotlight.Tests
         [Test] public void UpgradeCannotDeployOnEmptyCell() { var g=Start();var id=g.GetSnapshot().Hand.First(c=>c.TypeId=="upgrade").Id;Assert.That(g.Execute(new GameCommand(CommandKind.Deploy,Side.Player,id,new Cell(0,0))).Success,Is.False); }
         [Test] public void ZeroMoveUnitsCanSwapAndBothConsumeAction()
         {
-            var g=Start();var a=Put(g,"miner",0,0);var b=Put(g,"miner",0,1);
+            // 互换只排除资源卡，因此把士兵的移动距离改成 0 后仍然可以互换，双方同时消耗行动机会。
+            var d=Document();d.cards.Single(c=>c.id=="soldier").moveDistance=0;var g=Start(d);var a=Put(g,"soldier",0,0);var b=Put(g,"soldier",0,1);
             Assert.That(g.Execute(new GameCommand(CommandKind.Swap,Side.Player,a.Id,targetId:b.Id)).Success,Is.True);
             var units=g.GetSnapshot().Units;Assert.That(units.Single(u=>u.Id==a.Id).Position,Is.EqualTo(new Cell(0,1)));Assert.That(units.All(u=>u.Acted),Is.True);
         }
-        [Test] public void DiagonalSwapIsRejected() { var g=Start();var a=Put(g,"miner",0,0);var b=Put(g,"miner",1,1);Assert.That(g.Execute(new GameCommand(CommandKind.Swap,Side.Player,a.Id,targetId:b.Id)).Success,Is.False); }
+        [Test] public void DiagonalSwapIsRejected() { var g=Start();var a=Put(g,"soldier",0,0);var b=Put(g,"soldier",1,1);Assert.That(g.Execute(new GameCommand(CommandKind.Swap,Side.Player,a.Id,targetId:b.Id)).Success,Is.False); }
+        [Test] public void ResourceCardsCannotSwapAndAreNotSwapTargets()
+        {
+            // 资源卡不参与互换：既不能发起（对手是资源卡或战斗卡都不行），也不能作为目标，
+            // 且高亮（GetLegalActions）与结算（ExecuteCommand）必须给出同一结论。
+            var g=Start();
+            var minerA=Put(g,"miner",0,0);      // 资源卡，与 minerB 相邻
+            var minerB=Put(g,"miner",1,0);      // 资源卡，与 minerA、soldierA 相邻
+            var soldierA=Put(g,"soldier",1,1);  // 战斗卡，与 minerB、soldierB 相邻
+            var soldierB=Put(g,"soldier",2,1);  // 战斗卡，只与 soldierA 相邻
+            Assert.That(g.Execute(new GameCommand(CommandKind.Swap,Side.Player,minerA.Id,targetId:minerB.Id)).Success,Is.False,"资源卡之间不允许互换");
+            Assert.That(g.Execute(new GameCommand(CommandKind.Swap,Side.Player,minerB.Id,targetId:soldierA.Id)).Success,Is.False,"资源卡不能发起互换");
+            Assert.That(g.Execute(new GameCommand(CommandKind.Swap,Side.Player,soldierA.Id,targetId:minerB.Id)).Success,Is.False,"资源卡不能作为互换目标");
+            Assert.That(g.GetLegalActions(new Selection(SelectionKind.Unit,minerA.Id)).Swap,Is.Empty,"资源卡选中时不应出现互换高亮");
+            var targets=g.GetLegalActions(new Selection(SelectionKind.Unit,soldierA.Id)).Swap;
+            Assert.That(targets.Any(c=>c==new Cell(2,1)),Is.True,"非资源单位之间仍应可以互换");
+            Assert.That(targets.Any(c=>c==new Cell(1,0)),Is.False,"资源卡不应作为互换目标出现在高亮里");
+            Assert.That(g.GetSnapshot().Units.Single(u=>u.Id==minerA.Id).Position,Is.EqualTo(new Cell(0,0)),"被拒绝的互换不得改变位置");
+        }
         [Test] public void MoveUsesShortestUnoccupiedPathAndConsumesAction()
         {
             var g=Start();var u=Put(g,"soldier",0,0);Put(g,"miner",0,1);
