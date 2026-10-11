@@ -190,6 +190,37 @@ namespace Spotlight.Tests
         }
 
         /// <summary>
+        /// 开局第一帧渲染后，家的卡牌必须按所在格的实际尺寸布局，而不是布局完成前的占位尺寸。
+        /// 输入：无；输出：NUnit 断言结果。
+        /// 为什么必须放在 PlayMode：格子尺寸由 GridLayoutGroup 在真实 Canvas 布局中算出，
+        /// EditMode 里代码搭出来的层级没有 Canvas 布局，算出的格子会被 16 的下限夹住，
+        /// 复现不了“Build 用 64×64 占位、真实尺寸稍后才生效”的时序。
+        /// 这条用例是“家没有占满所在格”的直接回归防线：修复前卡牌是 56×56，修复后是格子尺寸减 8。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator HomeCardsFillTheirCellRightAfterStart()
+        {
+            var context = new SceneContext();
+            yield return context.Load();
+            var homes = context.Session.GetSnapshot().Homes;
+            Assert.That(homes.Count, Is.EqualTo(2), "开局应当有两个家");
+
+            foreach (var home in homes)
+            {
+                var card = context.Board.GetCard(home.Id);
+                Assert.That(card, Is.Not.Null, "棋盘上缺少家的卡牌");
+                var cell = context.Board.CellRect(home.Position);
+                Assert.That(cell, Is.Not.Null, "棋盘上缺少家所在的格子");
+                var rect = (RectTransform)card.transform;
+                Assert.That(rect.localScale.x, Is.EqualTo(1f).Within(0.01f), $"家不应被缩放：{rect.localScale}");
+                Assert.That(rect.sizeDelta.x, Is.EqualTo(cell.rect.size.x - 8f).Within(0.5f),
+                    $"家没有按格子宽度布局：卡牌 {rect.sizeDelta.x}，格子 {cell.rect.size.x}");
+                Assert.That(rect.sizeDelta.y, Is.EqualTo(cell.rect.size.y - 8f).Within(0.5f),
+                    $"家没有按格子高度布局：卡牌 {rect.sizeDelta.y}，格子 {cell.rect.size.y}");
+            }
+        }
+
+        /// <summary>
         /// 切换选中对象时，上一张卡牌的放大表现必须恢复原状。
         /// 输入：无；输出：NUnit 断言结果。
         /// 为什么需要：选中表现由「选中标记」（每次渲染全量重算）与「放大补间」（只在点击时播放）两部分组成，
