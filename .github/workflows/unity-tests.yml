@@ -41,6 +41,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      # 为什么两个矩阵 job 必须串行（max-parallel: 1）：个人版授权是账号级的“席位”，
+      # EditMode 与 PlayMode 同时跑会在同一秒各自执行 --activate-all 认领席位。实测 2026-10-11 09:26:39
+      # 两个 job 相隔 0.06 秒完成激活，输的那个 job 在 Editor 启动时拿到
+      # “Found 0 entitlement groups and 0 free entitlements matching requested entitlement ids”
+      # → “No valid Unity Editor license found”，测试一条都没跑就红（代码没问题；08:52 那次相隔 2.7 秒激活，两个都绿）。
+      # 串行后任一时刻只有一个 job 占席位，代价是总时长约翻倍（约 8 分钟）；
+      # 想恢复并行必须给账号配浮动授权（action 的 unityLicensingServer 输入），否则会继续偶发这种假失败。
+      # 顺带也消除了两个 job 同时往 actions/cache 写同一个 key 的竞争。
+      max-parallel: 1
       matrix:
         # 使用 Unity 国际版，与 ProjectSettings/ProjectVersion.txt 保持一致。
         # 2022.3.62f3 是 2022.3 LTS 的最后一个版本，game-ci 官方镜像已发布对应标签
@@ -87,8 +96,20 @@ jobs:
           # 注意：该账号不能依赖 2FA/设备验证（headless 无法应答），建议使用专用的 CI 账号。
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          # 为什么还要一个 GITHUB_TOKEN 环境变量（它和下面的 githubToken 输入不是一回事）：
+          # unity-test-runner v4.4.0 在解析 CLI 版本时会请求 GitHub Releases API，而该请求只读
+          # process.env.GITHUB_TOKEN / GH_TOKEN（见 action 的 src/download-cli.ts）。
+          # 匿名请求受共享 runner IP 的 60 次/小时限额约束，会被别的仓库流量打成 403，
+          # 表现为 “Failed to resolve the latest game-ci CLI release: GitHub API returned 403.”（2026-10-11 09:41 那次失败）。
+          # 注入后限额升到 5000 次/小时；配合下面固定 cliVersion，这一层只是双保险。
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           unityVersion: ${{ matrix.unityVersion }}
+          # 为什么固定 CLI 版本而不是用默认的 latest：latest 要先调 GitHub Releases API 把版本解析成 tag，
+          # 那次匿名调用被限流就会 403，整个 job 在 25 秒内直接失败（Unity 都没启动、没有 artifacts，
+          # 看起来像测试挂了，其实一步都没跑）。固定成具体 tag 后既不请求该 API，也让每次运行用的 CLI 可复现。
+          # 升级前先在本 PR 上验证授权与测试都跑通（当前 game-ci/cli 最新为 v0.1.72，2026-10-03 发布）。
+          cliVersion: v0.1.72
           testMode: ${{ matrix.testMode }}
           # 为什么只跑本项目自己的测试（命名空间 Spotlight.Tests）：
           # Packages/manifest.json 里以 git 地址引入的第三方包 com.besty.unity-skills 自带 1600+ 个

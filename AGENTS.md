@@ -15,7 +15,7 @@ Spotlight 是一款基于卡牌的战棋对局游戏（首版为 Windows 桌面�
 
 | 项目 | 版本 / 选型 | 说明 |
 |---|---|---|
-| Unity | 2022.3.62f3c1（见 `ProjectSettings/ProjectVersion.txt`） | 固定版本，不得擅自升级 |
+| Unity | 2022.3.62f3（见 `ProjectSettings/ProjectVersion.txt`） | 固定版本，不得擅自升级 |
 | 语言 | C#（Unity 2022.3 对应语言版本） | 不使用 Core 之外的引擎依赖完成规则逻辑 |
 | 渲染 | URP 2D（`com.unity.render-pipelines.universal` 14.0.12） | 工程已配置 URP 全局设置 |
 | UI | UI Toolkit / UXML + USS 1.0.0（静态面板）；UGUI 1.0.0 + TextMeshPro 3.0.7（棋盘与手牌） | 两套 UI 分工不可混用 |
@@ -166,7 +166,7 @@ Excel 配置编译（菜单 `Tools/Spotlight/*`，按顺序）：
   - `.github/workflows/repo-hygiene.yml`：大文件与 Git-LFS 一致性检查（`scripts/check-repo-hygiene.sh`）与 CI 触发配置守卫（`scripts/check-ci-config.sh`），大二进制必须以 LFS 指针入库。
   - `.github/workflows/diagrams-check.yml`：校验 `docs/diagrams` 图源 JSON 仍能生成结构完整的 drawio。
 - `main` 由分支规则集「main」保护：必须走 PR、禁 force push、禁删除、`bypass_actors` 为空，且 `strict_required_status_checks_policy` 开启。因此 PR 阶段被测的结果就是合并后落到 main 的结果，`push` 触发只会重复跑（既费时间又额外占用 Unity 授权席位）；需要临时在 main 上验证时用 `workflow_dispatch`。
-- ⚠️ ruleset 里的必需检查名与 workflow 的 **job 名 / 矩阵变量** 是字符串精确匹配（如 `EditMode 测试（Unity 2022.3.62f1）`）。改动 job 名或矩阵里的 `unityVersion` 时必须同步修改 ruleset，否则所有 PR 会**永久 pending 且没有任何报错提示**。
+- ⚠️ ruleset 里的必需检查名与 workflow 的 **job 名 / 矩阵变量** 是字符串精确匹配（如 `EditMode 测试（Unity 2022.3.62f3）`）。改动 job 名或矩阵里的 `unityVersion` 时必须同步修改 ruleset，否则所有 PR 会**永久 pending 且没有任何报错提示**。
 
 ## 8. 编码规范
 
