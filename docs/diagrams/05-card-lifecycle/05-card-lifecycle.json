@@ -1,0 +1,263 @@
+{
+ "schema_version": 1,
+ "mode": "flowchart",
+ "template_type": "flowchart",
+ "style": 1,
+ "quality_profile": "standard",
+ "text_policy": "strict",
+ "width": 1200,
+ "height": 1370,
+ "title": "Spotlight 卡牌生命周期与墓地循环",
+ "subtitle": "玩家卡成功部署即进入墓地；战斗单位与卡牌记录互相独立，同一张卡可反复部署出多个满血单位",
+ "containers": [
+  {
+   "id": "c-loop",
+   "x": 60,
+   "y": 160,
+   "width": 1080,
+   "height": 410,
+   "label": "循环区：卡牌记录唯一流转，总数恒定",
+   "subtitle": "卡组 → 抽牌堆 → 手牌 → 墓地 →（抽牌堆耗尽）→ 洗回抽牌堆",
+   "preserve_case": true
+  },
+  {
+   "id": "c-board",
+   "x": 60,
+   "y": 620,
+   "width": 1080,
+   "height": 310,
+   "label": "场地：战斗单位独立存在",
+   "subtitle": "UnitState 只保存来源卡的值副本（SourceCardId / TypeId / Owner），不引用 CardRecord",
+   "preserve_case": true
+  },
+  {
+   "id": "c-boss",
+   "x": 60,
+   "y": 980,
+   "width": 1080,
+   "height": 210,
+   "label": "Boss 独立回收区",
+   "subtitle": "Boss 单位阵亡进入独立回收区，不参与玩家洗回；本次只调整玩家机制",
+   "preserve_case": true
+  }
+ ],
+ "nodes": [
+  {
+   "id": "n-deck",
+   "kind": "rect",
+   "x": 100,
+   "y": 260,
+   "width": 220,
+   "height": 110,
+   "label": "卡组 Deck",
+   "type_label": "开局配置",
+   "sublabel": "卡种与数量清单",
+   "fill": "#eff6ff",
+   "stroke": "#2563eb",
+   "flat": true
+  },
+  {
+   "id": "n-draw",
+   "kind": "rect",
+   "x": 420,
+   "y": 260,
+   "width": 220,
+   "height": 110,
+   "label": "抽牌堆 DrawPile",
+   "type_label": "运行时",
+   "sublabel": "玩家每回合抽牌来源",
+   "fill": "#eff6ff",
+   "stroke": "#2563eb",
+   "flat": true
+  },
+  {
+   "id": "n-hand",
+   "kind": "rect",
+   "x": 740,
+   "y": 260,
+   "width": 220,
+   "height": 110,
+   "label": "手牌 Hand",
+   "type_label": "运行时",
+   "sublabel": "已抽到、未打出，不参与洗回",
+   "fill": "#eff6ff",
+   "stroke": "#2563eb",
+   "flat": true
+  },
+  {
+   "id": "n-grave",
+   "kind": "rect",
+   "x": 420,
+   "y": 430,
+   "width": 220,
+   "height": 110,
+   "label": "墓地 Graveyard",
+   "type_label": "运行时",
+   "sublabel": "成功部署或弃置的玩家卡",
+   "fill": "#ecfdf5",
+   "stroke": "#10b981",
+   "flat": true
+  },
+  {
+   "id": "n-unit-a",
+   "kind": "rect",
+   "x": 140,
+   "y": 700,
+   "width": 280,
+   "height": 120,
+   "label": "战斗单位 A",
+   "type_label": "UnitState · 满血",
+   "sublabel": "Id · SourceCardId · TypeId · Owner",
+   "fill": "#f0fdfa",
+   "stroke": "#0d9488",
+   "flat": true
+  },
+  {
+   "id": "n-unit-b",
+   "kind": "rect",
+   "x": 500,
+   "y": 700,
+   "width": 280,
+   "height": 120,
+   "label": "战斗单位 B（同一张卡）",
+   "type_label": "独立单位身份",
+   "sublabel": "位置、伤势、行动与 A 互不影响",
+   "fill": "#f0fdfa",
+   "stroke": "#0d9488",
+   "flat": true
+  },
+  {
+   "id": "n-remove",
+   "kind": "rect",
+   "x": 880,
+   "y": 700,
+   "width": 240,
+   "height": 120,
+   "label": "离场：阵亡 / 被覆盖",
+   "type_label": "只移除场上单位",
+   "sublabel": "来源卡不重复回收",
+   "fill": "#fef2f2",
+   "stroke": "#dc2626",
+   "flat": true
+  },
+  {
+   "id": "n-boss-grave",
+   "kind": "rect",
+   "x": 140,
+   "y": 1030,
+   "width": 340,
+   "height": 110,
+   "label": "Boss 回收区",
+   "type_label": "BossGraveyard",
+   "sublabel": "不进入玩家的抽牌堆或墓地",
+   "fill": "#fef2f2",
+   "stroke": "#dc2626",
+   "flat": true
+  }
+ ],
+ "arrows": [
+  {
+   "id": "e-deck-draw",
+   "source": "n-deck",
+   "target": "n-draw",
+   "source_port": "right",
+   "target_port": "left",
+   "flow": "control",
+   "label": "生成卡牌记录"
+  },
+  {
+   "id": "e-draw-hand",
+   "source": "n-draw",
+   "target": "n-hand",
+   "source_port": "right",
+   "target_port": "left",
+   "flow": "data",
+   "label": "抽牌"
+  },
+  {
+   "id": "e-grave-draw",
+   "source": "n-grave",
+   "target": "n-draw",
+   "source_port": "top",
+   "target_port": "bottom",
+   "flow": "read",
+   "label": "洗回抽牌堆",
+   "label_dy": -6
+  },
+  {
+   "id": "e-hand-grave",
+   "source": "n-hand",
+   "target": "n-grave",
+   "source_port": "bottom",
+   "target_port": "right",
+   "flow": "write",
+   "label": "部署 / 弃置入墓地",
+   "label_style": "offset",
+   "route_points": [
+    [850, 485]
+   ]
+  },
+  {
+   "id": "e-hand-unit-a",
+   "source": "n-hand",
+   "target": "n-unit-a",
+   "source_port": "right",
+   "target_port": "top",
+   "flow": "control",
+   "label": "部署出满血新单位",
+   "route_points": [
+    [1010, 315],
+    [1010, 595],
+    [290, 595]
+   ]
+  },
+  {
+   "id": "e-unit-a-b",
+   "source": "n-unit-a",
+   "target": "n-unit-b",
+   "source_port": "right",
+   "target_port": "left",
+   "flow": "neutral",
+   "dashed": true,
+   "label": "同一张卡",
+   "label_style": "offset",
+   "label_dy": -14
+  },
+  {
+   "id": "e-unit-b-remove",
+   "source": "n-unit-b",
+   "target": "n-remove",
+   "source_port": "right",
+   "target_port": "left",
+   "flow": "neutral",
+   "label": "阵亡/被覆盖",
+   "label_style": "offset",
+   "label_dy": -14
+  }
+ ],
+ "legend_y": 1220,
+ "legend": [
+  {
+   "flow": "control",
+   "label": "主要流程与部署"
+  },
+  {
+   "flow": "data",
+   "label": "抽牌"
+  },
+  {
+   "flow": "write",
+   "label": "写入墓地"
+  },
+  {
+   "flow": "read",
+   "label": "洗回抽牌堆"
+  },
+  {
+   "flow": "neutral",
+   "label": "同一张卡 / 离场不回收"
+  }
+ ],
+ "footer": "Spotlight · 卡牌生命周期与墓地循环 · 由 fireworks-tech-graph Style 1 生成",
+ "footer_y": 1330
+}

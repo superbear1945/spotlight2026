@@ -43,8 +43,9 @@ namespace Spotlight
 
     /// <summary>
     /// 抽牌堆、手牌与墓地之间唯一流转的数据。
-    /// 为什么只有三个字段：一次部署会创建全新的 UnitState，来源卡不携带伤势、位置或行动状态，
-    /// 因此“卡片记录”和“战斗单位”是两套身份，牌库永远不会被战斗状态污染。
+    /// 为什么只有三个字段：一次部署会创建全新的 UnitState，单位只复制本记录的值（ID/卡种/阵营），
+    /// 不持有本记录引用；因此单位不携带伤势、位置或行动状态，牌堆永远不会被战斗状态污染，
+    /// 同一张卡也可以反复部署出多个互相独立的单位。
     /// </summary>
     public sealed class CardRecord
     {
@@ -62,15 +63,22 @@ namespace Spotlight
     /// <summary>
     /// 一次部署产生的可变实体。
     /// 输入：部署命令与卡牌记录；输出：棋盘上的可攻击、可移动目标。
-    /// 为什么与 CardRecord 分离：同名卡牌可以反复部署，每次都是独立身份与满血状态；
-    /// 覆盖升级会回收来源卡，但新单位的 ID 必须与原单位不同。
+    /// 为什么与 CardRecord 完全分离：同一张卡可以反复进入墓地、洗回、再部署，
+    /// 每次部署都生成独立身份、独立生命与行动状态的单位；单位只保存来源卡牌的
+    /// 值副本（ID/卡种/阵营），不持有 CardRecord 引用，因此场上的单位与抽牌堆、手牌、
+    /// 墓地中的卡牌互不影响，卡牌总数不会因单位存活而增加。
+    /// 覆盖升级只移除被覆盖的单位，本次部署的新单位 ID 必须与原单位不同。
     /// </summary>
     public sealed class UnitState
     {
         /// <summary>单位实例 ID（正数）。</summary>
         public long Id { get; internal set; }
-        /// <summary>来源卡牌记录；阵亡时它被放入所属阵营的回收区。</summary>
-        public CardRecord Source { get; internal set; }
+        /// <summary>来源卡牌实例 ID 的值副本；仅用于追溯，不引用抽牌堆/手牌/墓地中的卡牌。</summary>
+        public long SourceCardId { get; internal set; }
+        /// <summary>卡种 ID 的值副本，用于查询共享配置。</summary>
+        public string TypeId { get; internal set; }
+        /// <summary>所属阵营的值副本。</summary>
+        public Side Owner { get; internal set; }
         /// <summary>当前所在格。</summary>
         public Cell Position { get; internal set; }
         /// <summary>当前生命；在场单位跨回合保留伤势。</summary>
@@ -93,7 +101,7 @@ namespace Spotlight
 
     /// <summary>
     /// 独立的家实体。
-    /// 为什么不让家继承 Card：家不进入牌库、不参与互换、没有攻击力，也不受部署限制；
+    /// 为什么不让家继承 Card：家不进入抽牌堆、不参与互换、没有攻击力，也不受部署限制；
     /// 强行共用会引入大量“家不适用”的分支。家以负数 ID 参与攻击目标选择与快照。
     /// </summary>
     public sealed class HomeState
@@ -275,7 +283,7 @@ namespace Spotlight
         public IReadOnlyList<CardRecord> Hand { get; internal set; }
         /// <summary>玩家抽牌堆。</summary>
         public IReadOnlyList<CardRecord> DrawPile { get; internal set; }
-        /// <summary>玩家墓地。</summary>
+        /// <summary>玩家墓地：成功部署或主动弃置的玩家卡；抽牌堆耗尽时整体洗入抽牌堆。</summary>
         public IReadOnlyList<CardRecord> Graveyard { get; internal set; }
         /// <summary>Boss 独立回收区，不参与玩家洗牌。</summary>
         public IReadOnlyList<CardRecord> BossGraveyard { get; internal set; }

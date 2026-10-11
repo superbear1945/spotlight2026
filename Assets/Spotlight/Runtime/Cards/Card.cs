@@ -1,6 +1,6 @@
 // 卡牌视图组件：唯一同时用于“手牌实例”和“棋盘单位”的显示载体。
 // 设计约束：具体卡种不建立子类，Card 只持有组件引用、绑定身份并协调显示。
-// 身份有两种：CardRecord（牌库/手牌/墓地中的来源卡）与 UnitState（棋盘上的战斗实体）。
+// 身份有两种：CardRecord（抽牌堆/手牌/墓地中的来源卡）与 UnitState（棋盘上的战斗实体）。
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
@@ -100,7 +100,7 @@ namespace Spotlight
 
         /// <summary>
         /// 绑定为手牌实例。
-        /// 输入：卡种定义与牌库中的卡牌记录；输出：无。
+        /// 输入：卡种定义与抽牌堆中的卡牌记录；输出：无。
         /// 说明：手牌不绑定单位状态，因此生命等属性显示的是配置初值。
         /// </summary>
         public void BindHand(CardDefinitionSO definition, CardRecord record)
@@ -124,7 +124,9 @@ namespace Spotlight
             Configure(definition);
             _customText = false;
             _unit = unit;
-            _record = unit != null ? unit.Source : null;
+            // 棋盘单位只保存来源卡的值副本，不再持有卡牌记录；绑定棋盘身份时必须清空手牌记录，
+            // 避免同一个 Card 组件从“手牌”复用到“棋盘”时留下过期的手牌身份。
+            _record = null;
             if (_combat != null) _combat.Bind(unit);
             if (_resource != null) _resource.Bind(unit);
             Refresh();

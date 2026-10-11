@@ -60,7 +60,7 @@ namespace Spotlight.Tests
             Invoke(bootstrap, "OnCellClicked", deployCell);
             yield return WaitSeconds(SettleSeconds);
 
-            var deployedUnit = session.GetSnapshot().Units.FirstOrDefault(u => u.Source.Id == deployed.Id);
+            var deployedUnit = session.GetSnapshot().Units.FirstOrDefault(u => u.SourceCardId == deployed.Id);
             Assert.That(deployedUnit, Is.Not.Null, "部署后棋盘上没有对应单位");
 
             // 推进回合直到有己方单位可以移动（覆盖召唤失调与 Boss AI 回合）。
@@ -72,7 +72,7 @@ namespace Spotlight.Tests
                 TryDeploy(bootstrap, session, context.Hand, requireMoveDistance: true);
                 yield return WaitSeconds(SettleSeconds);
                 live = session.GetSnapshot().Units.FirstOrDefault(u =>
-                    u.Source.Owner == Side.Player &&
+                    u.Owner == Side.Player &&
                     session.GetLegalActions(new Selection(SelectionKind.Unit, u.Id)).Move.Count > 0);
                 if (live != null) break;
                 Invoke(bootstrap, "OnEndTurnRequested");
@@ -161,7 +161,7 @@ namespace Spotlight.Tests
             TryDeploy(bootstrap, session, context.Hand, requireMoveDistance: true);
             yield return WaitSeconds(SettleSeconds);
 
-            var unit = session.GetSnapshot().Units.FirstOrDefault(u => u.Source.Owner == Side.Player);
+            var unit = session.GetSnapshot().Units.FirstOrDefault(u => u.Owner == Side.Player);
             Assert.That(unit, Is.Not.Null, "没有部署成功任何己方单位");
             var card = board.GetCard(unit.Id);
             var cellRect = board.CellRect(unit.Position);
@@ -233,9 +233,9 @@ namespace Spotlight.Tests
                 var expected = board.CellRect(unit.Position);
                 var actualParent = card != null ? card.transform.parent : null;
                 var rect = card != null ? card.transform as RectTransform : null;
-                report.Append($"\n  单位 {unit.Source.TypeId}#{unit.Id} 快照={unit.Position} 格子={expected?.name} 卡牌父节点={actualParent?.name} 偏移={rect?.anchoredPosition} 缩放={rect?.localScale}");
+                report.Append($"\n  单位 {unit.TypeId}#{unit.Id} 快照={unit.Position} 格子={expected?.name} 卡牌父节点={actualParent?.name} 偏移={rect?.anchoredPosition} 缩放={rect?.localScale}");
                 if (card == null) { problems.Add($"单位 {unit.Id} 在棋盘上没有卡牌"); continue; }
-                if (actualParent != expected) problems.Add($"单位 {unit.Id}（{unit.Source.TypeId}）卡牌挂在 {actualParent?.name}，快照坐标是 {unit.Position}（应为 {expected?.name}）");
+                if (actualParent != expected) problems.Add($"单位 {unit.Id}（{unit.TypeId}）卡牌挂在 {actualParent?.name}，快照坐标是 {unit.Position}（应为 {expected?.name}）");
                 if (rect != null && rect.anchoredPosition.magnitude > CenterTolerance) problems.Add($"单位 {unit.Id} 卡牌偏移未归零：{rect.anchoredPosition}");
                 if (rect != null && rect.localScale.x < 0.5f) problems.Add($"单位 {unit.Id} 卡牌被缩放到不可见：{rect.localScale}");
             }
