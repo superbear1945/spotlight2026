@@ -78,7 +78,7 @@ namespace Spotlight.Tests
                 Assert.That(session.Execute(new GameCommand(CommandKind.Deploy, Side.Player, record.Id, deployCell)).Success, Is.True);
                 fixture.Render(session);
 
-                var unit = session.GetSnapshot().Units.Single(u => u.Source.Id == record.Id);
+                var unit = session.GetSnapshot().Units.Single(u => u.SourceCardId == record.Id);
                 var view = fixture.Board.GetCard(unit.Id);
                 Assert.That(view, Is.Not.Null, "部署后棋盘上没有生成卡牌");
                 var rect = (RectTransform)view.transform;
@@ -118,7 +118,7 @@ namespace Spotlight.Tests
                 Assert.That(session.Execute(new GameCommand(CommandKind.Deploy, Side.Player, record.Id, deployCell)).Success, Is.True);
                 fixture.Render(session);
 
-                var unit = session.GetSnapshot().Units.Single(u => u.Source.Id == record.Id);
+                var unit = session.GetSnapshot().Units.Single(u => u.SourceCardId == record.Id);
                 var view = fixture.Board.GetCard(unit.Id);
                 Assert.That(view, Is.Not.Null, "部署后棋盘上没有生成卡牌");
 

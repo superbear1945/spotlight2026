@@ -13,7 +13,9 @@ namespace Spotlight
     /// 输出：CommandResult（成功状态 + 有序事件）与 GameSnapshot（只读副本）。
     /// 为什么需要：玩家与 AI 必须共用同一规则入口，动画不得决定结算结果；
     /// 配置在构造时确定，调试“应用并重开”必须创建新对局，不能在旧局中原地修改配置。
-    /// 身份约定：CardRecord 是可循环的来源卡；UnitState 是一次部署产生的战斗实体，两者不可混用。
+    /// 身份约定：CardRecord 是可循环的来源卡；UnitState 是一次部署产生的战斗实体。
+    /// 单位只保存来源卡的值副本（SourceCardId/TypeId/Owner），不引用 CardRecord；
+    /// 玩家卡在成功部署时进入墓地，单位阵亡或被覆盖升级不再重复回收，牌堆总数恒定。
     /// </summary>
     public sealed class GameSession
     {
@@ -25,7 +27,7 @@ namespace Spotlight
         readonly List<CardRecord> _draw = new List<CardRecord>();
         /// <summary>玩家手牌。</summary>
         readonly List<CardRecord> _hand = new List<CardRecord>();
-        /// <summary>玩家墓地；抽牌堆耗尽时整体洗回。</summary>
+        /// <summary>玩家墓地：成功部署或主动弃置的玩家卡；抽牌堆耗尽时整体洗入抽牌堆。</summary>
         readonly List<CardRecord> _grave = new List<CardRecord>();
         /// <summary>Boss 独立回收区，不参与玩家洗牌。</summary>
         readonly List<CardRecord> _bossGrave = new List<CardRecord>();
@@ -205,7 +207,7 @@ namespace Spotlight
                 case CommandKind.Attack:
                     var attacker = _units.FirstOrDefault(u => u.Id == c.SubjectId);
                     if (!Available(attacker)) return "该单位本回合不能攻击";
-                    var target = Targets(attacker.Source.Owner).FirstOrDefault(t => t.Id == c.TargetId);
+                    var target = Targets(attacker.Owner).FirstOrDefault(t => t.Id == c.TargetId);
                     if (target == null || !CanAttack(attacker, attacker.Position, target.Position)) return "目标不在合法攻击范围";
                     // 只扣目标生命：不存在反击、连锁或动画回调产生的补充伤害。
                     attacker.Acted = true;
@@ -295,12 +297,12 @@ namespace Spotlight
             var existing = _units.FirstOrDefault(u => u.Position == p);
             if (type.RequiresUpgrade)
             {
-                if (existing == null || existing.Source.Owner != owner || existing.Source.TypeId != type.UpgradeFrom) return "需要覆盖指定的己方资源单位";
+                if (existing == null || existing.Owner != owner || existing.TypeId != type.UpgradeFrom) return "需要覆盖指定的己方资源单位";
             }
             else if (Occupied(p)) return "格子已被占用";
             if (type.DeployHomeOnly && !InHomeRegion(owner, p)) return "必须部署在己方区域";
-            if (type.Category == CardCategory.Attack && !InHomeRegion(owner, p) && !_units.Any(u => u.Source.Owner == owner && Type(u).Teleport?.PermitsAttackDeploy == true && u.Position.Distance(p) == 1)) return "攻击卡需要己方区域或己方星门四邻";
-            if (type.AvoidAdjacentSameType && _units.Any(u => u.Source.TypeId == type.Id && u.Position.Distance(p) == 1)) return "不能与同卡种单位四邻部署";
+            if (type.Category == CardCategory.Attack && !InHomeRegion(owner, p) && !_units.Any(u => u.Owner == owner && Type(u).Teleport?.PermitsAttackDeploy == true && u.Position.Distance(p) == 1)) return "攻击卡需要己方区域或己方星门四邻";
+            if (type.AvoidAdjacentSameType && _units.Any(u => u.TypeId == type.Id && u.Position.Distance(p) == 1)) return "不能与同卡种单位四邻部署";
             return null;
         }
 
@@ -308,28 +310,35 @@ namespace Spotlight
         /// 在指定格创建新单位。
         /// 输入：来源卡、目标格、firstSpawn（是否为 AI 兵位的首次成功部署）、兵位 ID（可空）。
         /// 输出：新建的 UnitState。
-        /// 规则：目标格已有单位时先按“被覆盖升级”回收；新单位总是满血，不继承旧伤势。
+        /// 规则：目标格已有单位时先按“被覆盖升级”移除；新单位总是满血，不继承旧伤势。
+        /// 玩家卡在本次成功部署时进入墓地，成为可再次抽到的循环卡；
+        /// 场上单位只保存值副本，与墓地中这张卡互不影响。
         /// firstSpawn 是唯一豁免召唤失调的入口：死亡补兵必须遵守“刚上场不能行动”。
         /// </summary>
         UnitState Place(CardRecord card, Cell p, bool firstSpawn, string slotId)
         {
             var covered = _units.FirstOrDefault(u => u.Position == p);
             if (covered != null) Remove(covered, false);
-            var u = new UnitState { Id = ++_nextUnit, Source = card, Position = p, Hp = _config.Cards[card.TypeId].Combat.Hp, Acted = !firstSpawn && Rules.SummoningSickness, UpkeepPaid = true, DeploymentOrder = ++_order, BossSlotId = slotId };
+            var u = new UnitState { Id = ++_nextUnit, SourceCardId = card.Id, TypeId = card.TypeId, Owner = card.Owner, Position = p, Hp = _config.Cards[card.TypeId].Combat.Hp, Acted = !firstSpawn && Rules.SummoningSickness, UpkeepPaid = true, DeploymentOrder = ++_order, BossSlotId = slotId };
             _units.Add(u);
+            // 玩家卡：成功部署即进入墓地，成为可再次抽到的循环卡；
+            // 场上单位只保存值副本，与墓地中的这张卡互不影响。
+            if (card.Owner == Side.Player) _grave.Add(card);
             Emit("deploy", $"{SideName(card.Owner)}部署 {Type(u).Name} 至 {p}", u.Id);
             return u;
         }
 
         /// <summary>
-        /// 把单位移出棋盘并回收来源卡。
+        /// 把单位移出棋盘。
         /// 输入：单位与 death 标记；输出：无。
+        /// 玩家卡：部署时已经进入墓地，这里不再回收，避免同一张卡重复入堆（牌堆总数因此恒定）。
+        /// Boss 卡：不参与玩家循环，阵亡时仍写入独立回收区，供快照展示。
         /// 补兵计时只对 AI 兵位且为阵亡时启动（death=true）：覆盖升级把到期回合设为 long.MaxValue，永不自动补回。
         /// </summary>
         void Remove(UnitState u, bool death)
         {
             _units.Remove(u);
-            (u.Source.Owner == Side.Player ? _grave : _bossGrave).Add(u.Source);
+            if (u.Owner == Side.Boss) _bossGrave.Add(new CardRecord(u.SourceCardId, u.TypeId, Side.Boss));
             if (u.BossSlotId != null)
             {
                 var slot = _replacements.Single(s => s.SlotId == u.BossSlotId);
@@ -337,7 +346,7 @@ namespace Spotlight
                 slot.DueRound = death ? _round + Rules.BossRespawnDelay : long.MaxValue;
                 slot.WaitingForSpace = false;
             }
-            Emit(death ? "death" : "upgrade", $"{Type(u).Name} {(death ? "阵亡" : "被覆盖升级")}，来源卡进入回收区", u.Id);
+            Emit(death ? "death" : "upgrade", $"{Type(u).Name} {(death ? "阵亡" : "被覆盖升级")}，场上单位移除，来源卡不重复回收", u.Id);
         }
 
         /// <summary>
@@ -353,13 +362,13 @@ namespace Spotlight
             _phase = MatchPhase.Action;
             _plays = side == Side.Player ? Rules.PlayerPlays : Rules.BossPlays;
             foreach (var h in _homes.Where(h => h.Owner == side)) h.Acted = false;
-            foreach (var u in _units.Where(u => u.Source.Owner == side)) { u.Acted = false; u.UpkeepPaid = true; }
+            foreach (var u in _units.Where(u => u.Owner == side)) { u.Acted = false; u.UpkeepPaid = true; }
             Emit("turn", $"第 {_round} 回合 · {SideName(side)}行动");
             if (side == Side.Player)
             {
                 if (!Rules.AccumulateResources) _resources = 0;
-                _resources += _config.PlayerHomeProduce + _units.Where(u => u.Source.Owner == side).Sum(u => (long)(Type(u).Resource?.Produce ?? 0));
-                foreach (var u in _units.Where(u => u.Source.Owner == side).OrderBy(u => u.DeploymentOrder))
+                _resources += _config.PlayerHomeProduce + _units.Where(u => u.Owner == side).Sum(u => (long)(Type(u).Resource?.Produce ?? 0));
+                foreach (var u in _units.Where(u => u.Owner == side).OrderBy(u => u.DeploymentOrder))
                 {
                     var fee = Type(u).Resource?.Upkeep ?? 0;
                     u.UpkeepPaid = _resources >= fee;
@@ -387,8 +396,9 @@ namespace Spotlight
         /// <summary>
         /// 玩家回合开始抽牌。
         /// 输入：无（数量取自规则）；输出：无。
-        /// 关键规则：逐张抽取，抽到一半牌库耗尽时把墓地整体洗回并继续本次抽牌；
-        /// 场上单位与现有手牌绝不参与洗回，因此只循环已有卡牌，不会复制新牌。
+        /// 关键规则：逐张抽取，抽到一半抽牌堆耗尽时把墓地整体洗入抽牌堆并继续本次抽牌；
+        /// 场上单位与现有手牌绝不参与洗回，因此只循环墓地中已有的卡牌，不会复制新牌；
+        /// 由于每次成功部署都会把玩家卡放入墓地，随游戏推进墓地通常不会长期为空。
         /// </summary>
         void DrawCards()
         {
@@ -400,7 +410,7 @@ namespace Spotlight
                     _draw.AddRange(_grave);
                     _grave.Clear();
                     Shuffle(_draw);
-                    Emit("shuffle", $"墓地 {_draw.Count} 张牌洗回牌库");
+                    Emit("shuffle", $"墓地 {_draw.Count} 张牌洗入抽牌堆");
                 }
                 if (_draw.Count == 0) break;
                 var index = _draw.Count - 1;
@@ -464,7 +474,7 @@ namespace Spotlight
         IEnumerable<Target> Targets(Side attacker)
         {
             foreach (var h in _homes.Where(h => h.Owner != attacker)) yield return new Target { Home = h, Name = SideName(h.Owner) + "的家" };
-            foreach (var u in _units.Where(u => u.Source.Owner != attacker)) yield return new Target { Unit = u, Name = Type(u).Name };
+            foreach (var u in _units.Where(u => u.Owner != attacker)) yield return new Target { Unit = u, Name = Type(u).Name };
         }
 
         /// <summary>目标分类权重：玩家家 0、攻击卡 1、资源卡 2、特殊卡 3，用于 AI 的并列排序。</summary>
@@ -487,7 +497,7 @@ namespace Spotlight
         /// </summary>
         void RunBoss()
         {
-            foreach (var u in _units.Where(u => u.Source.Owner == Side.Boss).OrderBy(u => u.DeploymentOrder).ToArray())
+            foreach (var u in _units.Where(u => u.Owner == Side.Boss).OrderBy(u => u.DeploymentOrder).ToArray())
             {
                 if (_phase == MatchPhase.Finished) return;
                 if (!u.CanAct) continue;
@@ -574,10 +584,10 @@ namespace Spotlight
         }
 
         /// <summary>判断单位本回合是否可行动。输入：单位（可为 null）；输出：是否可用。</summary>
-        bool Available(UnitState u) => u != null && u.Source.Owner == _activeSide && u.CanAct;
+        bool Available(UnitState u) => u != null && u.Owner == _activeSide && u.CanAct;
 
         /// <summary>按来源卡种号查询共享配置。输入：单位；输出：卡种描述。</summary>
-        CardArchetype Type(UnitState u) => _config.Cards[u.Source.TypeId];
+        CardArchetype Type(UnitState u) => _config.Cards[u.TypeId];
 
         /// <summary>判断阵营是否位于棋盘左侧。输入：阵营；输出：是否在左（Boss 与玩家相反）。</summary>
         bool IsLeft(Side side) => side == Side.Player ? Rules.PlayerOnLeft : !Rules.PlayerOnLeft;

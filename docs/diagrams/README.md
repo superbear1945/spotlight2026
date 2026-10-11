@@ -20,7 +20,8 @@ docs/diagrams/
 │   └── 01-modules.drawio          draw.io 原生文件（用于后续手工调整）
 ├── 02-cards/     （同上 6 个文件，前缀为 02-cards）
 ├── 03-dataflow/  （同上 6 个文件，前缀为 03-dataflow）
-└── 04-turnflow/  （同上 6 个文件，前缀为 04-turnflow）
+├── 04-turnflow/  （同上 6 个文件，前缀为 04-turnflow）
+└── 05-card-lifecycle/ （卡牌生命周期与墓地循环；json / svg / png / html / drawio 共 5 个文件）
 ```
 
 文件名保留完整前缀（`02-cards/02-cards.svg`）而不是统一叫 `diagram.svg`，是为了在任何地方看到单个文件时都能立刻知道它属于哪张图，也便于全文检索与 CI 产物归类。
@@ -33,6 +34,7 @@ docs/diagrams/
 | [`02-cards`](02-cards/) | `Card`、三个能力组件、三个组件 SO、`CardDefinitionSO` 与 `UnitState` / `CardRecord` / `HomeState` / `GameSession` 的关系 | `er-diagram` |
 | [`03-dataflow`](03-dataflow/) | Excel 编译 → 生成资产（SO + Prefab）→ 配置加载 → GameSession → 快照 → UI，含调试草稿 / JSON 导入导出 / “应用并重开”分支 | `data-flow` |
 | [`04-turnflow`](04-turnflow/) | 玩家回合（恢复行动 → 资源结算 → 维持费 → 抽牌 → 操作）→ 超限弃牌 → Boss 回合（恢复行动 → 补兵 → 按部署顺序行动 → 自动结束）→ 胜负检查 | `flowchart` |
+| [`05-card-lifecycle`](05-card-lifecycle/) | 玩家卡生命周期：成功部署即入墓地 → 抽牌堆耗尽时洗回 → 同一张卡可反复部署出多个独立单位；阵亡/覆盖只移除单位、不重复回收；Boss 使用独立回收区 | `flowchart` |
 
 ## 3. 生成与检查命令
 
@@ -45,6 +47,10 @@ python "$SKILL/scripts/fireworks.py" render architecture docs/diagrams/01-module
 python "$SKILL/scripts/fireworks.py" render er-diagram  docs/diagrams/02-cards/02-cards.json      docs/diagrams/02-cards/02-cards.svg      --report docs/diagrams/02-cards/02-cards.layout.json
 python "$SKILL/scripts/fireworks.py" render data-flow   docs/diagrams/03-dataflow/03-dataflow.json  docs/diagrams/03-dataflow/03-dataflow.svg  --report docs/diagrams/03-dataflow/03-dataflow.layout.json
 python "$SKILL/scripts/fireworks.py" render flowchart   docs/diagrams/04-turnflow/04-turnflow.json  docs/diagrams/04-turnflow/04-turnflow.svg  --report docs/diagrams/04-turnflow/04-turnflow.layout.json
+
+# 05-card-lifecycle 由当前版本的 generate-from-template.py 生成（该工具不产出 layout.json）：
+# python "$SKILL/scripts/generate-from-template.py" flowchart docs/diagrams/05-card-lifecycle/05-card-lifecycle.svg < docs/diagrams/05-card-lifecycle/05-card-lifecycle.json
+# 再用 spec-to-drawio.py 生成 .drawio；PNG/HTML 见图 05 目录（PNG 为 SVG 的 2 倍尺寸）。
 
 # 2) 结构、几何与构图检查（5 项全部为 true 才算通过）
 python "$SKILL/scripts/fireworks.py" check docs/diagrams/01-modules/01-modules.svg

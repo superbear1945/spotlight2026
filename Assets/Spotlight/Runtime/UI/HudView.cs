@@ -189,7 +189,7 @@ namespace Spotlight
             {
                 var unit = snapshot.Units.FirstOrDefault(u => u.Id == selection.Id);
                 if (unit == null) return string.Empty;
-                var text = configuration.Cards.TryGetValue(unit.Source.TypeId, out var arch) ? CardText.DetailLine(arch, unit.Source.Owner) : string.Empty;
+                var text = configuration.Cards.TryGetValue(unit.TypeId, out var arch) ? CardText.DetailLine(arch, unit.Owner) : string.Empty;
                 return text + Environment.NewLine + $"当前生命 {unit.Hp} · 行动机会 {(unit.CanAct ? "可用" : unit.Acted ? "已用完" : "维持费不足")}";
             }
             if (selection.Kind == SelectionKind.Home)
