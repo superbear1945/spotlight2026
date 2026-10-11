@@ -190,6 +190,231 @@ namespace Spotlight.Tests
         }
 
         /// <summary>
+        /// 切换选中对象时，上一张卡牌的放大表现必须恢复原状。
+        /// 输入：无；输出：NUnit 断言结果。
+        /// 为什么需要：选中表现由「选中标记」（每次渲染全量重算）与「放大补间」（只在点击时播放）两部分组成，
+        /// 过去没有任何地方播放取消，于是点第二张牌后第一张永远停在放大状态，看起来像“没有回到手牌里”。
+        /// 这里断言的不只是手牌互选，还包括“改选自己的家”这种不播放放大的选择路径。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SelectingAnotherCardOrHomeRestoresThePreviousCard()
+        {
+            var context = new SceneContext();
+            yield return context.Load();
+            var hand = context.Hand;
+            var records = context.Session.GetSnapshot().Hand.ToArray();
+            Assert.That(records.Length, Is.GreaterThanOrEqualTo(2), "手牌不足两张，无法验证选中切换");
+
+            var first = hand.GetCard(records[0].Id);
+            var second = hand.GetCard(records[1].Id);
+            Assert.That(first, Is.Not.Null, "第一张手牌缺少视图");
+            Assert.That(second, Is.Not.Null, "第二张手牌缺少视图");
+            var firstRect = (RectTransform)first.transform;
+            var secondRect = (RectTransform)second.transform;
+
+            // 点第一张：它必须放大（这是既有的点击反馈，不能被本次修复破坏）。
+            Invoke(context.Bootstrap, "OnCardClicked", first);
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(firstRect.localScale.x, Is.GreaterThan(1.01f), $"点击第一张手牌后没有放大：{firstRect.localScale}");
+
+            // 点第二张：第二张放大，第一张必须回到原始缩放。
+            Invoke(context.Bootstrap, "OnCardClicked", second);
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(secondRect.localScale.x, Is.GreaterThan(1.01f), $"点击第二张手牌后它没有放大：{secondRect.localScale}");
+            Assert.That(firstRect.localScale.x, Is.EqualTo(1f).Within(0.01f), $"切换选中后第一张手牌没有恢复原状：{firstRect.localScale}");
+
+            // 改选自己的家：家不参与放大表现，但上一张手牌同样必须恢复。
+            var board = context.Board;
+            var home = context.Session.GetSnapshot().Homes.First(h => h.Owner == Side.Player);
+            Invoke(context.Bootstrap, "OnCellClicked", home.Position);
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(secondRect.localScale.x, Is.EqualTo(1f).Within(0.01f), $"改选自己的家之后手牌没有恢复：{secondRect.localScale}");
+            var homeRect = board.GetCard(home.Id) != null ? (RectTransform)board.GetCard(home.Id).transform : null;
+            Assert.That(homeRect, Is.Not.Null, "棋盘上缺少家的卡牌视图");
+            Assert.That(homeRect.localScale.x, Is.EqualTo(1f).Within(0.01f), $"家不应该被放大：{homeRect.localScale}");
+        }
+
+        /// <summary>
+        /// 再次点击已经选中的手牌必须取消选中。
+        /// 输入：无；输出：NUnit 断言结果。
+        /// 为什么需要：过去重复点击同一张手牌没有任何响应，玩家无法主动放弃已选中的牌；
+        /// 除了外观复位，这里还断言“取消之后点原来的落点不会落子”，证明选择确实被清空而不是只改了表现。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ClickingTheSelectedHandCardAgainCancelsTheSelection()
+        {
+            var context = new SceneContext();
+            yield return context.Load();
+            var session = context.Session;
+            var hand = context.Hand;
+
+            // 找一张当前可部署的手牌，并记下它的一个合法落点（取消选中后该落点必须失效）。
+            var chosen = default(CardRecord);
+            var target = default(Cell);
+            foreach (var record in session.GetSnapshot().Hand)
+            {
+                var options = session.GetLegalActions(new Selection(SelectionKind.Hand, record.Id));
+                if (options.Deploy.Count <= 0) continue;
+                chosen = record;
+                target = options.Deploy[0];
+                break;
+            }
+            Assert.That(chosen, Is.Not.Null, "初始手牌里没有可部署的卡");
+            var card = hand.GetCard(chosen.Id);
+            Assert.That(card, Is.Not.Null, "手牌缺少对应视图");
+            var rect = (RectTransform)card.transform;
+
+            // 第一次点击：进入选中状态并放大。
+            Invoke(context.Bootstrap, "OnCardClicked", card);
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(rect.localScale.x, Is.GreaterThan(1.01f), $"首次点击没有进入选中状态：{rect.localScale}");
+
+            // 第二次点击同一张：取消选中并恢复原状。
+            Invoke(context.Bootstrap, "OnCardClicked", card);
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(rect.localScale.x, Is.EqualTo(1f).Within(0.01f), $"重复点击没有取消选中：{rect.localScale}");
+
+            // 取消之后点击原先的落点不得落子：牌仍在手上，也没有产生部署结算。
+            Invoke(context.Bootstrap, "OnCellClicked", target);
+            yield return WaitSeconds(SettleSeconds);
+            var snapshot = session.GetSnapshot();
+            Assert.That(snapshot.Hand.Any(c => c.Id == chosen.Id), Is.True, "取消选中后仍然把牌打了出去");
+            Assert.That(snapshot.Graveyard, Is.Empty, "取消选中后仍然产生了部署结算");
+            Assert.That(snapshot.Units.Any(u => u.SourceCardId == chosen.Id), Is.False, "取消选中后棋盘上出现了该卡的单位");
+        }
+
+        /// <summary>
+        /// 再次点击已经选中的棋盘单位必须取消选中。
+        /// 输入：无；输出：NUnit 断言结果。
+        /// 为什么需要：单位与手牌共用“点第二次取消”的交互，除了选中标记必须消失，
+        /// 放大补间也必须复位，否则取消后棋子仍然比别的棋子大一圈。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ClickingTheSelectedUnitAgainCancelsTheSelection()
+        {
+            var context = new SceneContext();
+            yield return context.Load();
+            var session = context.Session;
+            var board = context.Board;
+
+            Assert.That(TryDeploy(context.Bootstrap, session, context.Hand, requireMoveDistance: false), Is.True, "初始手牌里没有可部署的卡");
+            yield return WaitSeconds(SettleSeconds);
+            var unit = session.GetSnapshot().Units.FirstOrDefault(u => u.Owner == Side.Player);
+            Assert.That(unit, Is.Not.Null, "部署后棋盘上没有己方单位");
+            var card = board.GetCard(unit.Id);
+            Assert.That(card, Is.Not.Null, "棋盘上缺少该单位的卡牌视图");
+            var rect = (RectTransform)card.transform;
+
+            // 第一次点击：选中并放大。
+            Invoke(context.Bootstrap, "OnCellClicked", unit.Position);
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(card.IsSelected, Is.True, "首次点击没有选中单位");
+            Assert.That(rect.localScale.x, Is.GreaterThan(1.01f), $"选中单位后没有放大：{rect.localScale}");
+
+            // 第二次点击同一格：取消选中，标记与放大都要复位。
+            Invoke(context.Bootstrap, "OnCellClicked", unit.Position);
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(card.IsSelected, Is.False, "重复点击没有取消单位的选中状态");
+            Assert.That(rect.localScale.x, Is.EqualTo(1f).Within(0.01f), $"取消选中后单位没有恢复原状：{rect.localScale}");
+        }
+
+        /// <summary>
+        /// 再次点击自己的家必须取消选中，并且取消之后不能再执行家移动。
+        /// 输入：无；输出：NUnit 断言结果。
+        /// 为什么需要：家没有放大补间、也没有专属选中标记，它的“已选中”只能通过“点相邻格能否移动”来观察，
+        /// 因此这里用“取消后点击原合法格不再移动 / 重新选中后点击同一格必定移动”这一对断言来证明选中状态真的被清空。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ClickingTheSelectedHomeAgainCancelsTheSelection()
+        {
+            var context = new SceneContext();
+            yield return context.Load();
+            var session = context.Session;
+            var board = context.Board;
+
+            var home = session.GetSnapshot().Homes.First(h => h.Owner == Side.Player);
+            var homeCard = board.GetCard(home.Id);
+            Assert.That(homeCard, Is.Not.Null, "棋盘上缺少家的卡牌视图");
+            var moves = session.GetLegalActions(new Selection(SelectionKind.Home, home.Id)).Move;
+            Assert.That(moves.Count, Is.GreaterThan(0), "玩家家没有可移动的相邻格，无法验证取消选中");
+            var target = moves[0];
+
+            // 第一次点击家：选中。
+            Invoke(context.Bootstrap, "OnCellClicked", home.Position);
+            yield return WaitSeconds(SettleSeconds);
+
+            // 第二次点击家：取消选中。
+            Invoke(context.Bootstrap, "OnCellClicked", home.Position);
+            yield return WaitSeconds(SettleSeconds);
+
+            // 取消之后点击原本合法的相邻格：家不得移动（证明选择确实被清空，而不是只改了外观）。
+            Invoke(context.Bootstrap, "OnCellClicked", target);
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(PlayerHome(session).Position, Is.EqualTo(home.Position), "取消选中后家仍然移动了");
+
+            // 对照：重新选中家之后点击同一格，家必须移动（证明该目标本来就是合法的，前一步的失败不是目标非法导致的）。
+            Invoke(context.Bootstrap, "OnCellClicked", home.Position);
+            Invoke(context.Bootstrap, "OnCellClicked", target);
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(PlayerHome(session).Position, Is.EqualTo(target), "重新选中家后没有执行移动，说明前面的断言不成立");
+        }
+
+        /// <summary>取得玩家家。输入：对局；输出：玩家家状态。</summary>
+        static HomeState PlayerHome(GameSession session) => session.GetSnapshot().Homes.First(h => h.Owner == Side.Player);
+
+        /// <summary>
+        /// 点击“结束回合”必须同时清空场上与手牌的选中状态。
+        /// 输入：无；输出：NUnit 断言结果。
+        /// 为什么需要：回合切换后若还留着上一回合的选中，玩家会看到某张牌仍在放大状态或某个棋子仍带高亮，
+        /// 误以为它仍是当前选择。断言顺序为先单位后手牌：单位在己方区域，第一个 AI 回合不可能打到它；
+        /// 而每次结束回合都会因抽牌超上限进入弃牌阶段，所以手牌那次必须放在弃牌处理之后。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EndingTurnClearsBoardAndHandSelection()
+        {
+            var context = new SceneContext();
+            yield return context.Load();
+            var session = context.Session;
+            var board = context.Board;
+
+            // 先部署一个己方单位，用来验证“场上的选中”也会被清空。
+            Assert.That(TryDeploy(context.Bootstrap, session, context.Hand, requireMoveDistance: false), Is.True, "初始手牌里没有可部署的卡");
+            yield return WaitSeconds(SettleSeconds);
+            var unit = session.GetSnapshot().Units.FirstOrDefault(u => u.Owner == Side.Player);
+            Assert.That(unit, Is.Not.Null, "部署后棋盘上没有己方单位");
+            var unitCard = board.GetCard(unit.Id);
+            Assert.That(unitCard, Is.Not.Null, "棋盘上缺少该单位的卡牌视图");
+            var unitRect = (RectTransform)unitCard.transform;
+
+            // 选中单位 → 结束回合：单位必须取消选中并复位。
+            Invoke(context.Bootstrap, "OnCellClicked", unit.Position);
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(unitCard.IsSelected, Is.True, "点击棋子没有选中单位");
+            Invoke(context.Bootstrap, "OnEndTurnRequested");
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(unitCard.IsSelected, Is.False, "结束回合后棋盘单位仍处于选中状态");
+            Assert.That(unitRect.localScale.x, Is.EqualTo(1f).Within(0.01f), $"结束回合后棋盘单位没有复位：{unitRect.localScale}");
+
+            // 结束回合会让玩家抽牌超过上限而进入弃牌阶段，先弃到上限才能继续操作手牌。
+            yield return FinishDiscard(context.Bootstrap, session, context.Hand);
+
+            // 选中一张手牌 → 结束回合：手牌必须取消选中并复位。
+            var record = session.GetSnapshot().Hand.First();
+            var handCard = context.Hand.GetCard(record.Id);
+            Assert.That(handCard, Is.Not.Null, "手牌缺少对应视图");
+            var handRect = (RectTransform)handCard.transform;
+            Invoke(context.Bootstrap, "OnCardClicked", handCard);
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(handCard.IsSelected, Is.True, "点击手牌没有进入选中状态");
+            Assert.That(handRect.localScale.x, Is.GreaterThan(1.01f), $"选中的手牌没有放大：{handRect.localScale}");
+
+            Invoke(context.Bootstrap, "OnEndTurnRequested");
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(handCard.IsSelected, Is.False, "结束回合后手牌仍处于选中状态");
+            Assert.That(handRect.localScale.x, Is.EqualTo(1f).Within(0.01f), $"结束回合后手牌没有复位：{handRect.localScale}");
+        }
+
+        /// <summary>
         /// 部署第一张可部署的手牌。
         /// 输入：引导器、对局、手牌视图，以及是否只考虑带移动距离的卡；输出：是否成功部署。
         /// 为什么需要：移动相关用例必须保证场上有“能移动”的己方单位，

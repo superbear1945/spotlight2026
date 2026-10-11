@@ -224,8 +224,8 @@ namespace Spotlight
                 case CommandKind.Swap:
                     var a = _units.FirstOrDefault(u => u.Id == c.SubjectId);
                     var b = _units.FirstOrDefault(u => u.Id == c.TargetId);
-                    if (!Rules.AdjacentSwap || !Available(a) || !Available(b) || a == b || a.Position.Distance(b.Position) != 1) return "双方必须为相邻且可行动的己方普通单位";
-                    // 互换独立于移动距离：零移动单位也能参加，双方同时消耗行动机会。
+                    if (!Rules.AdjacentSwap || !Swappable(a) || !Swappable(b) || a == b || a.Position.Distance(b.Position) != 1) return "双方必须为相邻且可行动的己方非资源单位";
+                    // 互换独立于移动距离：零移动的非资源单位也能参加，双方同时消耗行动机会。
                     var old = a.Position;
                     a.Position = b.Position;
                     b.Position = old;
@@ -280,7 +280,9 @@ namespace Spotlight
                 {
                     actions.Move = Paths(u.Position).Where(p => p.Value.Count > 0 && p.Value.Count <= Type(u).Combat.MoveDistance).Select(p => p.Key).ToArray();
                     actions.Attack = Targets(_activeSide).Where(t => CanAttack(u, u.Position, t.Position)).Select(t => t.Position).ToArray();
-                    if (Rules.AdjacentSwap) actions.Swap = _units.Where(v => v != u && Available(v) && u.Position.Distance(v.Position) == 1).Select(v => v.Position).ToArray();
+                    // 资源卡既不发起互换也不作为互换目标，因此它选中时没有互换高亮，
+                    // 点击相邻己方卡牌会落到“切换选中对象”这条分支上（与关闭 adjacentSwap 时的行为一致）。
+                    if (Rules.AdjacentSwap && Swappable(u)) actions.Swap = _units.Where(v => v != u && Swappable(v) && u.Position.Distance(v.Position) == 1).Select(v => v.Position).ToArray();
                 }
             }
             return actions;
@@ -585,6 +587,17 @@ namespace Spotlight
 
         /// <summary>判断单位本回合是否可行动。输入：单位（可为 null）；输出：是否可用。</summary>
         bool Available(UnitState u) => u != null && u.Owner == _activeSide && u.CanAct;
+
+        /// <summary>
+        /// 判断单位能否参与互换。
+        /// 输入：单位（可为 null）；输出：true 表示它可以作为互换的发起方或目标。
+        /// 为什么单独成判定：资源卡只提供产出、按普通单位规则移动，但规则上不参与互换
+        /// （见 docs/玩法.md 的互换段与 docs/游戏内名词.md 的互换条目），
+        /// 因此互换需要一个比 Available 更窄的条件；与 Available 分开后，
+        /// 高亮（GetLegalActions）与结算（ExecuteCommand）共用同一份判定，
+        /// 不会出现“没有高亮、点下去却换了位置”的分叉。
+        /// </summary>
+        bool Swappable(UnitState u) => Available(u) && Type(u).Category != CardCategory.Resource;
 
         /// <summary>按来源卡种号查询共享配置。输入：单位；输出：卡种描述。</summary>
         CardArchetype Type(UnitState u) => _config.Cards[u.TypeId];
