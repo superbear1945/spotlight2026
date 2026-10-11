@@ -27,7 +27,7 @@
    "width": 1440,
    "height": 460,
    "label": "对局运行状态",
-   "subtitle": "仅本局内存；UnitState 与 CardRecord 分离，HomeState 独立",
+   "subtitle": "仅本局内存；UnitState 只存来源卡值副本，成功部署即入墓地，HomeState 独立",
    "preserve_case": true
   }
  ],
@@ -139,7 +139,7 @@
    "height": 110,
    "label": "Card",
    "type_label": "MonoBehaviour · 显示载体",
-   "sublabel": "_definition · 三个组件 · _record／_unit",
+   "sublabel": "_definition · 三个组件 · _record（手牌）／_unit（棋盘）",
    "fill": "#ecfdf5",
    "stroke": "#10b981",
    "flat": true
@@ -153,7 +153,7 @@
    "height": 120,
    "label": "UnitState",
    "type_label": "棋盘战斗单位",
-   "sublabel": "Id · Source · Position · Hp · Acted · DeploymentOrder",
+   "sublabel": "Id · SourceCardId · TypeId · Owner · Position · Hp",
    "fill": "#f0fdfa",
    "stroke": "#0d9488",
    "flat": true
@@ -167,7 +167,7 @@
    "height": 120,
    "label": "HomeState",
    "type_label": "独立的家状态",
-   "sublabel": "Owner · Position · Hp · Acted（不进入牌库）",
+   "sublabel": "Owner · Position · Hp · Acted（不进入抽牌堆）",
    "fill": "#f0fdfa",
    "stroke": "#0d9488",
    "flat": true
@@ -194,8 +194,8 @@
    "width": 340,
    "height": 120,
    "label": "CardRecord",
-   "type_label": "牌库／手牌／墓地身份",
-   "sublabel": "Id · TypeId · Owner（不含伤势与位置）",
+   "type_label": "抽牌堆／手牌／墓地身份",
+   "sublabel": "Id · TypeId · Owner；成功部署即进入墓地",
    "fill": "#f0fdfa",
    "stroke": "#0d9488",
    "flat": true
@@ -340,7 +340,7 @@
    "source_port": "bottom",
    "target_port": "top",
    "flow": "data",
-   "label": "Source：来源卡牌 ID"
+   "label": "SourceCardId：来源卡牌 ID 值副本"
   },
   {
    "id": "e-session-unit",

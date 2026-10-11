@@ -254,7 +254,7 @@ namespace Spotlight
         /// <summary>查找某格上属于指定阵营的单位 ID。输入：快照、坐标与阵营；输出：单位 ID（0 表示无）。</summary>
         static long FindUnitAt(GameSnapshot snapshot, Cell cell, Side owner)
         {
-            var unit = snapshot.Units.FirstOrDefault(u => u.Position == cell && u.Source.Owner == owner);
+            var unit = snapshot.Units.FirstOrDefault(u => u.Position == cell && u.Owner == owner);
             return unit != null ? unit.Id : 0;
         }
 

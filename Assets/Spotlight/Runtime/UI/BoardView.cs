@@ -199,8 +199,8 @@ namespace Spotlight
                 Place(unit.Id, unit.Position, () => CreateUnit(unit));
                 if (_unitCards.TryGetValue(unit.Id, out var card) && card != null)
                 {
-                    card.BindUnit(_asset != null ? _asset.Find(unit.Source.TypeId) : null, unit);
-                    card.SetBaseColor(SequenceColor(unit.Source.TypeId, unit.Source.Owner));
+                    card.BindUnit(_asset != null ? _asset.Find(unit.TypeId) : null, unit);
+                    card.SetBaseColor(SequenceColor(unit.TypeId, unit.Owner));
                 }
             }
             var removed = new List<long>();
@@ -281,8 +281,8 @@ namespace Spotlight
         /// <summary>创建单位视图。输入：单位状态；输出：卡牌视图。</summary>
         Card CreateUnit(UnitState unit)
         {
-            var card = CardFactory.Create(_asset, _cardFallbackPrefab, transform, unit.Source.TypeId);
-            if (card != null) card.SetBaseColor(SequenceColor(unit.Source.TypeId, unit.Source.Owner));
+            var card = CardFactory.Create(_asset, _cardFallbackPrefab, transform, unit.TypeId);
+            if (card != null) card.SetBaseColor(SequenceColor(unit.TypeId, unit.Owner));
             return card;
         }
 
