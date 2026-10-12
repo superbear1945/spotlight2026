@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 namespace Spotlight
 {
@@ -35,6 +36,8 @@ namespace Spotlight
         readonly Dictionary<long, Card> _unitCards = new Dictionary<long, Card>();
         /// <summary>实体 ID（单位或家）→ 上一帧所在格，用于移动动画起点。</summary>
         readonly Dictionary<long, Cell> _lastPositions = new Dictionary<long, Cell>();
+        /// <summary>地面炸弹角标，与单位视图分离以支持同格显示。</summary>
+        readonly Dictionary<Cell, TextMeshProUGUI> _bombMarkers = new Dictionary<Cell, TextMeshProUGUI>();
 
         /// <summary>本局配置索引；Build 时写入。</summary>
         GameConfiguration _config;
@@ -131,6 +134,8 @@ namespace Spotlight
         /// <summary>销毁全部单位与家视图。输入：无；输出：无。用途：重开与重建棋盘前清理。</summary>
         public void ClearUnits()
         {
+            foreach (var marker in _bombMarkers.Values) if (marker != null) Destroy(marker.transform.parent.gameObject);
+            _bombMarkers.Clear();
             foreach (var pair in _unitCards) if (pair.Value != null) Destroy(pair.Value.gameObject);
             _unitCards.Clear();
             _lastPositions.Clear();
@@ -155,7 +160,57 @@ namespace Spotlight
             ApplyHighlights(actions);
             SyncHomes(snapshot);
             SyncUnits(snapshot);
+            SyncBombs(snapshot);
             ApplySelection(selection);
+        }
+
+        /// <summary>
+        /// 同步炸弹角标与倒计时。输入：只读快照；输出：右上角非交互标记。
+        /// 角标不进入 UnitCards，不抢占点击；旧炸弹爆炸或重开后立即移除，字体复用现有卡牌字体。
+        /// </summary>
+        void SyncBombs(GameSnapshot snapshot)
+        {
+            var positions = new HashSet<Cell>(snapshot.BossBombs.Select(b => b.Position));
+            foreach (var cell in _bombMarkers.Keys.Where(c => !positions.Contains(c)).ToArray())
+            {
+                if (_bombMarkers[cell] != null) Destroy(_bombMarkers[cell].transform.parent.gameObject);
+                _bombMarkers.Remove(cell);
+            }
+            foreach (var bomb in snapshot.BossBombs)
+            {
+                if (!_bombMarkers.TryGetValue(bomb.Position, out var label) || label == null)
+                {
+                    var cell = CellRect(bomb.Position);
+                    if (cell == null) continue;
+                    var marker = new GameObject("BossBombMarker", typeof(RectTransform), typeof(Image));
+                    var rect = (RectTransform)marker.transform;
+                    rect.SetParent(cell, false);
+                    rect.anchorMin = new Vector2(0.55f, 0.72f);
+                    rect.anchorMax = Vector2.one;
+                    rect.offsetMin = rect.offsetMax = Vector2.zero;
+                    var background = marker.GetComponent<Image>();
+                    background.color = CardText.OwnerColor(Side.Boss, _config.Presentation);
+                    background.raycastTarget = false;
+                    var text = new GameObject("BombCountdown", typeof(RectTransform), typeof(TextMeshProUGUI));
+                    text.transform.SetParent(rect, false);
+                    var textRect = (RectTransform)text.transform;
+                    textRect.anchorMin = Vector2.zero; textRect.anchorMax = Vector2.one;
+                    textRect.offsetMin = textRect.offsetMax = Vector2.zero;
+                    label = text.GetComponent<TextMeshProUGUI>();
+                    var source = _cardFallbackPrefab != null ? _cardFallbackPrefab.GetComponentInChildren<TMP_Text>(true) : null;
+                    if (source != null) label.font = source.font;
+                    label.fontSize = _config.Presentation?.FontSize ?? 18;
+                    label.enableAutoSizing = true;
+                    label.fontSizeMin = 8;
+                    label.fontSizeMax = label.fontSize;
+                    label.alignment = TextAlignmentOptions.Center;
+                    label.color = Color.white;
+                    label.raycastTarget = false;
+                    _bombMarkers[bomb.Position] = label;
+                }
+                label.text = "炸弹 " + Math.Max(0, bomb.DueRound - snapshot.Round);
+                label.transform.parent.SetAsLastSibling();
+            }
         }
 
         /// <summary>
