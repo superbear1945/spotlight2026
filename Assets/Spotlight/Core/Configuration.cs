@@ -171,6 +171,12 @@ namespace Spotlight
         public bool adjacentSwap;
         /// <summary>是否开启同一行/列的单位遮挡。</summary>
         public bool lineBlocking;
+        /// <summary>Boss 炸弹部署间隔（完整回合），至少为 1。</summary>
+        public int bossBombInterval;
+        /// <summary>整颗炸弹共享的伤害预算，至少为 1。</summary>
+        public int bossBombDamage;
+        /// <summary>从屏幕左侧起算的部署列号（从 1 开始），实际不超过棋盘列数的一半向下取整。</summary>
+        public int bossBombColumn;
     }
 
     /// <summary>
@@ -344,6 +350,12 @@ namespace Spotlight
         public int InitialResources { get; }
         /// <summary>补兵间隔（完整回合）。</summary>
         public int BossRespawnDelay { get; }
+        /// <summary>Boss 炸弹部署间隔（完整回合）。</summary>
+        public int BossBombInterval { get; }
+        /// <summary>炸弹总伤害，各方向共享。</summary>
+        public int BossBombDamage { get; }
+        /// <summary>炸弹期望显示列号（从 1 开始）。</summary>
+        public int BossBombColumn { get; }
         /// <summary>玩家是否在左侧。</summary>
         public bool PlayerOnLeft { get; }
         /// <summary>先手阵营。</summary>
@@ -376,6 +388,9 @@ namespace Spotlight
             HandLimit = r.handLimit;
             InitialResources = r.initialResources;
             BossRespawnDelay = r.bossRespawnDelay;
+            BossBombInterval = r.bossBombInterval;
+            BossBombDamage = r.bossBombDamage;
+            BossBombColumn = r.bossBombColumn;
             PlayerOnLeft = r.playerSide == "left";
             FirstSide = r.firstSide == "player" ? Side.Player : Side.Boss;
             BossCardType = r.bossCardType;
@@ -544,6 +559,7 @@ namespace Spotlight
             if (slotList.Length != 3) errors.Add("必须恰好三个兵位");
             if (slotList.Any(s => s == null || string.IsNullOrWhiteSpace(s.Id) || s.RowFraction < 0 || s.RowFraction > 1) || slotList.Select(s => s.Id).Distinct().Count() != slotList.Length) errors.Add("兵位定义非法");
             if (playerHomeHp < 1 || bossHomeHp < 1 || playerHomeProduce < 0) errors.Add("家数值非法");
+            if (rules.BossBombInterval < 1 || rules.BossBombDamage < 1 || rules.BossBombColumn < 1) errors.Add("Rules：bossBombInterval、bossBombDamage、bossBombColumn 必须至少为 1");
             if (rules.Rows < 1 || rules.Columns < 2 || rules.HomeRegionWidth < 1 || rules.HomeRegionWidth > rules.Columns) errors.Add("棋盘尺寸非法");
             return errors;
         }
@@ -638,6 +654,7 @@ namespace Spotlight
             if (r.playerPlays < 0 || r.bossPlays < 0 || r.drawCount < 0 || r.handLimit < 0 || r.initialResources < 0 || r.bossRespawnDelay < 1) errors.Add("Rules：次数/资源不可为负，bossRespawnDelay 至少为 1");
             if (r.playerSide != "left" && r.playerSide != "right") errors.Add("Rules playerSide：只能为 left/right");
             if (r.firstSide != "player" && r.firstSide != "boss") errors.Add("Rules firstSide：只能为 player/boss");
+            if (r.bossBombInterval < 1 || r.bossBombDamage < 1 || r.bossBombColumn < 1) errors.Add("Rules：bossBombInterval、bossBombDamage、bossBombColumn 必须至少为 1");
             var boss = d.cards.FirstOrDefault(c => c.id == r.bossCardType);
             if (boss == null || (!r.playerControlsBoss && boss.category != "attack")) errors.Add("Rules bossCardType：AI 必须使用攻击卡，手动模式必须使用已注册卡种");
 

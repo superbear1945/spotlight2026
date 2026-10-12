@@ -116,7 +116,10 @@ namespace Spotlight.EditorTools
                 new ColumnDefinition("accumulateResources", ColumnType.Boolean, true),
                 new ColumnDefinition("summoningSickness", ColumnType.Boolean, true),
                 new ColumnDefinition("adjacentSwap", ColumnType.Boolean, true),
-                new ColumnDefinition("lineBlocking", ColumnType.Boolean, true)
+                new ColumnDefinition("lineBlocking", ColumnType.Boolean, true),
+                new ColumnDefinition("bossBombInterval", ColumnType.Integer, true),
+                new ColumnDefinition("bossBombDamage", ColumnType.Integer, true),
+                new ColumnDefinition("bossBombColumn", ColumnType.Integer, true)
             }),
             new TableDefinition("Homes", new[]
             {

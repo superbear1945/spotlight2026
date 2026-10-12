@@ -393,6 +393,11 @@ namespace Spotlight
             var boss = _draft.GetBossCard();
             var section = ConfigFieldBuilder.Section("Boss 战斗卡（Boss 无资源限制，维持费默认忽略）", out var content);
             content.Add(ConfigFieldBuilder.Toggle("玩家控制 Boss", () => rules.playerControlsBoss, value => { rules.playerControlsBoss = value; ChangedStructure(); }));
+            content.Add(ConfigFieldBuilder.Grid(
+                ConfigFieldBuilder.Number("炸弹部署间隔（回合）", () => rules.bossBombInterval, value => { rules.bossBombInterval = value; Changed(); }, 1),
+                ConfigFieldBuilder.Number("炸弹总伤害", () => rules.bossBombDamage, value => { rules.bossBombDamage = value; Changed(); }, 1),
+                ConfigFieldBuilder.Number("炸弹部署列号", () => rules.bossBombColumn, value => { rules.bossBombColumn = value; Changed(); }, 1)));
+            content.Add(ConfigFieldBuilder.Note("炸弹在玩家行动前部署，下一完整回合玩家行动前爆炸；手动模式必须先布置或跳过炸弹。列号从屏幕左侧第 1 列起算，超过半场时取半场列数向下取整。"));
             if (boss != null)
             {
                 content.Add(ConfigFieldBuilder.Grid(

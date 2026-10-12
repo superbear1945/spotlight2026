@@ -37,10 +37,18 @@ namespace Spotlight
         readonly List<HomeState> _homes = new List<HomeState>();
         /// <summary>AI 兵位状态。</summary>
         readonly List<BossReplacement> _replacements = new List<BossReplacement>();
+        /// <summary>尚未到期的地面炸弹，不参与单位占位与卡牌流转。</summary>
+        readonly List<BossBombState> _bossBombs = new List<BossBombState>();
+        /// <summary>玩家行动前尚待 Boss 处理的独立炸弹机会。</summary>
+        bool _bossBombPending;
         /// <summary>有界历史日志，供 UI 与调试面板读取。</summary>
         readonly List<GameEvent> _log = new List<GameEvent>();
         /// <summary>当前一次外部命令连带产生的全部事件（含自动 Boss 回合）；_log 则是有界历史。</summary>
         readonly List<GameEvent> _pendingEvents = new List<GameEvent>();
+        /// <summary>当前命令的阶段快照，保留同步 AI 结算中的展示时点。</summary>
+        readonly List<PresentationFrame> _presentationFrames = new List<PresentationFrame>();
+        /// <summary>已分配给展示阶段的事件数量，保证每个事件只播放一次。</summary>
+        int _presentedEventCount;
         /// <summary>历史日志容量。</summary>
         readonly int _logLimit;
 
@@ -77,6 +85,9 @@ namespace Spotlight
         /// <summary>对外暴露的不可变配置索引，供 UI 查询卡种名称与属性。</summary>
         public GameConfiguration Configuration => _config;
 
+        /// <summary>开局时的展示阶段；Boss 先手的自动行动也在构造内完成，因此单独保留供界面首次播放。</summary>
+        public IReadOnlyList<PresentationFrame> InitialPresentationFrames { get; }
+
         /// <summary>
         /// 建立家、来源卡与兵位，然后按先手顺序进入首个行动回合。
         /// 输入：configuration 为已通过结构与业务校验的本局配置；randomSource 仅用于洗牌；logLimit 为历史日志容量。
@@ -105,6 +116,8 @@ namespace Spotlight
 
             BeginTurn(Rules.FirstSide);
             if (_activeSide == Side.Boss && !Rules.PlayerControlsBoss) RunBoss();
+            if (_presentationFrames.Count > 0) CapturePresentationFrame();
+            InitialPresentationFrames = Array.AsReadOnly(_presentationFrames.ToArray());
         }
 
         /// <summary>
@@ -129,6 +142,8 @@ namespace Spotlight
             PlaysRemaining = _plays,
             PlayerControlsBoss = Rules.PlayerControlsBoss,
             BossRespawnDelay = Rules.BossRespawnDelay,
+            BossBombPending = _bossBombPending,
+            BossBombs = Array.AsReadOnly(_bossBombs.ToArray()),
             Hand = Array.AsReadOnly(_hand.ToArray()),
             DrawPile = Array.AsReadOnly(_draw.ToArray()),
             Graveyard = Array.AsReadOnly(_grave.ToArray()),
@@ -148,8 +163,22 @@ namespace Spotlight
         public CommandResult Execute(GameCommand command)
         {
             _pendingEvents.Clear();
+            _presentationFrames.Clear();
+            _presentedEventCount = 0;
             var error = command == null ? "命令为空" : ExecuteCommand(command, false);
-            return new CommandResult(error == null, error, _pendingEvents.ToArray());
+            if (_presentationFrames.Count > 0) CapturePresentationFrame();
+            return new CommandResult(error == null, error, _pendingEvents.ToArray(), _presentationFrames.ToArray());
+        }
+
+        /// <summary>
+        /// 保存一个展示阶段。输入：当前状态和未分配的事件；输出：独立快照及有序事件分段。
+        /// 在玩家行动前的炸弹处理、自动 Boss 普通行动边界和最终返回处调用，不改变回合推进；无新事件时不重复保存。
+        /// </summary>
+        void CapturePresentationFrame()
+        {
+            if (_presentedEventCount == _pendingEvents.Count) return;
+            _presentationFrames.Add(new PresentationFrame(GetSnapshot(), _pendingEvents.Skip(_presentedEventCount).ToArray()));
+            _presentedEventCount = _pendingEvents.Count;
         }
 
         /// <summary>
@@ -161,12 +190,30 @@ namespace Spotlight
         string ExecuteCommand(GameCommand c, bool fromAi)
         {
             if (_phase == MatchPhase.Finished) return "对局已结束";
-            if (!fromAi && _inputBlocked) return "配置面板打开时不能操作棋盘";
-            if (c.Actor != _activeSide) return "不是该阵营的回合";
+            if (!fromAi && _inputBlocked) return "配置面板打开或回合展示期间不能操作棋盘";
+            var bombCommand = c.Kind == CommandKind.DeployBossBomb || c.Kind == CommandKind.SkipBossBomb;
+            // 炸弹属于 Boss，但处理窗口在玩家行动前；仅这两种技能命令允许跨行动方提交。
+            if (bombCommand)
+            {
+                if (c.Actor != Side.Boss || _activeSide != Side.Player || !_bossBombPending)
+                    return "当前没有炸弹部署机会";
+                if (!fromAi && !Rules.PlayerControlsBoss) return "Boss 由 AI 控制";
+            }
+            else if (c.Actor != _activeSide) return "不是该阵营的回合";
             if (!fromAi && _activeSide == Side.Boss && !Rules.PlayerControlsBoss) return "Boss 由 AI 控制";
             if (_phase == MatchPhase.Discard && c.Kind != CommandKind.Discard) return "请先弃牌至手牌上限";
+            if (_bossBombPending && c.Kind != CommandKind.DeployBossBomb && c.Kind != CommandKind.SkipBossBomb) return "请先布置或跳过炸弹";
             switch (c.Kind)
             {
+                case CommandKind.DeployBossBomb:
+                    if (!Inside(c.Target) || c.Target.Col != BossBombColumn()) return "炸弹必须部署在指定列的棋盘格内";
+                    DeployBossBomb(c.Target);
+                    CapturePresentationFrame();
+                    break;
+                case CommandKind.SkipBossBomb:
+                    _bossBombPending = false;
+                    Emit("bomb-skip", "Boss 跳过本回合炸弹部署");
+                    break;
                 case CommandKind.Deploy:
                     if (_activeSide != Side.Player) return "玩家手牌仅用于玩家回合";
                     var card = _hand.FirstOrDefault(x => x.Id == c.SubjectId);
@@ -261,6 +308,13 @@ namespace Spotlight
         {
             var actions = new LegalActions();
             if (_phase != MatchPhase.Action || _inputBlocked || (_activeSide == Side.Boss && !Rules.PlayerControlsBoss)) return actions;
+            if (_bossBombPending)
+            {
+                if (selection.Kind == SelectionKind.BossBombDeployment)
+                    actions.Deploy = Enumerable.Range(0, Rules.Rows).Select(row => new Cell(row, BossBombColumn())).ToArray();
+                return actions;
+            }
+            if (selection.Kind == SelectionKind.BossBombDeployment) return actions;
             if (selection.Kind == SelectionKind.Hand && _activeSide == Side.Player && _plays > 0)
             {
                 var card = _hand.FirstOrDefault(c => c.Id == selection.Id);
@@ -352,20 +406,25 @@ namespace Spotlight
         /// <summary>
         /// 开始指定阵营的行动回合。
         /// 输入：side 为即将行动的阵营；输出：无。
-        /// 玩家顺序固定为“恢复行动 → 可选清零资源 → 全体产出 → 按部署顺序支付维持费 → 抽牌”。
-        /// Boss 不使用资源，只在 AI 模式下执行首次部署或到期补兵。
+        /// 玩家顺序：恢复行动 → 引爆到期炸弹 → 可选清零资源 → 存活单位产出及维持费 → 抽牌 → 检查炸弹部署机会。
+        /// AI 自动布置；手动模式必须布置或跳过后才能进行玩家普通操作。间隔一时先爆旧炸弹再布置新炸弹。
+        /// Boss 顺序：恢复行动 → AI 补兵，之后由 RunBoss 执行普通行动；Boss 不结算资源与维持费。
         /// 欠费只禁止行动，不能关闭星门部署扩展（扩展在 DeploymentError 中独立判断）。
         /// </summary>
         void BeginTurn(Side side)
         {
             _activeSide = side;
             _phase = MatchPhase.Action;
+            _bossBombPending = false;
             _plays = side == Side.Player ? Rules.PlayerPlays : Rules.BossPlays;
             foreach (var h in _homes.Where(h => h.Owner == side)) h.Acted = false;
             foreach (var u in _units.Where(u => u.Owner == side)) { u.Acted = false; u.UpkeepPaid = true; }
             Emit("turn", $"第 {_round} 回合 · {SideName(side)}行动");
             if (side == Side.Player)
             {
+                var hadDueBomb = _bossBombs.Any(b => b.DueRound <= _round);
+                ExplodeBossBombs();
+                if (hadDueBomb) CapturePresentationFrame();
                 if (!Rules.AccumulateResources) _resources = 0;
                 _resources += _config.PlayerHomeProduce + _units.Where(u => u.Owner == side).Sum(u => (long)(Type(u).Resource?.Produce ?? 0));
                 foreach (var u in _units.Where(u => u.Owner == side).OrderBy(u => u.DeploymentOrder))
@@ -376,6 +435,16 @@ namespace Spotlight
                     else Emit("upkeep", $"{Type(u).Name} 维持费不足，本回合不能行动", u.Id);
                 }
                 DrawCards();
+                _bossBombPending = _round % Rules.BossBombInterval == 0;
+                if (!Rules.PlayerControlsBoss)
+                {
+                    if (_bossBombPending)
+                    {
+                        ExecuteCommand(new GameCommand(CommandKind.DeployBossBomb, Side.Boss,
+                            target: new Cell(_random.Next(Rules.Rows), BossBombColumn())), true);
+                    }
+                }
+                else if (_bossBombPending) Emit("bomb-ready", "请先布置炸弹或跳过炸弹，再开始玩家行动");
             }
             else if (!Rules.PlayerControlsBoss) SpawnBoss();
         }
@@ -447,6 +516,72 @@ namespace Spotlight
         }
 
         /// <summary>
+        /// 部署一颗延迟炸弹。输入：已经过命令校验的内部坐标；输出：无。
+        /// 在 SpawnBoss 下集中放置技能实现；占用独立技能机会，不消耗放牌次数，不参与占位。
+        /// 在玩家行动前部署，到期时于下一完整回合玩家行动前爆炸，AI 与手动模式共用此实现。
+        /// </summary>
+        void DeployBossBomb(Cell position)
+        {
+            var bomb = new BossBombState(position, _round, Rules.BossBombDamage);
+            _bossBombs.Add(bomb);
+            _bossBombPending = false;
+            Emit("bomb-deploy", $"Boss 在 {position} 布置炸弹，第 {bomb.DueRound} 回合爆炸，总伤害 {bomb.Damage}", bomb: bomb);
+        }
+
+        /// <summary>
+        /// 引爆全部到期炸弹。输入：当前完整回合与炸弹集合；输出：有序路径和伤害事件。
+        /// 玩家回合开始时先于资源结算、部署新炸弹及普通行动调用；先中心，再按距离及屏幕上右下左搜索。
+        /// 四方向共享预算，逐点扣血直到单位死亡或预算耗尽；仅玩家战斗单位受伤，其他对象可穿过。
+        /// 一条射线到边界不阻止其他射线；全部搜索结束后丢弃剩余预算并移除地面标记。
+        /// </summary>
+        void ExplodeBossBombs()
+        {
+            foreach (var bomb in _bossBombs.Where(b => b.DueRound <= _round).ToArray())
+            {
+                var remaining = bomb.Damage;
+                var steps = new List<BombBlastStep>();
+                ResolveBombCell(bomb.Position, ref remaining, steps);
+                var horizontal = Rules.PlayerOnLeft ? 1 : -1;
+                var directions = new[] { new Cell(1, 0), new Cell(0, horizontal), new Cell(-1, 0), new Cell(0, -horizontal) };
+                for (var distance = 1; distance < Math.Max(Rules.Rows, Rules.Columns) && remaining > 0; distance++)
+                    foreach (var direction in directions)
+                    {
+                        if (remaining == 0) break;
+                        var cell = new Cell(bomb.Position.Row + direction.Row * distance, bomb.Position.Col + direction.Col * distance);
+                        if (Inside(cell)) ResolveBombCell(cell, ref remaining, steps);
+                    }
+                _bossBombs.Remove(bomb);
+                Emit("bomb-explode", $"炸弹在 {bomb.Position} 爆炸，造成 {bomb.Damage - remaining} 点伤害", bomb: bomb, blastSteps: steps.ToArray());
+            }
+        }
+
+        /// <summary>
+        /// 结算单格炸弹伤害。输入：格子、共享剩余预算、路径记录；输出：更新预算与路径。
+        /// 阵亡沿用 Remove，玩家来源卡早已进入墓地，此处不重复回收；空格同样记录以复现搜索动画。
+        /// </summary>
+        void ResolveBombCell(Cell cell, ref int remaining, List<BombBlastStep> steps)
+        {
+            var unit = _units.FirstOrDefault(u => u.Owner == Side.Player && u.Position == cell);
+            var damage = 0;
+            if (unit != null)
+            {
+                while (remaining > 0 && unit.Hp > 0) { unit.Hp--; remaining--; damage++; }
+                if (unit.Hp == 0) Remove(unit, true);
+            }
+            steps.Add(new BombBlastStep(cell, unit?.Id ?? 0, damage, unit != null && unit.Hp == 0));
+        }
+
+        /// <summary>
+        /// 换算炸弹内部列号。输入：Excel 期望显示列与棋盘宽度/镜像配置；输出：从 0 开始的内部列。
+        /// 显示列从 1 开始，不超过半场向下取整，保证最小两列棋盘仍有合法目标。
+        /// </summary>
+        int BossBombColumn()
+        {
+            var displayColumn = Math.Min(Rules.BossBombColumn, Rules.Columns / 2) - 1;
+            return Rules.PlayerOnLeft ? displayColumn : Rules.Columns - 1 - displayColumn;
+        }
+
+        /// <summary>
         /// 临时查询适配器，让家与普通单位共用同一套目标排序与攻击判断。
         /// 为什么不用继承：家不继承 Card，也不应进入单位列表；用轻量包装避免为排序引入实体层级。
         /// </summary>
@@ -491,12 +626,14 @@ namespace Spotlight
         /// <summary>
         /// 执行一个完整的 Boss 回合。
         /// 输入：无；输出：无。
-        /// 顺序：按部署顺序逐个行动 → 自动结束回合。
+        /// 前置：BeginTurn 已恢复 Boss 行动并补兵；炸弹统一在玩家回合开始时处理。
+        /// 顺序：按部署顺序逐个行动 → 自动结束回合；每个单位基于爆炸后的最新棋盘决策。
         /// 每次行动只做一件事：能攻击就攻击，否则沿最短可通行路径移动到最近合法攻击位置；
         /// 抵达射程也不追加攻击（移动消耗整次行动）。胜负确定后立即停止后续行动。
         /// </summary>
         void RunBoss()
         {
+            CapturePresentationFrame();
             foreach (var u in _units.Where(u => u.Owner == Side.Boss).OrderBy(u => u.DeploymentOrder).ToArray())
             {
                 if (_phase == MatchPhase.Finished) return;
@@ -521,6 +658,7 @@ namespace Spotlight
                 if (best != null) ExecuteCommand(new GameCommand(CommandKind.Move, Side.Boss, u.Id, best.Path[Math.Min(Type(u).Combat.MoveDistance, best.Path.Count) - 1]), true);
                 else Emit("wait", $"{Type(u).Name} 无可通行路径，待机", u.Id);
             }
+            CapturePresentationFrame();
             if (_phase != MatchPhase.Finished) AdvanceTurn();
         }
 
@@ -626,7 +764,7 @@ namespace Spotlight
         /// 输入：类型、文本与主体 ID；输出：无。
         /// 事件同时进入“本次命令结果”和“有界历史日志”，前者供 UI 按序播放，后者供日志面板读取。
         /// </summary>
-        void Emit(string kind, string message, long id = 0) { var e = new GameEvent(kind, message, id); _pendingEvents.Add(e); _log.Add(e); if (_log.Count > _logLimit) _log.RemoveAt(0); }
+        void Emit(string kind, string message, long id = 0, BossBombState bomb = null, BombBlastStep[] blastSteps = null) { var e = new GameEvent(kind, message, id, bomb, blastSteps); _pendingEvents.Add(e); _log.Add(e); if (_log.Count > _logLimit) _log.RemoveAt(0); }
 
         /// <summary>阵营显示名。输入：阵营；输出：中文名称。</summary>
         static string SideName(Side side) => side == Side.Player ? "玩家" : "Boss";

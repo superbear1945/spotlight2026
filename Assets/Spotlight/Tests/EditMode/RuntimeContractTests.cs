@@ -26,7 +26,7 @@ namespace Spotlight.Tests
                     new CardRow { id = "boss", name = "敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" }
                 },
                 deck = new[] { new DeckRow { cardType = "miner", count = 2 }, new DeckRow { cardType = "soldier", count = 2 } },
-                rules = new[] { new RulesRow { rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 5, bossPlays = 1, drawCount = 3, handLimit = 5, initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss", playerControlsBoss = false, accumulateResources = true, summoningSickness = true, adjacentSwap = true } },
+                rules = new[] { new RulesRow { bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 5, bossPlays = 1, drawCount = 3, handLimit = 5, initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss", playerControlsBoss = false, accumulateResources = true, summoningSickness = true, adjacentSwap = true } },
                 homes = new[] { new HomeRow { owner = "player", hp = 10, produce = 2 }, new HomeRow { owner = "boss", hp = 10, produce = 0 } },
                 bossSlots = new[] { new BossSlotRow { id = "a", rowFraction = 0, edgeOffset = 1 }, new BossSlotRow { id = "b", rowFraction = 0.5, edgeOffset = 1 }, new BossSlotRow { id = "c", rowFraction = 1, edgeOffset = 1 } },
                 presentation = new[] { new PresentationRow { referenceWidth = 1920, referenceHeight = 1080, fontSize = 18, logLimit = 50, moveSeconds = 0.2f, feedbackSeconds = 0.1f, selectedScale = 1.05f, playerColor = "#3366FF", bossColor = "#FF3333", resourceColor = "#33AA66", attackColor = "#EE8833", specialColor = "#AA55FF", moveColor = "#33AAFF", attackTargetColor = "#FF3333", swapColor = "#AA33FF", deployColor = "#33FF99" } }
@@ -65,6 +65,21 @@ namespace Spotlight.Tests
             Assert.That(draft.Validate(), Is.Empty);
             Assert.That(draft.TryCreateConfiguration(out var configuration, out var buildError), Is.True, buildError);
             Assert.That(configuration, Is.Not.Null);
+        }
+
+        /// <summary>旧 JSON 缺少炸弹字段时必须报告校验错误，避免正式数值在运行时代码中被默默填入。</summary>
+        [Test]
+        public void LegacyDraftWithoutBombFieldsCannotBeApplied()
+        {
+            var draft = new DebugConfigDraft(null);
+            var json = JsonUtility.ToJson(Document())
+                .Replace("\"bossBombInterval\":10,", "")
+                .Replace("\"bossBombDamage\":3,", "")
+                .Replace(",\"bossBombColumn\":5", "");
+            Assert.That(json, Does.Not.Contain("bossBombInterval"));
+            Assert.That(draft.Import(json, out var error, out _), Is.True, error);
+            Assert.That(draft.TryCreateConfiguration(out _, out var validation), Is.False);
+            Assert.That(validation, Does.Contain("bossBomb"));
         }
 
         [Test]

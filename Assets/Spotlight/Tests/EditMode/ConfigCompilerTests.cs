@@ -124,6 +124,20 @@ namespace Spotlight.Tests
             Assert.That(issues.Any(i => i.Reason.Contains("合并单元格")), Is.True, string.Join("\n", issues));
         }
 
+        /// <summary>每个炸弹配置列均为必填整数，旧表缺失任意列时给出明确表头错误。</summary>
+        [TestCase("bossBombInterval")]
+        [TestCase("bossBombDamage")]
+        [TestCase("bossBombColumn")]
+        public void MissingBombColumnIsRejected(string field)
+        {
+            var schema = TableOf("Rules");
+            Assert.That(schema.Find(field).Type, Is.EqualTo(ColumnType.Integer));
+            var headers = schema.Columns.Where(c => c.Name != field).Select(c => c.Name).ToArray();
+            var issues = new List<ConfigIssue>();
+            Assert.That(TableMapper.TryBuildHeader("legacy.xlsx", schema, Table(headers), issues, out _), Is.False);
+            Assert.That(issues.Any(i => i.Reason.Contains("缺失必需列：" + field)), Is.True);
+        }
+
         [Test]
         public void DuplicateCardIdAndDuplicateNameAreRejected()
         {
@@ -166,6 +180,9 @@ namespace Spotlight.Tests
             Assert.That(first.Document, Is.Not.Null);
             Assert.That(first.Document.cards.Length, Is.EqualTo(7));
             Assert.That(first.Document.deck.Sum(e => e.count), Is.EqualTo(24));
+            Assert.That(first.Document.rules[0].bossBombInterval, Is.EqualTo(10));
+            Assert.That(first.Document.rules[0].bossBombDamage, Is.EqualTo(3));
+            Assert.That(first.Document.rules[0].bossBombColumn, Is.EqualTo(5));
 
             var second = ConfigCompiler.Compile(path, false);
             Assert.That(second.Success, Is.True, string.Join("\n", second.Issues));

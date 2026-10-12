@@ -2,6 +2,7 @@
 // 为什么需要单一入口：规则层、UI 与调试面板都需要同一份对局实例，
 // 若各处自行创建 GameSession，就会出现“界面显示一局、规则运行另一局”的隐性分叉。
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -45,6 +46,19 @@ namespace Spotlight
         Selection _selection;
         /// <summary>上一帧快照，用于计算移动动画起点。</summary>
         GameSnapshot _previousSnapshot;
+        /// <summary>有序表现队列；只记录已经结算的事件，避免爆炸尚未播完就播放后续普通行动。</summary>
+        readonly Queue<IEnumerator> _feedbackQueue = new Queue<IEnumerator>();
+        /// <summary>队列播放器是否正在运行。</summary>
+        bool _playingFeedback;
+        /// <summary>正在展示已结算的炸弹准备或自动 Boss 行动；与调试面板闸门独立，禁止操作未来状态。</summary>
+        bool _presentingTurn;
+        /// <summary>调试面板是否打开，动画结束不能解除此闸门。</summary>
+        bool _modalOpen;
+        /// <summary>当前正在展示的阶段，避免选择或面板刷新提前读取最终快照。</summary>
+        GameSnapshot _displaySnapshot;
+
+        /// <summary>是否正在展示回合阶段，供运行诊断及帧循环测试读取。</summary>
+        public bool IsPresentingTurn => _presentingTurn;
 
         /// <summary>当前生效的配置资产，供调试面板“恢复默认”使用。</summary>
         public SpotlightConfigAsset CurrentAsset => ConfigLoader.LoadAsset(_configAsset);
@@ -86,6 +100,10 @@ namespace Spotlight
                 _hudView.EndTurnRequested += OnEndTurnRequested;
                 _hudView.SkipDeployRequested -= OnSkipDeployRequested;
                 _hudView.SkipDeployRequested += OnSkipDeployRequested;
+                _hudView.BombDeployRequested -= OnBombDeployRequested;
+                _hudView.BombDeployRequested += OnBombDeployRequested;
+                _hudView.BombSkipRequested -= OnBombSkipRequested;
+                _hudView.BombSkipRequested += OnBombSkipRequested;
                 _hudView.RestartRequested -= OnRestartRequested;
                 _hudView.RestartRequested += OnRestartRequested;
                 _hudView.DebugRequested -= OnDebugRequested;
@@ -101,6 +119,12 @@ namespace Spotlight
         /// </summary>
         public void StartSession(GameConfiguration configuration)
         {
+            StopAllCoroutines();
+            _feedbackQueue.Clear();
+            _playingFeedback = false;
+            _presentingTurn = false;
+            _displaySnapshot = null;
+            _feedback?.KillAll();
             _configuration = configuration;
             var limit = _logLimit > 0 ? _logLimit : configuration.Presentation != null ? configuration.Presentation.LogLimit : 100;
             _session = new GameSession(configuration, new SeededRandom(DebugSupport.ResolveSeed(_seed)), Mathf.Max(1, limit));
@@ -110,7 +134,10 @@ namespace Spotlight
             _hudView?.ResetLog();
             _feedback?.Configure(configuration.Presentation);
             _previousSnapshot = _session.GetSnapshot();
-            Refresh();
+            UpdateInputGate();
+            if (_session.InitialPresentationFrames.Count > 0)
+                PresentTurn(_session.InitialPresentationFrames[0].Snapshot, _session.InitialPresentationFrames);
+            else Refresh();
         }
 
         /// <summary>
@@ -133,7 +160,8 @@ namespace Spotlight
         /// </summary>
         public void SetModalOpen(bool blocked)
         {
-            _session?.SetInputBlocked(blocked);
+            _modalOpen = blocked;
+            UpdateInputGate();
             _hudView?.SetModalVisible(blocked);
             if (blocked) _selection = new Selection(SelectionKind.None);
             Refresh();
@@ -142,8 +170,9 @@ namespace Spotlight
         /// <summary>玩家点击手牌。输入：被点击的卡牌视图；输出：无。</summary>
         void OnCardClicked(Card card)
         {
-            if (_session == null || card == null || card.Record == null) return;
+            if (_presentingTurn || _modalOpen || _session == null || card == null || card.Record == null) return;
             var snapshot = _session.GetSnapshot();
+            if (snapshot.BossBombPending) { Show("请先布置炸弹或跳过炸弹，再开始玩家行动"); return; }
             if (snapshot.Phase == MatchPhase.Discard)
             {
                 Submit(new GameCommand(CommandKind.Discard, Side.Player, card.Record.Id));
@@ -159,9 +188,21 @@ namespace Spotlight
         /// <summary>玩家点击棋盘格。输入：内部坐标；输出：无。</summary>
         void OnCellClicked(Cell cell)
         {
-            if (_session == null) return;
+            if (_presentingTurn || _modalOpen || _session == null) return;
             var snapshot = _session.GetSnapshot();
             var actions = _session.GetLegalActions(_selection);
+
+            if (snapshot.BossBombPending)
+            {
+                if (_selection.Kind == SelectionKind.BossBombDeployment && actions.Deploy.Contains(cell))
+                {
+                    Submit(new GameCommand(CommandKind.DeployBossBomb, Side.Boss, target: cell));
+                    _selection = new Selection(SelectionKind.None);
+                    Refresh();
+                }
+                else Show("请先点击布置炸弹并选择高亮格，或跳过炸弹");
+                return;
+            }
 
             // 1) 部署：手牌选择或手动 Boss 未选单位时的部署高亮。
             if (actions.Deploy.Contains(cell))
@@ -272,6 +313,23 @@ namespace Spotlight
             Submit(new GameCommand(CommandKind.EndTurn, Side.Boss, skipDeployment: true));
         }
 
+        /// <summary>进入炸弹选格。输入：HUD 请求；输出：合法列高亮，实际权限仍由规则层复验。</summary>
+        void OnBombDeployRequested()
+        {
+            if (_presentingTurn || _modalOpen || _session == null) return;
+            _selection = new Selection(SelectionKind.BossBombDeployment);
+            Refresh();
+        }
+
+        /// <summary>放弃当前炸弹机会。输入：HUD 请求；输出：提交跳过命令并恢复普通选择。</summary>
+        void OnBombSkipRequested()
+        {
+            if (_session == null) return;
+            Submit(new GameCommand(CommandKind.SkipBossBomb, Side.Boss));
+            _selection = new Selection(SelectionKind.None);
+            Refresh();
+        }
+
         /// <summary>HUD 请求重开：使用当前生效配置重新开局。输入：无；输出：无。</summary>
         void OnRestartRequested()
         {
@@ -285,11 +343,12 @@ namespace Spotlight
         /// <summary>
         /// 提交命令并刷新。
         /// 输入：命令；输出：无。
-        /// 行为：记录渲染前快照 → 执行 → 刷新视图 → 按事件播放在新快照上仍存在的对象动效。
+        /// 行为：记录渲染前快照 → 同步结算；炸弹准备及自动 Boss 按阶段展示，其他命令直接刷新并播放反馈。
         /// 失败时只提示原因，不改变界面以外的状态。
         /// </summary>
         void Submit(GameCommand command)
         {
+            if (_presentingTurn || _modalOpen || _session == null) return;
             var before = _session.GetSnapshot();
             var result = _session.Execute(command);
             if (!result.Success)
@@ -301,19 +360,64 @@ namespace Spotlight
             }
             _hudView?.ShowError(null);
             _previousSnapshot = before;
-            Refresh();
-            PlayFeedback(before, _session.GetSnapshot(), result.Events);
+            if (result.PresentationFrames.Count > 0) PresentTurn(before, result.PresentationFrames);
+            else
+            {
+                Refresh();
+                PlayFeedback(before, _session.GetSnapshot(), result.Events);
+            }
         }
 
         /// <summary>刷新全部视图。输入：无；输出：无。</summary>
         void Refresh()
         {
             if (_session == null) return;
-            var snapshot = _session.GetSnapshot();
-            var actions = _session.GetLegalActions(_selection);
+            var snapshot = _presentingTurn ? _displaySnapshot : _session.GetSnapshot();
+            if (snapshot == null) return;
+            var actions = _presentingTurn ? new LegalActions() : _session.GetLegalActions(_selection);
             _boardView?.Render(snapshot, actions, _selection);
             _handView?.Render(snapshot, _selection);
-            _hudView?.Render(snapshot, _configuration, _selection);
+            _hudView?.Render(snapshot, _configuration, _selection, _presentingTurn || _modalOpen);
+        }
+
+        /// <summary>合并两种输入闸门。输入：面板与展示状态；输出：规则层屏蔽状态，任一闸门存在就不能操作。</summary>
+        void UpdateInputGate() => _session?.SetInputBlocked(_modalOpen || _presentingTurn);
+
+        /// <summary>
+        /// 将炸弹准备及自动 Boss 阶段加入已有表现队列。输入：命令前快照与阶段列表；输出：按序展示。
+        /// 立即屏蔽操作并保留当前画面，避免先刷新下一回合；无视图/反馈时仍能正常走到最终状态。
+        /// </summary>
+        void PresentTurn(GameSnapshot before, IReadOnlyList<PresentationFrame> frames)
+        {
+            _presentingTurn = true;
+            _displaySnapshot = before;
+            _selection = new Selection(SelectionKind.None);
+            UpdateInputGate();
+            Refresh();
+            _feedbackQueue.Enqueue(PlayPresentationFrames(before, frames));
+            if (!_playingFeedback) StartCoroutine(DrainFeedbackQueue());
+        }
+
+        /// <summary>
+        /// 展示同步结算留下的阶段。输入：初始快照与有序阶段；输出：协程，绝不推进或重算规则。
+        /// 每阶段至少显示一帧；模态面板暂停阶段切换，重开通过 StopAllCoroutines 取消旧流程。
+        /// </summary>
+        IEnumerator PlayPresentationFrames(GameSnapshot before, IReadOnlyList<PresentationFrame> frames)
+        {
+            foreach (var frame in frames)
+            {
+                while (_modalOpen) yield return null;
+                _displaySnapshot = frame.Snapshot;
+                Refresh();
+                yield return PlayFeedbackEvents(before, frame.Snapshot, frame.Events, true);
+                yield return null;
+                before = frame.Snapshot;
+            }
+            while (_modalOpen) yield return null;
+            _presentingTurn = false;
+            _displaySnapshot = null;
+            UpdateInputGate();
+            Refresh();
         }
 
         /// <summary>
@@ -324,10 +428,39 @@ namespace Spotlight
         void PlayFeedback(GameSnapshot before, GameSnapshot after, IReadOnlyList<GameEvent> events)
         {
             if (_boardView == null || _feedback == null) return;
+            _feedbackQueue.Enqueue(PlayFeedbackEvents(before, after, events));
+            if (!_playingFeedback) StartCoroutine(DrainFeedbackQueue());
+        }
+
+        /// <summary>
+        /// 按提交顺序播放已结算事件。输入：表现队列；输出：协程等待，不修改对局状态。
+        /// 阶段展示期间屏蔽操作，重开时统一取消队列，避免旧事件访问新棋盘。
+        /// </summary>
+        IEnumerator DrainFeedbackQueue()
+        {
+            _playingFeedback = true;
+            while (_feedbackQueue.Count > 0) yield return _feedbackQueue.Dequeue();
+            _playingFeedback = false;
+        }
+
+        /// <summary>
+        /// 播放一次命令的事件序列。输入：前后快照与有序事件；输出：表现协程。
+        /// 爆炸逐格结束后才播放后续普通行动，已死亡单位的爆炸使用独立格子效果。
+        /// </summary>
+        IEnumerator PlayFeedbackEvents(GameSnapshot before, GameSnapshot after, IReadOnlyList<GameEvent> events, bool waitForCompletion = false)
+        {
+            if (_boardView == null || _feedback == null) yield break;
             foreach (var e in events)
             {
                 switch (e.Kind)
                 {
+                    case "bomb-deploy":
+                        _feedback.PlayBombDeploy(_boardView.CellRect(e.Bomb.Position));
+                        if (waitForCompletion) yield return _feedback.WaitForBombEffects();
+                        break;
+                    case "bomb-explode":
+                        yield return _feedback.PlayBombExplosion(e.BlastSteps, _boardView.CellRect);
+                        break;
                     case "deploy":
                     case "upgrade":
                         _feedback.PlayDeploy(_boardView.GetCard(e.SubjectId));
@@ -346,6 +479,8 @@ namespace Spotlight
                     case "death":
                         break;
                 }
+                if (waitForCompletion && (e.Kind == "deploy" || e.Kind == "upgrade" || e.Kind == "move" || e.Kind == "attack"))
+                    yield return _feedback.WaitForCard(_boardView.GetCard(e.SubjectId));
             }
         }
 
