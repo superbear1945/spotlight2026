@@ -215,7 +215,7 @@ namespace Spotlight
                     if (target.Unit != null)
                     {
                         target.Unit.Hp = Math.Max(0, target.Unit.Hp - damage);
-                        if (target.Unit.Hp == 0) Remove(target.Unit, true);
+                        if (target.Unit.Hp == 0) Remove(target.Unit, Removal.Death);
                     }
                     else target.Home.Hp = Math.Max(0, target.Home.Hp - damage);
                     Emit("attack", $"{Type(attacker).Name} 攻击 {target.Name}，造成 {damage} 伤害", target.Id);
@@ -231,6 +231,14 @@ namespace Spotlight
                     b.Position = old;
                     a.Acted = b.Acted = true;
                     Emit("swap", $"{Type(a).Name} {old} 与 {Type(b).Name} {a.Position} 交换位置", a.Id);
+                    break;
+                case CommandKind.Withdraw:
+                    var leaving = _units.FirstOrDefault(u => u.Id == c.SubjectId);
+                    // 离场只对玩家自己的在场单位开放：家不是单位（这里找不到），Boss 单位一律不可离场。
+                    // 刻意不校验 Available：离场不消耗本回合行动，移动或攻击之后仍可离场，召唤失调与维持费不足也不拦。
+                    // 来源卡不在这里回收——它在部署成功时就已经进入墓地，因此牌堆守恒不受离场影响。
+                    if (leaving == null || leaving.Owner != Side.Player) return "只能让自己的在场单位离场";
+                    Remove(leaving, Removal.Withdraw);
                     break;
                 case CommandKind.Discard:
                     if (_activeSide != Side.Player || _phase != MatchPhase.Discard) return "当前不是弃牌阶段";
@@ -276,6 +284,9 @@ namespace Spotlight
             else if (selection.Kind == SelectionKind.Unit)
             {
                 var u = _units.FirstOrDefault(x => x.Id == selection.Id);
+                // 离场不是“行动”，因此不受 Available 限制：已行动、召唤失调或维持费不足的单位同样可以离场；
+                // 但只在玩家自己的回合，而且只能是玩家自己的单位（Boss 单位与家都不可离场）。
+                actions.CanWithdraw = _activeSide == Side.Player && u != null && u.Owner == Side.Player;
                 if (Available(u))
                 {
                     actions.Move = Paths(u.Position).Where(p => p.Value.Count > 0 && p.Value.Count <= Type(u).Combat.MoveDistance).Select(p => p.Key).ToArray();
@@ -320,7 +331,7 @@ namespace Spotlight
         UnitState Place(CardRecord card, Cell p, bool firstSpawn, string slotId)
         {
             var covered = _units.FirstOrDefault(u => u.Position == p);
-            if (covered != null) Remove(covered, false);
+            if (covered != null) Remove(covered, Removal.Upgrade);
             var u = new UnitState { Id = ++_nextUnit, SourceCardId = card.Id, TypeId = card.TypeId, Owner = card.Owner, Position = p, Hp = _config.Cards[card.TypeId].Combat.Hp, Acted = !firstSpawn && Rules.SummoningSickness, UpkeepPaid = true, DeploymentOrder = ++_order, BossSlotId = slotId };
             _units.Add(u);
             // 玩家卡：成功部署即进入墓地，成为可再次抽到的循环卡；
@@ -331,13 +342,29 @@ namespace Spotlight
         }
 
         /// <summary>
-        /// 把单位移出棋盘。
-        /// 输入：单位与 death 标记；输出：无。
-        /// 玩家卡：部署时已经进入墓地，这里不再回收，避免同一张卡重复入堆（牌堆总数因此恒定）。
-        /// Boss 卡：不参与玩家循环，阵亡时仍写入独立回收区，供快照展示。
-        /// 补兵计时只对 AI 兵位且为阵亡时启动（death=true）：覆盖升级把到期回合设为 long.MaxValue，永不自动补回。
+        /// 单位离开棋盘的原因。
+        /// 为什么单独建枚举：三种原因在“兵位是否补兵”“日志文案与事件类型”上不同，
+        /// 用布尔标记无法表达第三种（玩家主动离场），而且布尔在调用点读不出语义。
         /// </summary>
-        void Remove(UnitState u, bool death)
+        enum Removal
+        {
+            /// <summary>被覆盖升级：只移除旧单位，兵位永不自动补回。</summary>
+            Upgrade,
+            /// <summary>阵亡：AI 兵位按补兵间隔计时。</summary>
+            Death,
+            /// <summary>玩家主动离场：不消耗行动、不回收来源卡、不触发补兵。</summary>
+            Withdraw
+        }
+
+        /// <summary>
+        /// 把单位移出棋盘。
+        /// 输入：单位与离场原因；输出：无。
+        /// 玩家卡：部署时已经进入墓地，这里不再回收，避免同一张卡重复入堆（牌堆总数因此恒定）——
+        /// 主动离场同样不回收，所以“抽牌堆 + 手牌 + 墓地”的总数不受离场影响。
+        /// Boss 卡：不参与玩家循环，任何原因移除都写入独立回收区，供快照展示。
+        /// 补兵计时只对 AI 兵位阵亡（Death）时启动；覆盖升级与主动离场把到期回合设为 long.MaxValue，永不自动补回。
+        /// </summary>
+        void Remove(UnitState u, Removal reason)
         {
             _units.Remove(u);
             if (u.Owner == Side.Boss) _bossGrave.Add(new CardRecord(u.SourceCardId, u.TypeId, Side.Boss));
@@ -345,10 +372,12 @@ namespace Spotlight
             {
                 var slot = _replacements.Single(s => s.SlotId == u.BossSlotId);
                 slot.UnitId = null;
-                slot.DueRound = death ? _round + Rules.BossRespawnDelay : long.MaxValue;
+                slot.DueRound = reason == Removal.Death ? _round + Rules.BossRespawnDelay : long.MaxValue;
                 slot.WaitingForSpace = false;
             }
-            Emit(death ? "death" : "upgrade", $"{Type(u).Name} {(death ? "阵亡" : "被覆盖升级")}，场上单位移除，来源卡不重复回收", u.Id);
+            var kind = reason == Removal.Death ? "death" : reason == Removal.Upgrade ? "upgrade" : "withdraw";
+            var label = reason == Removal.Death ? "阵亡" : reason == Removal.Upgrade ? "被覆盖升级" : "离场";
+            Emit(kind, $"{Type(u).Name} {label}，场上单位移除，来源卡不重复回收", u.Id);
         }
 
         /// <summary>

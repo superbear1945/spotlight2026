@@ -29,6 +29,8 @@
             <ui:Label name="phase-label" text="" class="warn-label" picking-mode="Ignore" />
             <ui:Label text="选中详情" class="section-label" picking-mode="Ignore" />
             <ui:Label name="unit-detail" text="点击手牌、己方单位或己方家进行操作" class="detail-label" picking-mode="Ignore" />
+            <!-- 选中己方单位时出现的“离场”入口；显隐完全由规则层的合法性决定（见 HudView.Render） -->
+            <ui:Button name="withdraw-button" text="离场" class="action-button withdraw-button" />
         </ui:VisualElement>
 
         <!-- 底部按钮条 -->

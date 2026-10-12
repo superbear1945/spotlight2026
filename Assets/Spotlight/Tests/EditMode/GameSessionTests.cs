@@ -70,6 +70,54 @@ namespace Spotlight.Tests
             Assert.That(targets.Any(c=>c==new Cell(1,0)),Is.False,"资源卡不应作为互换目标出现在高亮里");
             Assert.That(g.GetSnapshot().Units.Single(u=>u.Id==minerA.Id).Position,Is.EqualTo(new Cell(0,0)),"被拒绝的互换不得改变位置");
         }
+        [Test] public void WithdrawRemovesOwnUnitWithoutConsumingAction()
+        {
+            // 离场不是行动：先把行动用掉（移动），仍然可以离场；来源卡不回收，牌区总数不变。
+            var g=Start();var u=Put(g,"soldier",0,0);
+            Assert.That(g.Execute(new GameCommand(CommandKind.Move,Side.Player,u.Id,new Cell(1,0))).Success,Is.True);
+            var acted=g.GetLegalActions(new Selection(SelectionKind.Unit,u.Id));
+            Assert.That(g.GetSnapshot().Units.Single(x=>x.Id==u.Id).Acted,Is.True);
+            Assert.That(acted.Move,Is.Empty,"行动已经用完");
+            Assert.That(acted.CanWithdraw,Is.True,"已行动的单位仍然可以离场");
+            var before=g.GetSnapshot();
+            Assert.That(g.Execute(new GameCommand(CommandKind.Withdraw,Side.Player,u.Id)).Success,Is.True);
+            var after=g.GetSnapshot();
+            Assert.That(after.Units.Any(x=>x.Id==u.Id),Is.False,"离场后单位仍在场上");
+            Assert.That(after.Graveyard.Count,Is.EqualTo(before.Graveyard.Count),"离场不应回收来源卡");
+            Assert.That(after.Hand.Count+after.DrawPile.Count+after.Graveyard.Count,Is.EqualTo(16),"离场改变了牌区总数");
+            Assert.That(after.Log.Any(e=>e.Kind=="withdraw"),Is.True,"离场应写入一条 withdraw 日志事件");
+        }
+        [Test] public void WithdrawIsRejectedForBossUnitsHomesAndWrongTurn()
+        {
+            var g=Start();var mine=Put(g,"soldier",0,0);
+            // 家不是单位，不能离场
+            Assert.That(g.Execute(new GameCommand(CommandKind.Withdraw,Side.Player,-1)).Success,Is.False);
+            Assert.That(g.GetLegalActions(new Selection(SelectionKind.Home,-1)).CanWithdraw,Is.False);
+            // 交出回合，由手动 Boss 放一个 Boss 单位
+            End(g);
+            Assert.That(g.Execute(new GameCommand(CommandKind.BossDeploy,Side.Boss,target:new Cell(0,8))).Success,Is.True);
+            var boss=g.GetSnapshot().Units.Single(x=>x.Owner==Side.Boss);
+            Assert.That(g.Execute(new GameCommand(CommandKind.Withdraw,Side.Boss,boss.Id)).Success,Is.False,"Boss 单位不可离场");
+            Assert.That(g.Execute(new GameCommand(CommandKind.Withdraw,Side.Player,mine.Id)).Success,Is.False,"不是己方回合");
+            Assert.That(g.GetLegalActions(new Selection(SelectionKind.Unit,boss.Id)).CanWithdraw,Is.False,"Boss 单位没有离场入口");
+        }
+        [Test] public void WithdrawIsBlockedByModalAndDiscardPhase()
+        {
+            var g=Start();var u=Put(g,"soldier",0,0);
+            g.SetInputBlocked(true);
+            Assert.That(g.Execute(new GameCommand(CommandKind.Withdraw,Side.Player,u.Id)).Success,Is.False,"模态阻塞时不能离场");
+            Assert.That(g.GetLegalActions(new Selection(SelectionKind.Unit,u.Id)).CanWithdraw,Is.False,"模态下没有离场入口");
+            // 弃牌阶段只能弃牌：换一份手牌上限很小的配置，先部署再结束回合进入弃牌阶段。
+            var d=Document();d.rules[0].drawCount=5;d.rules[0].handLimit=2;var g2=Start(d);
+            var record=g2.GetSnapshot().Hand.First(c=>g2.GetLegalActions(new Selection(SelectionKind.Hand,c.Id)).Deploy.Count>0);
+            var cell=g2.GetLegalActions(new Selection(SelectionKind.Hand,record.Id)).Deploy[0];
+            Assert.That(g2.Execute(new GameCommand(CommandKind.Deploy,Side.Player,record.Id,cell)).Success,Is.True);
+            var unit=g2.GetSnapshot().Units.Single();
+            Assert.That(g2.Execute(new GameCommand(CommandKind.EndTurn,Side.Player)).Success,Is.True);
+            Assert.That(g2.GetSnapshot().Phase,Is.EqualTo(MatchPhase.Discard));
+            Assert.That(g2.Execute(new GameCommand(CommandKind.Withdraw,Side.Player,unit.Id)).Success,Is.False,"弃牌阶段不能离场");
+            Assert.That(g2.GetLegalActions(new Selection(SelectionKind.Unit,unit.Id)).CanWithdraw,Is.False,"弃牌阶段没有离场入口");
+        }
         [Test] public void MoveUsesShortestUnoccupiedPathAndConsumesAction()
         {
             var g=Start();var u=Put(g,"soldier",0,0);Put(g,"miner",0,1);

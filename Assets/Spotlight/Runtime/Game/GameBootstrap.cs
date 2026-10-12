@@ -88,6 +88,8 @@ namespace Spotlight
                 _hudView.EndTurnRequested += OnEndTurnRequested;
                 _hudView.SkipDeployRequested -= OnSkipDeployRequested;
                 _hudView.SkipDeployRequested += OnSkipDeployRequested;
+                _hudView.WithdrawRequested -= OnWithdrawRequested;
+                _hudView.WithdrawRequested += OnWithdrawRequested;
                 _hudView.RestartRequested -= OnRestartRequested;
                 _hudView.RestartRequested += OnRestartRequested;
                 _hudView.DebugRequested -= OnDebugRequested;
@@ -311,6 +313,21 @@ namespace Spotlight
             Submit(new GameCommand(CommandKind.EndTurn, Side.Boss, skipDeployment: true));
         }
 
+        /// <summary>
+        /// HUD 请求让当前选中的己方单位离场。
+        /// 输入：无（读取 _selection）；输出：无。
+        /// 行为：用选中的单位 ID 组装 Withdraw 命令交给规则层裁决（能否离场由规则层决定，界面不判断）；
+        /// 提交后清空选中，因为该单位已经不在场，残留的选择会让 HUD 详情停留在已移除的单位上
+        /// （与部署后清空选中是同一条约定）。
+        /// </summary>
+        void OnWithdrawRequested()
+        {
+            if (_session == null || _selection.Kind != SelectionKind.Unit) return;
+            Submit(new GameCommand(CommandKind.Withdraw, _session.GetSnapshot().ActiveSide, _selection.Id));
+            _selection = new Selection(SelectionKind.None);
+            Refresh();
+        }
+
         /// <summary>HUD 请求重开：使用当前生效配置重新开局。输入：无；输出：无。</summary>
         void OnRestartRequested()
         {
@@ -357,7 +374,7 @@ namespace Spotlight
             var actions = _session.GetLegalActions(_selection);
             _boardView?.Render(snapshot, actions, _selection);
             _handView?.Render(snapshot, _selection);
-            _hudView?.Render(snapshot, _configuration, _selection);
+            _hudView?.Render(snapshot, _configuration, _selection, actions);
             SyncSelectionFeedback();
         }
 

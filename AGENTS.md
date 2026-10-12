@@ -88,9 +88,9 @@ Assets/Spotlight/
 - 三套身份：`CardRecord`（抽牌堆/手牌/墓地中的卡牌记录）、`UnitState`（在场的可变单位）、`HomeState`（独立的家）。**三者身份不可混用**；家 ID 为负数（玩家 -1、Boss -2），单位 ID 为正数。
 - `UnitState` 只保存来源卡牌的值副本（`SourceCardId` / `TypeId` / `Owner`），**不引用 `CardRecord`**。玩家卡在成功部署时进入墓地，单位阵亡或被覆盖升级不再重复回收，因此“抽牌堆 + 手牌 + 墓地”的卡牌总数恒定，同一张卡可以反复部署出多个互相独立的单位。
 - 名词与机制的完整定义见 `docs/游戏内名词.md`。
-- `GameCommand`：不可变操作请求，含 `CommandKind`（Deploy / BossDeploy / Move / MoveHome / Attack / Swap / Discard / EndTurn）、`Actor`、`SubjectId`、`Target`、`TargetId`、`SkipDeployment`。**Target 视为不可信输入，执行时必须复验**。
+- `GameCommand`：不可变操作请求，含 `CommandKind`（Deploy / BossDeploy / Move / MoveHome / Attack / Swap / Withdraw / Discard / EndTurn）、`Actor`、`SubjectId`、`Target`、`TargetId`、`SkipDeployment`。**Target 视为不可信输入，执行时必须复验**。
 - `Selection` / `SelectionKind`：界面选择上下文，显式区分手牌与单位身份。
-- `LegalActions`：规则层算出的合法目标（`Deploy` / `Move` / `Attack` / `Swap`）。**UI 不得自行推导合法性，高亮仅提示**。
+- `LegalActions`：规则层算出的合法目标（`Deploy` / `Move` / `Attack` / `Swap` / `CanWithdraw`）。**UI 不得自行推导合法性，高亮仅提示**。
 - `GameEvent`：已发生的领域事件（`Kind` / `Message` / `SubjectId`），仅用于日志与表现，**动画不得回写结算结果**。
 - `CommandResult`：成功状态、失败原因与有序事件；失败时状态未被修改。
 - `GameSnapshot`：独立只读快照（回合、行动方、阶段、资源、手牌/牌堆/墓地、单位与家副本、兵位状态、日志），持有旧快照不会受后续命令影响。
@@ -98,7 +98,7 @@ Assets/Spotlight/
 
 对局内核（`Core/GameSession.cs`）—— 玩家与 AI 共用同一入口：
 
-- `Execute(GameCommand)`：部署、移动、攻击、互换、弃牌、结束回合。
+- `Execute(GameCommand)`：部署、移动、攻击、互换、离场、弃牌、结束回合。
 - `GetLegalActions(Selection)`：提供合法目标与高亮依据。
 - `GetSnapshot()`：提供 UI、日志与调试快照。
 - `SetInputBlocked(bool)`：规则层输入闸门（配置面板打开时启用）。
@@ -133,6 +133,7 @@ Assets/Spotlight/
 | 卡牌记录 `CardRecord` | 仅含实例 ID / 卡种 ID / 阵营，在抽牌堆、手牌、墓地间流转，是唯一会被洗回和再次抽到的身份 |
 | 战斗单位 `UnitState` | 一次部署产生的可变实体，只保存来源卡的值副本（`SourceCardId` / `TypeId` / `Owner`），不引用 `CardRecord`；同一张卡可反复部署出多个互相独立的单位，伤势不回流卡牌 |
 | 家 `HomeState` | 独立实体，不进入抽牌堆、不参与互换、无攻击力，可被攻击与移动 |
+| 离场 `Withdraw` | 玩家主动把自己在场的单位移出棋盘；不消耗该单位本回合行动、不回收来源卡（部署时已进墓地），Boss 单位与家不可离场 |
 | 维持费 upkeep | 单位每回合的持续消耗；不足时本回合不能行动 |
 | 产出 produce | 家或资源卡每回合提供的资源 |
 | 召唤失调 | “刚上场不能行动”，由规则开关控制 |
