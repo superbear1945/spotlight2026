@@ -70,6 +70,7 @@ namespace Spotlight.Tests
             Assert.That(targets.Any(c=>c==new Cell(1,0)),Is.False,"资源卡不应作为互换目标出现在高亮里");
             Assert.That(g.GetSnapshot().Units.Single(u=>u.Id==minerA.Id).Position,Is.EqualTo(new Cell(0,0)),"被拒绝的互换不得改变位置");
         }
+
         [Test] public void WithdrawRemovesOwnUnitWithoutConsumingAction()
         {
             // 离场不是行动：先把行动用掉（移动），仍然可以离场；来源卡不回收，牌区总数不变。
@@ -118,6 +119,7 @@ namespace Spotlight.Tests
             Assert.That(g2.Execute(new GameCommand(CommandKind.Withdraw,Side.Player,unit.Id)).Success,Is.False,"弃牌阶段不能离场");
             Assert.That(g2.GetLegalActions(new Selection(SelectionKind.Unit,unit.Id)).CanWithdraw,Is.False,"弃牌阶段没有离场入口");
         }
+
         [Test] public void MoveUsesShortestUnoccupiedPathAndConsumesAction()
         {
             var g=Start();var u=Put(g,"soldier",0,0);Put(g,"miner",0,1);
