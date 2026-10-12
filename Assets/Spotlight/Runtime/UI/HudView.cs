@@ -26,6 +26,10 @@ namespace Spotlight
         public event Action EndTurnRequested;
         /// <summary>点击“跳过放牌并结束”（仅手动 Boss 模式可用）。</summary>
         public event Action SkipDeployRequested;
+        /// <summary>进入炸弹选格模式。</summary>
+        public event Action BombDeployRequested;
+        /// <summary>跳过本回合炸弹。</summary>
+        public event Action BombSkipRequested;
         /// <summary>点击“重开”。</summary>
         public event Action RestartRequested;
         /// <summary>点击“配置/调试”。</summary>
@@ -55,6 +59,8 @@ namespace Spotlight
         Button _endTurnButton;
         /// <summary>跳过放牌按钮。</summary>
         Button _skipButton;
+        /// <summary>炸弹部署与跳过按钮，只有待处理机会时可见。</summary>
+        Button _bombDeployButton, _bombSkipButton;
         /// <summary>胜负遮罩。</summary>
         VisualElement _victoryOverlay;
         /// <summary>胜负文本。</summary>
@@ -63,6 +69,8 @@ namespace Spotlight
         VisualElement _modalOverlay;
         /// <summary>已渲染的日志条数，用于增量追加。</summary>
         int _renderedLogCount;
+        /// <summary>已展示的末条事件，用于识别日志容量满后的滚动更新及阶段切换。</summary>
+        GameEvent _lastRenderedEvent;
 
         /// <summary>界面根元素（供调试面板查询同一文档中的其它元素）。</summary>
         public VisualElement Root => _root;
@@ -89,12 +97,16 @@ namespace Spotlight
             _logContent = _root.Q<VisualElement>("log-content");
             _endTurnButton = _root.Q<Button>("end-turn-button");
             _skipButton = _root.Q<Button>("skip-deploy-button");
+            _bombDeployButton = _root.Q<Button>("bomb-deploy-button");
+            _bombSkipButton = _root.Q<Button>("bomb-skip-button");
             _victoryOverlay = _root.Q<VisualElement>("victory-overlay");
             _victoryLabel = _root.Q<Label>("victory-label");
             _modalOverlay = _root.Q<VisualElement>("modal-overlay");
 
             if (_endTurnButton != null) _endTurnButton.clicked += () => EndTurnRequested?.Invoke();
             if (_skipButton != null) _skipButton.clicked += () => SkipDeployRequested?.Invoke();
+            if (_bombDeployButton != null) _bombDeployButton.clicked += () => BombDeployRequested?.Invoke();
+            if (_bombSkipButton != null) _bombSkipButton.clicked += () => BombSkipRequested?.Invoke();
             var restart = _root.Q<Button>("restart-button");
             if (restart != null) restart.clicked += () => RestartRequested?.Invoke();
             var debug = _root.Q<Button>("debug-button");
@@ -114,7 +126,7 @@ namespace Spotlight
         /// 输入：快照、本局配置与当前选择；输出：无。
         /// 行为：刷新文本、按钮可用性、日志增量与胜负遮罩。
         /// </summary>
-        public void Render(GameSnapshot snapshot, GameConfiguration configuration, Selection selection)
+        public void Render(GameSnapshot snapshot, GameConfiguration configuration, Selection selection, bool inputBlocked = false)
         {
             if (_root == null) return;
             var sideName = snapshot.ActiveSide == Side.Player ? "玩家" : "Boss";
@@ -124,11 +136,17 @@ namespace Spotlight
             if (_bossLabel != null) _bossLabel.text = BuildBossLine(snapshot, configuration);
             if (_phaseLabel != null) _phaseLabel.text = BuildPhaseLine(snapshot);
             if (_detailLabel != null) _detailLabel.text = BuildDetail(selection, snapshot, configuration);
-            if (_endTurnButton != null) _endTurnButton.SetEnabled(snapshot.Phase != MatchPhase.Finished);
+            if (_endTurnButton != null) _endTurnButton.SetEnabled(!inputBlocked && snapshot.Phase != MatchPhase.Finished && !snapshot.BossBombPending);
+            _bombDeployButton?.SetEnabled(!inputBlocked);
+            _bombSkipButton?.SetEnabled(!inputBlocked);
+            var bombReady = snapshot.BossBombPending && snapshot.Phase == MatchPhase.Action;
+            if (_bombDeployButton != null) _bombDeployButton.style.display = bombReady ? DisplayStyle.Flex : DisplayStyle.None;
+            if (_bombSkipButton != null) _bombSkipButton.style.display = bombReady ? DisplayStyle.Flex : DisplayStyle.None;
             if (_skipButton != null)
             {
                 var showSkip = snapshot.PlayerControlsBoss && snapshot.ActiveSide == Side.Boss && snapshot.PlaysRemaining > 0;
                 _skipButton.style.display = showSkip ? DisplayStyle.Flex : DisplayStyle.None;
+                _skipButton.SetEnabled(!inputBlocked && !snapshot.BossBombPending);
             }
             AppendLog(snapshot.Log);
             if (_victoryOverlay != null)
@@ -147,6 +165,9 @@ namespace Spotlight
         string BuildBossLine(GameSnapshot snapshot, GameConfiguration configuration)
         {
             var sb = new StringBuilder();
+            foreach (var bomb in snapshot.BossBombs)
+                sb.Append("炸弹 ").Append(bomb.Position).Append(" · 第 ").Append(bomb.DueRound).Append(" 回合玩家行动前爆炸 · 伤害 ").Append(bomb.Damage).AppendLine();
+            if (snapshot.BossBombPending) sb.AppendLine("炸弹机会：请先布置或跳过");
             if (snapshot.PlayerControlsBoss)
             {
                 var bossName = configuration != null && configuration.Cards.TryGetValue(configuration.Rules.BossCardType, out var boss) ? boss.Name : configuration?.Rules.BossCardType;
@@ -168,6 +189,7 @@ namespace Spotlight
         /// <summary>组装阶段提示文本。输入：快照；输出：提示行（无提示时为空串）。</summary>
         string BuildPhaseLine(GameSnapshot snapshot)
         {
+            if (snapshot.BossBombPending) return "先布置炸弹或跳过炸弹，再开始玩家行动";
             if (snapshot.Phase == MatchPhase.Discard) return $"请弃牌至上限（剩余 {snapshot.Hand.Count} 张）";
             if (snapshot.ActiveSide == Side.Boss && !snapshot.PlayerControlsBoss) return "Boss 回合（AI 自动结算）";
             return string.Empty;
@@ -180,6 +202,7 @@ namespace Spotlight
         /// </summary>
         string BuildDetail(Selection selection, GameSnapshot snapshot, GameConfiguration configuration)
         {
+            if (selection.Kind == SelectionKind.BossBombDeployment) return "选择高亮列中的任意格布置炸弹，可与单位或家同格";
             if (selection.Kind == SelectionKind.Hand)
             {
                 var card = snapshot.Hand.FirstOrDefault(c => c.Id == selection.Id);
@@ -202,22 +225,26 @@ namespace Spotlight
             return "点击手牌、己方单位或己方家进行操作";
         }
 
-        /// <summary>增量追加日志。输入：快照日志列表；输出：无。</summary>
+        /// <summary>同步阶段日志。输入：当前展示快照的日志；输出：有界列表，滚动截断时仍更新且不重复追加。</summary>
         void AppendLog(IReadOnlyList<GameEvent> log)
         {
             if (_logContent == null) return;
-            for (var i = _renderedLogCount; i < log.Count; i++)
+            var last = log.Count > 0 ? log[log.Count - 1] : null;
+            if (_renderedLogCount == log.Count && ReferenceEquals(last, _lastRenderedEvent)) return;
+            _logContent.Clear();
+            for (var i = 0; i < log.Count; i++)
             {
                 var line = new Label(log[i].Message);
                 line.AddToClassList("log-line");
                 _logContent.Add(line);
             }
             _renderedLogCount = log.Count;
+            _lastRenderedEvent = last;
             if (_logScroll != null) _logScroll.scrollOffset = new Vector2(0f, float.MaxValue);
         }
 
         /// <summary>重置日志渲染计数。输入：无；输出：无。用途：重开后清空日志列表。</summary>
-        public void ResetLog() { if (_logContent != null) _logContent.Clear(); _renderedLogCount = 0; }
+        public void ResetLog() { if (_logContent != null) _logContent.Clear(); _renderedLogCount = 0; _lastRenderedEvent = null; }
 
         /// <summary>显示一条错误或提示。输入：文本；输出：无。</summary>
         public void ShowError(string message)

@@ -2,7 +2,11 @@
 // 边界：动画只读取事件并操作 RectTransform/Image，绝不回写规则状态；
 // 对象被销毁、复用或重开时统一 Kill，避免残留 Tween 操作已回收的对象。
 using DG.Tweening;
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Spotlight
 {
@@ -20,6 +24,12 @@ namespace Spotlight
         [SerializeField] float _feedbackSeconds = 0.12f;
         /// <summary>选中放大倍率。</summary>
         [SerializeField] float _selectedScale = 1.05f;
+        /// <summary>炸弹闪光颜色，由既有攻击目标表现配置提供。</summary>
+        Color _bombColor = Color.red;
+        /// <summary>此组件拥有的临时炸弹闪光，用于停止与销毁时完整回收。</summary>
+        readonly HashSet<GameObject> _bombEffects = new HashSet<GameObject>();
+        /// <summary>取消代号使旧爆炸协程在 KillAll 后不再创建新效果。</summary>
+        int _bombPlaybackVersion;
 
         /// <summary>
         /// 应用表现配置。
@@ -31,7 +41,85 @@ namespace Spotlight
             _moveSeconds = presentation.MoveSeconds;
             _feedbackSeconds = presentation.FeedbackSeconds;
             _selectedScale = presentation.SelectedScale;
+            _bombColor = CardText.Parse(presentation.AttackTargetColor, Color.red);
         }
+
+        /// <summary>
+        /// 播放炸弹部署闪光。输入：目标格矩形；输出：不参与结算且不遮挡点击的临时视觉对象。
+        /// 时长和颜色由 Configure 的表现配置提供，外层可直接调用以替换或复用表现。
+        /// </summary>
+        public void PlayBombDeploy(RectTransform cell) => FlashBombCell(cell);
+
+        /// <summary>等待当前炸弹闪光完成或被停止。输入：无；输出：表现协程，不影响任何规则数值。</summary>
+        public IEnumerator WaitForBombEffects()
+        {
+            while (_bombEffects.Count > 0) yield return null;
+        }
+
+        /// <summary>等待指定卡牌的补间完成或取消。输入：可为空的卡牌；输出：表现协程，销毁后立即结束等待。</summary>
+        public IEnumerator WaitForCard(Card card)
+        {
+            var rect = Rect(card);
+            while (rect != null && DOTween.IsTweening(rect)) yield return null;
+        }
+
+        /// <summary>
+        /// 逐格播放已结算的十字路径。输入：规则层路径与格子定位函数；输出：可等待的表现协程。
+        /// 不推导伤害、不访问单位生命；即使目标已阵亡也能显示格子效果，KillAll 可取消后续步骤。
+        /// </summary>
+        public IEnumerator PlayBombExplosion(IReadOnlyList<BombBlastStep> steps, Func<Cell, RectTransform> cellRect)
+        {
+            var version = _bombPlaybackVersion;
+            foreach (var step in steps)
+            {
+                if (version != _bombPlaybackVersion || this == null) yield break;
+                FlashBombCell(cellRect(step.Position));
+                if (_feedbackSeconds > 0) yield return new WaitForSecondsRealtime(_feedbackSeconds);
+            }
+        }
+
+        /// <summary>
+        /// 创建单格闪光并淡出。输入：格子矩形；输出：自动清理的 DOTween 表现。
+        /// 绑定目标并统一 OnComplete/OnKill 清理，避免对象销毁后继续写入 Image。
+        /// </summary>
+        void FlashBombCell(RectTransform cell)
+        {
+            if (cell == null) return;
+            var effect = new GameObject("BossBombFlash", typeof(RectTransform), typeof(Image));
+            var rect = (RectTransform)effect.transform;
+            rect.SetParent(cell, false);
+            rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            var graphic = effect.GetComponent<Image>();
+            graphic.raycastTarget = false;
+            graphic.color = _bombColor;
+            _bombEffects.Add(effect);
+            DOTween.To(() => graphic != null ? graphic.color.a : 0f,
+                alpha => { if (graphic != null) { var color = graphic.color; color.a = alpha; graphic.color = color; } },
+                0f, _feedbackSeconds).SetUpdate(true).SetTarget(rect)
+                .OnComplete(() => ReleaseBombEffect(effect)).OnKill(() => ReleaseBombEffect(effect));
+        }
+
+        /// <summary>回收单格闪光。输入：效果对象；输出：无，可重复调用以统一完成/停止路径。</summary>
+        void ReleaseBombEffect(GameObject effect)
+        {
+            _bombEffects.Remove(effect);
+            if (effect != null) Destroy(effect);
+        }
+
+        /// <summary>取消炸弹表现。输入：是否补完当前闪光；输出：清空临时对象并阻止旧协程继续创建。</summary>
+        void ClearBombEffects(bool complete)
+        {
+            _bombPlaybackVersion++;
+            foreach (var effect in new List<GameObject>(_bombEffects))
+            {
+                if (effect != null) { effect.transform.DOKill(complete); ReleaseBombEffect(effect); }
+            }
+            _bombEffects.Clear();
+        }
+
+        /// <summary>销毁时只取消本组件拥有的炸弹补间，不补完，避免访问已销毁的棋盘矩形。</summary>
+        void OnDestroy() => ClearBombEffects(false);
 
         /// <summary>播放部署动效：从 0 放大到 1。输入：目标卡牌；输出：无。</summary>
         public void PlayDeploy(Card card)
@@ -40,7 +128,7 @@ namespace Spotlight
             if (rt == null) return;
             Kill(card);
             rt.localScale = Vector3.zero;
-            rt.DOScale(Vector3.one, _feedbackSeconds).SetEase(Ease.OutBack);
+            rt.DOScale(Vector3.one, _feedbackSeconds).SetEase(Ease.OutBack).SetUpdate(true);
         }
 
         /// <summary>
@@ -66,6 +154,7 @@ namespace Spotlight
             // SetTarget 让该补间能被 DOKill/DOKillAll 正确回收，OnComplete/OnKill 保证位移一定归零。
             DOTween.To(() => rt.anchoredPosition, value => rt.anchoredPosition = value, Vector2.zero, _moveSeconds)
                 .SetEase(Ease.OutQuad)
+                .SetUpdate(true)
                 .SetTarget(rt)
                 .OnComplete(() => FinishMove(card, rt))
                 .OnKill(() => FinishMove(card, rt));
@@ -89,7 +178,7 @@ namespace Spotlight
             if (rt == null) return;
             Kill(card);
             rt.localScale = Vector3.one;
-            rt.DOPunchScale(Vector3.one * 0.18f, _feedbackSeconds, 6, 0.6f);
+            rt.DOPunchScale(Vector3.one * 0.18f, _feedbackSeconds, 6, 0.6f).SetUpdate(true);
         }
 
         /// <summary>
@@ -124,6 +213,7 @@ namespace Spotlight
         /// </summary>
         public void KillAll()
         {
+            ClearBombEffects(true);
             DOTween.KillAll();
         }
 
