@@ -66,8 +66,8 @@ namespace Spotlight.EditorTools
 
         /// <summary>Rules 表内容（首行为表头，第二行为唯一数据行，列以逗号分隔）。</summary>
         private const string RulesSheetText =
-            "rows,columns,homeRegionWidth,playerPlays,bossPlays,drawCount,handLimit,initialResources,bossRespawnDelay,playerSide,firstSide,bossCardType,playerControlsBoss,accumulateResources,summoningSickness,adjacentSwap,lineBlocking\n" +
-            "5,10,2,5,1,5,5,0,5,left,player,bossCombat,false,true,true,true,false";
+            "rows,columns,homeRegionWidth,playerPlays,bossPlays,drawCount,handLimit,initialResources,bossRespawnDelay,playerSide,firstSide,bossCardType,playerControlsBoss,accumulateResources,summoningSickness,adjacentSwap,lineBlocking,bossBombInterval,bossBombDamage,bossBombColumn\n" +
+            "5,10,2,5,1,5,5,0,5,left,player,bossCombat,false,true,true,true,false,10,3,5";
 
         /// <summary>Homes 表内容（首行为表头，其余为数据行，列以逗号分隔）。</summary>
         private const string HomesSheetText =

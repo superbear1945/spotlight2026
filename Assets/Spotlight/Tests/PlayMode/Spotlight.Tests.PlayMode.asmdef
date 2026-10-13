@@ -3,7 +3,8 @@
   "rootNamespace": "Spotlight.Tests",
   "references": [
     "Spotlight.Core",
-    "Spotlight.Runtime"
+    "Spotlight.Runtime",
+    "Unity.TextMeshPro"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

@@ -147,6 +147,47 @@ namespace Spotlight
         internal BossReplacement Copy(long round) { var s = (BossReplacement)MemberwiseClone(); s.RemainingRounds = Math.Max(0, DueRound - round); return s; }
     }
 
+    /// <summary>
+    /// 独立地面炸弹的不可变状态，不属于卡牌记录或战斗单位，也不占格。
+    /// 输入：部署时的坐标、回合和伤害；输出：规则计时与视图标记共用的数据。
+    /// 不可变对象可安全共享给旧快照，爆炸时移除整条状态而不修改它。
+    /// </summary>
+    public sealed class BossBombState
+    {
+        /// <summary>部署格的内部坐标。</summary>
+        public Cell Position { get; }
+        /// <summary>部署时的完整回合号。</summary>
+        public long DeployedRound { get; }
+        /// <summary>到期的完整回合号，在该回合玩家行动前引爆。</summary>
+        public long DueRound { get; }
+        /// <summary>整颗炸弹的伤害预算。</summary>
+        public int Damage { get; }
+
+        /// <summary>构造炸弹。输入：坐标、部署回合、伤害；输出：下一回合到期的不可变状态。</summary>
+        public BossBombState(Cell position, long deployedRound, int damage)
+        { Position = position; DeployedRound = deployedRound; DueRound = deployedRound + 1; Damage = damage; }
+    }
+
+    /// <summary>
+    /// 爆炸实际访问一个格子的不可变结果，供动画复现而不重新推算战斗。
+    /// 输入：格子、受伤单位、扣血量与是否阵亡；输出：路径和伤害的展示数据。
+    /// </summary>
+    public sealed class BombBlastStep
+    {
+        /// <summary>实际搜索过的格子。</summary>
+        public Cell Position { get; }
+        /// <summary>受伤单位 ID，空格或忽略对象时为 0。</summary>
+        public long UnitId { get; }
+        /// <summary>此格实际消耗的伤害。</summary>
+        public int Damage { get; }
+        /// <summary>该单位是否因本次爆炸阵亡。</summary>
+        public bool Killed { get; }
+
+        /// <summary>保存单格结算。输入：坐标与伤害结果；输出：不可变路径步骤。</summary>
+        public BombBlastStep(Cell position, long unitId, int damage, bool killed)
+        { Position = position; UnitId = unitId; Damage = damage; Killed = killed; }
+    }
+
     /// <summary>回合阶段：正常行动、超限弃牌、已结束。</summary>
     public enum MatchPhase { Action, Discard, Finished }
 
@@ -154,7 +195,7 @@ namespace Spotlight
     public enum MatchOutcome { None, PlayerWins, BossWins, Draw }
 
     /// <summary>命令种类。玩家与 AI 共用同一入口，区别只在 ExecuteCommand 的 fromAi 标记。</summary>
-    public enum CommandKind { Deploy, BossDeploy, Move, MoveHome, Attack, Swap, Discard, EndTurn }
+    public enum CommandKind { Deploy, BossDeploy, Move, MoveHome, Attack, Swap, Discard, EndTurn, DeployBossBomb, SkipBossBomb }
 
     /// <summary>
     /// 不可变操作请求。
@@ -186,7 +227,7 @@ namespace Spotlight
     }
 
     /// <summary>界面选择上下文种类。显式区分卡牌身份与单位身份，避免 ID 语义歧义。</summary>
-    public enum SelectionKind { None, Hand, Unit, Home, BossDeployment }
+    public enum SelectionKind { None, Hand, Unit, Home, BossDeployment, BossBombDeployment }
 
     /// <summary>
     /// 界面选择上下文。
@@ -234,8 +275,17 @@ namespace Spotlight
         /// <summary>相关实体 ID，用于把动画定位到具体单位（0 表示无主体）。</summary>
         public long SubjectId { get; }
 
-        /// <summary>构造一条事件。输入：类型、文本与主体 ID；输出：不可变事件。</summary>
-        public GameEvent(string kind, string message, long subjectId = 0) { Kind = kind; Message = message; SubjectId = subjectId; }
+        /// <summary>炸弹部署/爆炸的来源状态；其他事件为空。</summary>
+        public BossBombState Bomb { get; }
+        /// <summary>爆炸实际访问顺序与伤害结果；复制数组防止外部改变事件。</summary>
+        public IReadOnlyList<BombBlastStep> BlastSteps { get; }
+
+        /// <summary>构造事件。输入：类型、文本、主体及可选炸弹路径；输出：拥有独立只读路径的事件。</summary>
+        public GameEvent(string kind, string message, long subjectId = 0, BossBombState bomb = null, BombBlastStep[] blastSteps = null)
+        {
+            Kind = kind; Message = message; SubjectId = subjectId; Bomb = bomb;
+            BlastSteps = Array.AsReadOnly(blastSteps == null ? Array.Empty<BombBlastStep>() : (BombBlastStep[])blastSteps.Clone());
+        }
     }
 
     /// <summary>
@@ -252,8 +302,28 @@ namespace Spotlight
         /// <summary>按发生顺序排列的事件。</summary>
         public IReadOnlyList<GameEvent> Events { get; }
 
-        /// <summary>内部构造：只允许规则内核产生结果，外部不能伪造成功。输入：状态与事件数组；输出：不可变结果。</summary>
-        internal CommandResult(bool success, string error, GameEvent[] events) { Success = success; Error = error; Events = Array.AsReadOnly(events); }
+        /// <summary>炸弹准备及自动 Boss 行动的有序展示阶段；为空时直接展示最终状态，事件与 Events 共用不可变对象。</summary>
+        public IReadOnlyList<PresentationFrame> PresentationFrames { get; }
+
+        /// <summary>内部构造。输入：状态、全部事件与展示阶段；输出：不可变结果，阶段只供表现读取。</summary>
+        internal CommandResult(bool success, string error, GameEvent[] events, PresentationFrame[] frames)
+        { Success = success; Error = error; Events = Array.AsReadOnly(events); PresentationFrames = Array.AsReadOnly(frames); }
+    }
+
+    /// <summary>
+    /// 已结算阶段的展示记录。输入：独立快照与该阶段新增事件；输出：界面顺序播放的数据。
+    /// 用于保留炸弹处理及自动 Boss 行动时的棋盘、回合号和日志，不暂停规则执行，也不允许动画回写规则。
+    /// </summary>
+    public sealed class PresentationFrame
+    {
+        /// <summary>该阶段结束时的独立只读快照。</summary>
+        public GameSnapshot Snapshot { get; }
+        /// <summary>仅本阶段产生的事件，不重复包含前一阶段事件。</summary>
+        public IReadOnlyList<GameEvent> Events { get; }
+
+        /// <summary>构造阶段。输入：已复制的快照和新事件数组；输出：只读展示记录，只有内核可创建。</summary>
+        internal PresentationFrame(GameSnapshot snapshot, GameEvent[] events)
+        { Snapshot = snapshot; Events = Array.AsReadOnly(events); }
     }
 
     /// <summary>
@@ -279,6 +349,10 @@ namespace Spotlight
         public bool PlayerControlsBoss { get; internal set; }
         /// <summary>补兵间隔，UI 用于展示剩余回合。</summary>
         public int BossRespawnDelay { get; internal set; }
+        /// <summary>玩家行动前必须先部署或跳过炸弹；只有手动控制 Boss 的技能准备窗口可能为 true。</summary>
+        public bool BossBombPending { get; internal set; }
+        /// <summary>尚未爆炸的不可变地面标记。</summary>
+        public IReadOnlyList<BossBombState> BossBombs { get; internal set; } = Array.Empty<BossBombState>();
         /// <summary>玩家手牌。</summary>
         public IReadOnlyList<CardRecord> Hand { get; internal set; }
         /// <summary>玩家抽牌堆。</summary>

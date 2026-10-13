@@ -35,7 +35,7 @@ namespace Spotlight.Tests
                 {
                     new RulesRow
                     {
-                        rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 20, bossPlays = 1, drawCount = 6, handLimit = 30,
+                        bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 20, bossPlays = 1, drawCount = 6, handLimit = 30,
                         initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss",
                         playerControlsBoss = true, summoningSickness = false, adjacentSwap = true
                     }
