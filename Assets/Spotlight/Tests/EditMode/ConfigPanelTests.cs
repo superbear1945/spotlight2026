@@ -65,7 +65,7 @@ namespace Spotlight.Tests
                 },
                 rules = new[]
                 {
-                    new RulesRow { rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 5, bossPlays = 1, drawCount = 5, handLimit = 5, initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss", playerControlsBoss = false, accumulateResources = true, summoningSickness = true, adjacentSwap = true }
+                    new RulesRow { bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 5, bossPlays = 1, drawCount = 5, handLimit = 5, initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss", playerControlsBoss = false, accumulateResources = true, summoningSickness = true, adjacentSwap = true }
                 },
                 homes = new[] { new HomeRow { owner = "player", hp = 10, produce = 2 }, new HomeRow { owner = "boss", hp = 10, produce = 0 } },
                 bossSlots = new[]
@@ -140,6 +140,26 @@ namespace Spotlight.Tests
             // UI Toolkit 不会向未挂面板的元素派发 ChangeEvent，因此显式执行同一段写回逻辑。
             ConfigFieldBuilder.ApplyCurrentValue(rows);
             Assert.That(draft.Document.rules[0].rows, Is.EqualTo(7));
+        }
+
+        /// <summary>炸弹三个字段可编辑并进入新配置；输入为独立调试草稿，不修改正式 Excel。</summary>
+        [Test]
+        public void BombFieldsWriteBackAndReachNewConfiguration()
+        {
+            var draft = Open(Document());
+            var labels = new[] { "炸弹部署间隔（回合）", "炸弹总伤害", "炸弹部署列号" };
+            var values = new[] { 4, 7, 2 };
+            for (var i = 0; i < labels.Length; i++)
+            {
+                var field = FindIntegerField(labels[i]);
+                Assert.That(field, Is.Not.Null, labels[i]);
+                field.value = values[i];
+                ConfigFieldBuilder.ApplyCurrentValue(field);
+            }
+            Assert.That(draft.TryCreateConfiguration(out var config, out var error), Is.True, error);
+            Assert.That(config.Rules.BossBombInterval, Is.EqualTo(4));
+            Assert.That(config.Rules.BossBombDamage, Is.EqualTo(7));
+            Assert.That(config.Rules.BossBombColumn, Is.EqualTo(2));
         }
 
         /// <summary>数字字段超出下限时被夹紧。输入：无；输出：无。</summary>
@@ -250,6 +270,9 @@ namespace Spotlight.Tests
             Assert.That(bossTexts, Does.Contain("AI 阵亡补卡间隔（回合）"));
             Assert.That(bossTexts, Does.Contain("玩家控制 Boss"));
             Assert.That(bossTexts, Does.Contain("攻击距离"));
+            Assert.That(bossTexts, Does.Contain("炸弹部署间隔（回合）"));
+            Assert.That(bossTexts, Does.Contain("炸弹总伤害"));
+            Assert.That(bossTexts, Does.Contain("炸弹部署列号"));
 
             var turnTexts = CollectLabels(_root.Q<VisualElement>("debug-turn"));
             Assert.That(turnTexts, Does.Contain("每回合抽牌数"));

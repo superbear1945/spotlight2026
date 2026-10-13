@@ -30,6 +30,9 @@ MonoBehaviour:
     summoningSickness: 1
     adjacentSwap: 1
     lineBlocking: 0
+    bossBombInterval: 10
+    bossBombDamage: 3
+    bossBombColumn: 5
   _homes:
   - owner: player
     hp: 10
@@ -86,5 +89,5 @@ MonoBehaviour:
   - cardType: gate
     count: 4
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceHash: 9f0bc8578b6aa5194ba42961425c34852f12a10755bfa4ecc8f632841e41aabe
-  _compiledAtUtc: 2026-10-07T08:13:07.9998695Z
+  _sourceHash: d2a5676636424c7dd3bbe3325c373cd2505462f5901130f7583a58b5a4fa0429
+  _compiledAtUtc: 2026-10-11T13:58:21.9681484Z
