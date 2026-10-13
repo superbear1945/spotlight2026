@@ -20,9 +20,11 @@
 # 【输入】
 #   无参数：扫描仓库内 .github/workflows/*.yml（相对仓库根目录）。
 #   --self-test：只跑本脚本自身的用例，不检查当前仓库。
-#   --check-ruleset：额外把各 workflow 会产生的 job 名与 GitHub 分支规则集里
-#     声明的必需检查名对比。需要 gh 已登录且对仓库有 admin 权限，因此只在本地
-#     推送前跑；未登录时跳过并提示，不当作失败。
+#   --check-ruleset：额外比对 GitHub 分支规则集，包含两项：
+#     1) 各 workflow 会产生的 job 名 ↔ 规则集里声明的必需检查名（同名精确匹配）；
+#     2) 规则集不得要求人工审阅（approval / Code Owner review / required_reviewers）。
+#     需要 gh 已登录且对仓库有 admin 权限，因此只在本地推送前跑；未登录时跳过
+#     并提示，不当作失败。
 #
 # 【输出】
 #   逐文件的检查结论；有问题时列出文件名与违反的条目，退出码 1；全部通过退出码 0。
@@ -33,6 +35,10 @@
 #   当场报错，只会慢慢消耗。把策略写成可执行的守卫，比写在文档里可靠。
 #   另外，规则集里的必需检查名与 workflow 的 job 名是字符串精确匹配的，
 #   这也是本仓库容易踩的坑，故在每个 workflow 顶部都要求写明该耦合关系。
+#
+#   同理，合并规则约定为“必需检查全绿 + 分支最新即可自行合并、不设人工审阅
+#   门禁”；规则集界面上的 approval 选项很容易被顺手打开而无任何提示，故一并
+#   纳入本脚本的规则集比对。
 #
 # 【注意】
 #   本脚本只做纯文本解析，不依赖 python / yaml 库，因此在任意 Ubuntu runner 上
@@ -199,12 +205,40 @@ _workflow_job_names() {
 }
 
 # -----------------------------------------------------------------------------
-# _check_ruleset —— 把 workflow 的 job 名与分支规则集声明的必需检查名对比
+# _check_review_gate —— 判定规则集是否重新要求了人工审阅
+# 输入：标准输入逐行的 `approvals|require_code_owner_review|required_reviewers数量`
+#       （由 _check_ruleset 从各规则集的 pull_request 规则里提取）
+# 输出：有任何一行不满足“0 / false / 0”则逐条打印原因并返回 1；全部合规返回 0
+# 为什么单独抽成函数：这段判定不依赖 gh，可以纳入 --self-test，在未登录的机器上
+# 也能验证“规则被改回要求审阅时必须拦截”，而不只是依赖人工去 GitHub 界面查看。
+# -----------------------------------------------------------------------------
+_check_review_gate() {
+  local _line _approvals _codeowner _reviewers _rc=0
+  while IFS= read -r _line; do
+    [ -n "${_line:-}" ] || continue
+    IFS='|' read -r _approvals _codeowner _reviewers <<<"$_line"
+    if [ "$_approvals" != "0" ] || [ "$_codeowner" != "false" ] || [ "$_reviewers" != "0" ]; then
+      echo "  ❌ 规则集要求人工审阅：required_approving_review_count=$_approvals、"
+      echo "     require_code_owner_review=$_codeowner、required_reviewers=$_reviewers"
+      echo "     ↑ 本仓库约定合并只看“必需检查全部通过 + 分支不是 out of date”，"
+      echo "       PR 作者应能自行手动合并；请把上述三项改回 0 / false / 0（并删除 CODEOWNERS）。"
+      _rc=1
+    fi
+  done
+  return "$_rc"
+}
+
+# -----------------------------------------------------------------------------
+# _check_ruleset —— 把 workflow 的 job 名与分支规则集声明的必需检查名对比，
+#   并校验规则集不要求任何人工审阅
 # 输入：无（自行通过 gh 读取仓库与规则集）；输出：结论；返回 0 合规 / 1 失配 / 2 无法检查
 # 为什么必须查这一条：规则集的必需检查名是按**字符串**匹配 job 名的。job 名里嵌了
 # `${{ matrix.unityVersion }}` 这类变量，所以“把 CI 的 Unity 版本改一下”就足以让所有
 # PR 永久停在 pending——没有任何报错，也没有超时，表现只是永远等不到检查结果。
 # 这种故障从流水线日志里完全看不出来，只能靠提交前静态比对。
+# 为什么同时校验审阅要求：本仓库约定“必需检查全绿 + 分支最新即可由作者自行合并”，
+# 一旦规则集被改回要求 approval / Code Owner review，别人提交的 PR 会卡在“等待审阅”
+# 而作者看不出原因（尤其是启用 CODEOWNERS 时，只有 owner 的 approval 才计数）。
 # -----------------------------------------------------------------------------
 _check_ruleset() {
   if ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
@@ -212,18 +246,23 @@ _check_ruleset() {
     return 2
   fi
 
-  local _repo _ids _id _contexts
+  local _repo _ids _id _contexts _pr
   _repo=$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null) || return 2
   [ -n "$_repo" ] || return 2
   _ids=$(gh api "repos/$_repo/rulesets" --jq '.[].id' 2>/dev/null) || return 2
   [ -n "$_ids" ] || { echo "  ⚠️  仓库未配置任何规则集，跳过比对"; return 2; }
 
-  local _required=""
+  # 同时收集必需检查名与 pull_request 规则里的人数门槛：
+  # 每行的格式为 `approvals|require_code_owner_review|required_reviewers 数量`。
+  local _required="" _pr_rules=""
   while IFS= read -r _id; do
     [ -n "$_id" ] || continue
     _contexts=$(gh api "repos/$_repo/rulesets/$_id" \
       --jq '.rules[] | select(.type=="required_status_checks") | .parameters.required_status_checks[].context' 2>/dev/null)
     [ -n "$_contexts" ] && _required="${_required}${_contexts}"$'\n'
+    _pr=$(gh api "repos/$_repo/rulesets/$_id" \
+      --jq '.rules[] | select(.type=="pull_request") | .parameters | "\(.required_approving_review_count)|\(.require_code_owner_review)|\(.required_reviewers | length)"' 2>/dev/null)
+    [ -n "$_pr" ] && _pr_rules="${_pr_rules}${_pr}"$'\n'
   done <<<"$_ids"
 
   if [ -z "${_required//$'\n'/}" ]; then
@@ -253,7 +292,14 @@ _check_ruleset() {
     echo "       让版本升级不再牵动分支规则。"
     return 1
   fi
-  echo "  ✅ 规则集要求的必需检查与 workflow job 名全部匹配"
+
+  # 合并门槛：只允许“必需检查全绿 + 分支最新”，不得出现任何人工审阅要求。
+  _check_review_gate <<<"${_pr_rules%$'\n'}" || _fail=1
+  if [ "$_fail" -ne 0 ]; then
+    return 1
+  fi
+
+  echo "  ✅ 规则集要求的必需检查与 workflow job 名全部匹配，且未要求人工审阅"
   return 0
 }
 
@@ -351,6 +397,27 @@ G（并行配置拦截）|      max-parallel: 2|1
 H（其他 job 的串行配置不算）|  other:\n    strategy:\n      max-parallel: 1|1
 CASES
 
+  # --- 用例 I–K：合并门槛只允许“检查全绿 + 分支最新”，不得要求人工审阅。
+  # 为什么必须在自检里覆盖：这条约定平时看不出问题，一旦规则集被改回要求审阅，
+  # 表现只是 PR 卡在等 approval；而校验它的 --check-ruleset 需要 gh 登录才能跑，
+  # 因此判定逻辑必须能在离线的自检中被证明有效。
+  local _gate _gate_expected _gate_line _gate_actual
+  while IFS='|' read -r _gate _gate_expected _gate_line; do
+    [ -n "${_gate:-}" ] || continue
+    _gate_actual=0
+    _check_review_gate <<<"${_gate_line//,/|}" >/dev/null 2>&1 || _gate_actual=$?
+    if [ "$_gate_actual" -eq "$_gate_expected" ]; then
+      echo "  ✅ 自检 $_gate 通过"
+    else
+      echo "  ❌ 自检 $_gate 失败：期望退出码 $_gate_expected，实际 $_gate_actual"
+      _rc=1
+    fi
+  done <<'GATES'
+I（不要求任何审阅，0/false/0 → 放行）|0|0,false,0
+J（重新要求 1 个 approval → 拦截）|1|1,false,0
+K（重新开启 Code Owner 审阅 → 拦截）|1|0,true,0
+GATES
+
   return "$_rc"
 }
 
@@ -362,7 +429,7 @@ CASES
 if [ "${1:-}" = "--self-test" ]; then
   echo "== check-ci-config.sh 自检 =="
   if _self_test; then
-    echo "自检结果：8/8 通过"
+    echo "自检结果：11/11 通过"
     exit 0
   fi
   echo "自检结果：存在失败用例"
@@ -416,8 +483,10 @@ echo
 if [ "$_fail" -ne 0 ]; then
   echo "CI 配置检查：未通过"
   echo "  策略说明：main 由分支规则集「main」保护（必须走 PR、禁 force push、禁删除、"
-  echo "  无 bypass，且开启 strict 必需检查），因此 PR 阶段测的就是合并结果，"
-  echo "  push 触发只会重复跑。需要时用 workflow_dispatch 手动触发。"
+  echo "  无 bypass，开启 strict 必需检查，且不要求人工审阅：approval 为 0、"
+  echo "  Code Owner 审阅关闭、无 required_reviewers），因此必需检查全绿且分支最新后"
+  echo "  作者可自行合并；PR 阶段测的就是合并结果，push 触发只会重复跑。"
+  echo "  需要时用 workflow_dispatch 手动触发。"
   echo "  Unity 测试矩阵还必须设置 max-parallel: 1，避免矩阵内并行授权竞争。"
   exit 1
 fi
