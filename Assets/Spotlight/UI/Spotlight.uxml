@@ -18,6 +18,7 @@
             <ui:Label name="phase-label" picking-mode="Ignore" class="warn-label" />
             <ui:Label text="选中详情" picking-mode="Ignore" class="section-label" />
             <ui:Label name="unit-detail" text="点击手牌、己方单位或己方家进行操作" picking-mode="Ignore" class="detail-label" />
+            <ui:Button name="withdraw-button" text="离场" class="action-button withdraw-button" />
         </ui:VisualElement>
         <ui:VisualElement name="bottom-bar" picking-mode="Ignore" class="bottom-bar">
             <ui:Button name="bomb-deploy-button" text="布置炸弹" class="action-button bomb-button" style="display: none;" />

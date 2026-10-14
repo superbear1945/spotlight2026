@@ -34,6 +34,8 @@ namespace Spotlight
         public event Action RestartRequested;
         /// <summary>点击“配置/调试”。</summary>
         public event Action DebugRequested;
+        /// <summary>点击“离场”：请求让当前选中的己方单位离开棋盘。</summary>
+        public event Action WithdrawRequested;
 
         /// <summary>界面根元素。</summary>
         VisualElement _root;
@@ -59,6 +61,8 @@ namespace Spotlight
         Button _endTurnButton;
         /// <summary>跳过放牌按钮。</summary>
         Button _skipButton;
+        /// <summary>“离场”按钮（仅在选中的己方单位可以离场时显示）。</summary>
+        Button _withdrawButton;
         /// <summary>炸弹部署与跳过按钮，只有待处理机会时可见。</summary>
         Button _bombDeployButton, _bombSkipButton;
         /// <summary>胜负遮罩。</summary>
@@ -97,6 +101,7 @@ namespace Spotlight
             _logContent = _root.Q<VisualElement>("log-content");
             _endTurnButton = _root.Q<Button>("end-turn-button");
             _skipButton = _root.Q<Button>("skip-deploy-button");
+            _withdrawButton = _root.Q<Button>("withdraw-button");
             _bombDeployButton = _root.Q<Button>("bomb-deploy-button");
             _bombSkipButton = _root.Q<Button>("bomb-skip-button");
             _victoryOverlay = _root.Q<VisualElement>("victory-overlay");
@@ -105,6 +110,7 @@ namespace Spotlight
 
             if (_endTurnButton != null) _endTurnButton.clicked += () => EndTurnRequested?.Invoke();
             if (_skipButton != null) _skipButton.clicked += () => SkipDeployRequested?.Invoke();
+            if (_withdrawButton != null) _withdrawButton.clicked += () => WithdrawRequested?.Invoke();
             if (_bombDeployButton != null) _bombDeployButton.clicked += () => BombDeployRequested?.Invoke();
             if (_bombSkipButton != null) _bombSkipButton.clicked += () => BombSkipRequested?.Invoke();
             var restart = _root.Q<Button>("restart-button");
@@ -116,6 +122,7 @@ namespace Spotlight
             if (_victoryOverlay != null) _victoryOverlay.style.display = DisplayStyle.None;
             if (_modalOverlay != null) _modalOverlay.style.display = DisplayStyle.None;
             if (_errorLabel != null) _errorLabel.style.display = DisplayStyle.None;
+            if (_withdrawButton != null) _withdrawButton.style.display = DisplayStyle.None;
 
             // 调试入口只在编辑器或 Development Build 提供。
             if (debug != null && !DebugSupport.IsDebugAvailable) debug.style.display = DisplayStyle.None;
@@ -123,10 +130,14 @@ namespace Spotlight
 
         /// <summary>
         /// 渲染一帧界面。
-        /// 输入：快照、本局配置与当前选择；输出：无。
-        /// 行为：刷新文本、按钮可用性、日志增量与胜负遮罩。
+        /// 输入：快照、本局配置、当前选择、规则层算出的合法动作，以及是否处于输入屏蔽期；输出：无。
+        /// 行为：刷新文本、按钮的可用性与显隐、日志增量与胜负遮罩。
+        /// 为什么需要合法动作：按钮的显隐必须来自规则层（界面不推导合法性），
+        /// 例如“离场”按钮只在选中的己方单位确实可以离场时出现。
+        /// 为什么需要输入屏蔽：Boss 回合演示或配置面板打开时，按钮要禁用而不只是遮罩，
+        /// 避免 UI Toolkit 与 UGUI 之间的点击穿透。
         /// </summary>
-        public void Render(GameSnapshot snapshot, GameConfiguration configuration, Selection selection, bool inputBlocked = false)
+        public void Render(GameSnapshot snapshot, GameConfiguration configuration, Selection selection, LegalActions actions, bool inputBlocked = false)
         {
             if (_root == null) return;
             var sideName = snapshot.ActiveSide == Side.Player ? "玩家" : "Boss";
@@ -147,6 +158,12 @@ namespace Spotlight
                 var showSkip = snapshot.PlayerControlsBoss && snapshot.ActiveSide == Side.Boss && snapshot.PlaysRemaining > 0;
                 _skipButton.style.display = showSkip ? DisplayStyle.Flex : DisplayStyle.None;
                 _skipButton.SetEnabled(!inputBlocked && !snapshot.BossBombPending);
+            }
+            if (_withdrawButton != null)
+            {
+                // 是否可离场由规则层给出；未选中单位或不该离场时一律隐藏。
+                var canWithdraw = actions != null && actions.CanWithdraw;
+                _withdrawButton.style.display = canWithdraw ? DisplayStyle.Flex : DisplayStyle.None;
             }
             AppendLog(snapshot.Log);
             if (_victoryOverlay != null)

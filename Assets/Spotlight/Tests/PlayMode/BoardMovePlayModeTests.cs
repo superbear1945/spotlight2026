@@ -13,6 +13,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
+using UnityEngine.UIElements;
 
 namespace Spotlight.Tests
 {
@@ -187,6 +188,45 @@ namespace Spotlight.Tests
             Assert.That(handler, Is.Not.Null, "最上层命中对象没有点击处理者");
             Assert.That(handler, Is.EqualTo(cellRect.gameObject),
                 $"点击棋子被 {hits[0].gameObject.name} 吞掉了，格子收不到点击（命中顺序：{names}）");
+        }
+
+        /// <summary>
+        /// 选中我方单位后出现“离场”按钮；点击（走 HUD 同一入口）后单位消失、牌区总数不变、按钮隐藏。
+        /// 输入：无；输出：NUnit 断言结果。
+        /// 为什么需要：离场是“规则层新命令 + HUD 按钮”的组合，必须验证按钮显隐来自规则层给出的合法性，
+        /// 以及离场不会让来源卡重复入堆（牌区总数守恒）。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator WithdrawButtonRemovesSelectedUnit()
+        {
+            var context = new SceneContext();
+            yield return context.Load();
+            var session = context.Session;
+            var board = context.Board;
+            var hud = Object.FindObjectOfType<HudView>();
+            Assert.That(hud, Is.Not.Null, "场景缺少 HudView");
+            var button = hud.Root.Q<VisualElement>("withdraw-button");
+            Assert.That(button, Is.Not.Null, "HUD 的 UXML 缺少 withdraw-button");
+            Assert.That(button.style.display.value, Is.EqualTo(DisplayStyle.None), "未选中单位时不该显示离场按钮");
+
+            Assert.That(TryDeploy(context.Bootstrap, session, context.Hand, requireMoveDistance: false), Is.True, "初始手牌里没有可部署的卡");
+            yield return WaitSeconds(SettleSeconds);
+            var unit = session.GetSnapshot().Units.FirstOrDefault(u => u.Owner == Side.Player);
+            Assert.That(unit, Is.Not.Null, "部署后棋盘上没有己方单位");
+
+            Invoke(context.Bootstrap, "OnCellClicked", unit.Position);
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(button.style.display.value, Is.EqualTo(UnityEngine.UIElements.DisplayStyle.Flex), "选中己方单位后没有出现离场按钮");
+
+            var before = session.GetSnapshot();
+            Invoke(context.Bootstrap, "OnWithdrawRequested");
+            yield return WaitSeconds(SettleSeconds);
+            var after = session.GetSnapshot();
+            Assert.That(after.Units.Any(u => u.Id == unit.Id), Is.False, "离场后单位仍在场上");
+            Assert.That(board.GetCard(unit.Id), Is.Null, "离场后棋盘上仍残留该单位的卡牌视图");
+            Assert.That(after.Hand.Count + after.DrawPile.Count + after.Graveyard.Count,
+                Is.EqualTo(before.Hand.Count + before.DrawPile.Count + before.Graveyard.Count), "离场改变了牌区总数");
+            Assert.That(button.style.display.value, Is.EqualTo(UnityEngine.UIElements.DisplayStyle.None), "离场后离场按钮应隐藏");
         }
 
         /// <summary>

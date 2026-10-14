@@ -102,6 +102,8 @@ namespace Spotlight
                 _hudView.EndTurnRequested += OnEndTurnRequested;
                 _hudView.SkipDeployRequested -= OnSkipDeployRequested;
                 _hudView.SkipDeployRequested += OnSkipDeployRequested;
+                _hudView.WithdrawRequested -= OnWithdrawRequested;
+                _hudView.WithdrawRequested += OnWithdrawRequested;
                 _hudView.BombDeployRequested -= OnBombDeployRequested;
                 _hudView.BombDeployRequested += OnBombDeployRequested;
                 _hudView.BombSkipRequested -= OnBombSkipRequested;
@@ -352,6 +354,21 @@ namespace Spotlight
             Submit(new GameCommand(CommandKind.EndTurn, Side.Boss, skipDeployment: true));
         }
 
+        /// <summary>
+        /// HUD 请求让当前选中的己方单位离场。
+        /// 输入：无（读取 _selection）；输出：无。
+        /// 行为：用选中的单位 ID 组装 Withdraw 命令交给规则层裁决（能否离场由规则层决定，界面不判断）；
+        /// 提交后清空选中，因为该单位已经不在场，残留的选择会让 HUD 详情停留在已移除的单位上
+        /// （与部署后清空选中是同一条约定）。Boss 回合演示或配置面板打开时不响应。
+        /// </summary>
+        void OnWithdrawRequested()
+        {
+            if (_session == null || _presentingTurn || _modalOpen || _selection.Kind != SelectionKind.Unit) return;
+            Submit(new GameCommand(CommandKind.Withdraw, _session.GetSnapshot().ActiveSide, _selection.Id));
+            _selection = new Selection(SelectionKind.None);
+            Refresh();
+        }
+
         /// <summary>进入炸弹选格。输入：HUD 请求；输出：合法列高亮，实际权限仍由规则层复验。</summary>
         void OnBombDeployRequested()
         {
@@ -421,7 +438,7 @@ namespace Spotlight
             var actions = _presentingTurn ? new LegalActions() : _session.GetLegalActions(_selection);
             _boardView?.Render(snapshot, actions, _selection);
             _handView?.Render(snapshot, _selection);
-            _hudView?.Render(snapshot, _configuration, _selection, _presentingTurn || _modalOpen);
+            _hudView?.Render(snapshot, _configuration, _selection, actions, _presentingTurn || _modalOpen);
             SyncSelectionFeedback();
         }
 

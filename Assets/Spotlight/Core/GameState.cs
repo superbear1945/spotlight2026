@@ -195,7 +195,7 @@ namespace Spotlight
     public enum MatchOutcome { None, PlayerWins, BossWins, Draw }
 
     /// <summary>命令种类。玩家与 AI 共用同一入口，区别只在 ExecuteCommand 的 fromAi 标记。</summary>
-    public enum CommandKind { Deploy, BossDeploy, Move, MoveHome, Attack, Swap, Discard, EndTurn, DeployBossBomb, SkipBossBomb }
+    public enum CommandKind { Deploy, BossDeploy, Move, MoveHome, Attack, Swap, Withdraw, Discard, EndTurn, DeployBossBomb, SkipBossBomb }
 
     /// <summary>
     /// 不可变操作请求。
@@ -259,6 +259,12 @@ namespace Spotlight
         public IReadOnlyList<Cell> Attack { get; internal set; } = Array.Empty<Cell>();
         /// <summary>可互换的己方单位所在格。</summary>
         public IReadOnlyList<Cell> Swap { get; internal set; } = Array.Empty<Cell>();
+        /// <summary>
+        /// 选中的己方单位此刻能否离场。
+        /// 为什么是标志而不是格列表：离场没有目标格（只针对自己），但它同样属于“合法动作”，
+        /// 必须由规则层给出，界面不得自行推导（否则界面与结算会出现两套判断）。
+        /// </summary>
+        public bool CanWithdraw { get; internal set; }
     }
 
     /// <summary>

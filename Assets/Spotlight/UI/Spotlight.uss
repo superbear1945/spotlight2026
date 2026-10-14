@@ -128,6 +128,13 @@
     border-bottom-right-radius: 4px;
 }
 
+/* 选中详情里的“离场”按钮：只占内容宽度，避免在侧栏里被拉伸成整行 */
+.withdraw-button {
+    align-self: flex-start;
+    margin-top: 8px;
+    margin-right: 0;
+}
+
 .action-button:hover {
     background-color: rgb(54, 74, 108);
 }
