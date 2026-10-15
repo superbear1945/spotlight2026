@@ -73,3 +73,6 @@ Thumbs.db
 
 # 临时内容，本地临时存储，不进仓库
 /temp/
+
+# 工具本地缓存（web-search-pro 等 skill 的抓取缓存与健康状态），不进仓库
+.cache/

@@ -6,6 +6,11 @@
 #
 # 与 .gitattributes 的 Git LFS 小节配套：合规的大二进制会以约 130 字节的 LFS
 # 指针入库，因此不会触碰大小阈值；未被 LFS 覆盖的类型若体积超标则直接报错。
+#
+# 另：本 job 同时充当「秒级、无 Unity 依赖」的守卫集合，目前还承载
+#   - check-ci-config.sh（CI 触发策略与 Unity 矩阵串行）；
+#   - scripts/codex-review 的离线测试（AI 审查门禁的判定语义）。
+# 放在这里而不是另建 job，是因为它已是必需检查：新加的非必需 job 即使被改坏也拦不住合并。
 name: Repo Hygiene
 
 # 只在 PR 上跑：main 已被分支规则集「main」锁死（必须走 PR、禁 force push、禁删除，
@@ -50,3 +55,16 @@ jobs:
 
       - name: 校验 CI 配置守卫脚本自身（8 个用例）
         run: bash scripts/check-ci-config.sh --self-test
+
+      - name: 准备 Node（AI 审查脚本的离线测试用）
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # 与本 job 同驻的理由：同样是秒级、无 Unity 依赖的检查。
+      # 为什么必须放在这个「必需检查」里：AI 审查门禁的核心语义是
+      # 「报告缺失/非法必须判『审查未完成』、有阻断项必须判『审查不通过』」，
+      # 这些规则只有离线可复现才有持续保护；若单建一个非必需的 job，
+      # 改坏了也不会拦住合并。测试全部离线，不调用任何付费 API。
+      - name: AI 审查脚本离线测试
+        run: node --test scripts/codex-review/tests/codex-review.test.mjs

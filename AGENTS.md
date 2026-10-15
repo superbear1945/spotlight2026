@@ -10,6 +10,7 @@ Spotlight 是一款基于卡牌的战棋对局游戏（首版为 Windows 桌面�
 - 所有数值来自 Excel 编译生成的**只读配置资产**，规则代码不按具体卡名分支。
 - 详细规则见 `docs/玩法.md`，实现设计见 `docs/最初版本实现方案.md`，运行步骤见 `docs/使用说明.md`。
 - 机制与身份的统一命名见 `docs/游戏内名词.md`：抽牌堆 / 手牌 / 墓地 / 卡牌记录 / 战斗单位等概念一律以该文档为准，新增文档与代码不得另造同义名称。
+- CI 中的 AI 审查（三个角色 + `AI 审查门禁`）见 `docs/AI审查说明.md`。
 
 ## 1. 技术栈
 
@@ -29,6 +30,7 @@ Spotlight 是一款基于卡牌的战棋对局游戏（首版为 Windows 桌面�
 - 以上第三方依赖均以本地副本随工程提交，不通过包管理器安装；升级版本需同步更新本文件与 `docs/使用说明.md`。
 - 规则内核（`Spotlight.Core`）必须 `noEngineReferences: true`，不得引用 `UnityEngine`。
 - 汉字显示依赖生成的字体资产与 PanelSettings，新增界面文本前先确认字体资产已生成。
+- AI 审查在 GitHub Actions 中通过 OpenAI 官方 `openai/codex-action` 安装并无头运行 Codex CLI，**模型与接口地址由仓库变量指定（第三方 Responses API）**；该依赖只在 CI 中安装，不进入工程与运行包。
 
 ## 2. 命名空间与程序集
 
@@ -64,6 +66,13 @@ Assets/Spotlight/
 - `Generated/Cards/<id>.prefab`：卡种 Prefab，只保存组件组合与 SO 引用，不重复存储数值。
 - `Generated/Resources/SpotlightConfig.asset`：主配置资产，运行时通过 `Resources/SpotlightConfig` 加载。
 - `Generated/ConfigManifest.asset`：编译清单，记录源工作簿路径、SHA256 摘要、编译时间与全部产出路径。
+
+AI 审查相关（不参与 Unity 编译，也不进入运行包）：
+
+- `.github/workflows/codex-review.yml`：准备 / 三角色审查（并行）/ 门禁三个 job。
+- `.github/codex-review/`：报告契约 `report.schema.json` 与三个角色的审查规则 `prompts/*.md`。
+- `scripts/codex-review/`：上下文生成、报告校验、汇总与离线测试。
+- `docs/AI审查说明.md`：接入配置、判定规则与故障处理。
 
 约束：
 
@@ -156,6 +165,13 @@ Excel 配置编译（菜单 `Tools/Spotlight/*`，按顺序）：
 - 正式数据单元格禁止公式；编译器检查未定义列、重复表头、缺失列、公式、错误单元格、重复 ID、空/重名、非法分类、非法引用等。
 - 架构图（`docs/diagrams/01-modules` / `02-cards` / `03-dataflow` / `04-turnflow` / `05-card-lifecycle`）修改后需按 `docs/diagrams/README.md` 重新渲染 SVG 及其导出产物（PNG/HTML/drawio），并由 CI 校验。
 
+AI 审查（PR 上的语义审查，与可执行测试互补）：
+
+- 流程：`prepare`（固化 base/merge-base/head 与上下文产物）→ `review`（`code` / `docs` / `comments` 三角色并行，`max-parallel: 3`、`fail-fast: false`）→ `gate`（job 名固定为 `AI 审查门禁`，`if: always()` 汇总判定）。
+- 判定由脚本而非模型决定：报告缺失、非法或声明 `insufficient` 一律判「审查未完成」；存在 `blocking` 问题判「审查不通过」；`advisory` 只展示。
+- 报告必须与本次 `headSha` 一致；生成资产与二进制被显式排除在语义审查之外（清单中标注，由生成流程、配置校验与 LFS 检查负责）。
+- 规则改动只改 `prompts/*.md`；改报告字段必须同步改 `report.schema.json` 与 `lib.mjs` 的必填字段常量；改完必须跑 `node --test scripts/codex-review/tests/codex-review.test.mjs`。
+
 ## 7. 测试与 CI 规范
 
 - 每个功能与修复必须**同时提交对应测试用例**，否则不予合并。
@@ -166,9 +182,12 @@ Excel 配置编译（菜单 `Tools/Spotlight/*`，按顺序）：
   - `.github/workflows/unity-tests.yml`：`game-ci/unity-test-runner`，EditMode + PlayMode 矩阵。
   - `.github/workflows/repo-hygiene.yml`：大文件与 Git-LFS 一致性检查（`scripts/check-repo-hygiene.sh`）与 CI 触发配置守卫（`scripts/check-ci-config.sh`），大二进制必须以 LFS 指针入库。
   - `.github/workflows/diagrams-check.yml`：校验 `docs/diagrams` 图源 JSON 仍能生成结构完整的 drawio。
+  - `.github/workflows/codex-review.yml`：AI 审查（三个角色并行 + `AI 审查门禁`）。由仓库变量 `CODEX_REVIEW_ENABLED` 控制开关；不为 `true` 时门禁会明确写出「本次未做任何 AI 审查」并放行，**不得把它当作审查通过**。
+- AI 审查脚本的离线测试（不调用付费 API，用例数以 `node --test` 输出为准）挂在 `repo-hygiene.yml` 的必备 job 内执行（`node --test scripts/codex-review/tests/codex-review.test.mjs`），以便改动判定语义时能被必需检查拦下。
 - `main` 由分支规则集「main」保护，**只能通过 PR 新增提交**：`pull_request` 规则要求所有变更都关联一个 PR，直推（含普通快进推送）会被拒；`non_fast_forward` 另行禁掉 force push；`deletion` 禁删分支；`bypass_actors` 为空且 `current_user_can_bypass` 为 `never`，连仓库所有者也不能绕过。
 - **不要求任何人工审阅**：`required_approving_review_count` 为 0、`require_code_owner_review` 关闭、`required_reviewers` 为空，仓库也不使用 CODEOWNERS。合并条件只有两条——全部必需检查通过、分支已与最新 main 同步（`strict_required_status_checks_policy` 开启）；两条同时满足后 PR 作者即可自行手动合并（不启用 auto-merge）。
 - 必需检查共三条：`EditMode 测试（Unity 2022.3.62f3）`、`PlayMode 测试（Unity 2022.3.62f3）`、`大文件与 LFS 一致性检查`，且 `strict_required_status_checks_policy` 开启（PR 分支必须先与 main 同步）。因此 PR 阶段被测的结果就是合并后落到 main 的结果，`push` 触发只会重复跑（既费时间又额外占用 Unity 授权席位）；需要临时在 main 上验证时用 `workflow_dispatch`。
+- `AI 审查门禁` 目前**不是**必需检查。启用顺序固定为：配置 Secret 与仓库变量 → `CODEX_REVIEW_ENABLED=true` → 在真实 PR 上跑通一次 → 最后才允许把它加入规则集（加入后必需检查共四条）。**不得先加必需检查再启用**：变量不为 `true` 时门禁会以「未启用」放行，表现是绿的但其实什么都没审。详见 `docs/AI审查说明.md`。
 - ⚠️ ruleset 里的必需检查名与 workflow 的 **job 名 / 矩阵变量** 是字符串精确匹配（如 `EditMode 测试（Unity 2022.3.62f3）`）。改动 job 名或矩阵里的 `unityVersion` 时必须同步修改 ruleset，否则所有 PR 会**永久 pending 且没有任何报错提示**。
 
 ## 8. 编码规范

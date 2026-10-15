@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Spotlight AI 审查报告",
+  "description": "三个审查角色（code / docs / comments）统一使用这一份输出契约。所有字段都是必填；不需要赋值的字段用 null 表示。校验脚本 scripts/codex-review/lib.mjs 中的 REPORT_REQUIRED_FIELDS / FINDING_REQUIRED_FIELDS 必须与这里的 required 列表保持一致（由单元测试把关）。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "role",
+    "headSha",
+    "status",
+    "statusReason",
+    "summary",
+    "reviewedFiles",
+    "findings"
+  ],
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": ["code", "docs", "comments"],
+      "description": "本报告的审查角色，必须与所执行的角色规则文件一致；写错会让整份报告判为无效。"
+    },
+    "headSha": {
+      "type": "string",
+      "minLength": 7,
+      "description": "被审查的 head 提交 SHA，必须逐字等于任务头中给出的值。用于防止「审查了旧版本却当成本次通过」。"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["completed", "insufficient", "not_applicable"],
+      "description": "completed=已按规则完成审查；insufficient=因上下文/工具限制未能完整审查；not_applicable=本次改动与该角色无关。"
+    },
+    "statusReason": {
+      "type": ["string", "null"],
+      "description": "status 为 insufficient 或 not_applicable 时必须填写原因；status 为 completed 时必须是 null。"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "本次审查结论摘要（中文，一到三句话），供 PR 作者快速理解。"
+    },
+    "reviewedFiles": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "实际审查过的仓库相对路径（正斜杠）。status 为 completed 时不能为空：必须能说明「看过了哪些文件」。"
+    },
+    "findings": {
+      "type": "array",
+      "description": "发现的问题列表。没有问题时给空数组；status 为 not_applicable 时必须为空数组。",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "severity",
+          "category",
+          "file",
+          "line",
+          "rule",
+          "evidence",
+          "impact",
+          "suggestion"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "本报告内唯一的问题编号，建议形如 BUG-1 / DOC-2 / CMT-3。"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["blocking", "advisory"],
+            "description": "blocking=必须修复（会阻止合并）；advisory=建议（不阻止合并，只展示）。"
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "description": "问题类别，例如 逻辑错误 / 边界条件 / 程序集依赖 / 状态不变量 / 文档缺失 / 注释过期。"
+          },
+          "file": {
+            "type": "string",
+            "minLength": 1,
+            "description": "仓库相对路径。可以是被删改的原文件，也可以是「应当补充文档」的目标文件。"
+          },
+          "line": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "行号；问题不属于某一行时填 null。"
+          },
+          "rule": {
+            "type": "string",
+            "minLength": 1,
+            "description": "判定依据：AGENTS.md 条款、docs/ 中的约定或代码中可验证的不变量。"
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1,
+            "description": "具体证据：触发条件、相关代码片段或行为描述。不要写「可能有风险」这类无证据猜测。"
+          },
+          "impact": {
+            "type": "string",
+            "minLength": 1,
+            "description": "影响：会导致什么错误行为、哪类用例会失败、或哪份文档会与实现不符。"
+          },
+          "suggestion": {
+            "type": "string",
+            "minLength": 1,
+            "description": "修改建议：怎么改能解决问题（给出方向即可，不要求完整补丁）。"
+          }
+        }
+      }
+    }
+  }
+}

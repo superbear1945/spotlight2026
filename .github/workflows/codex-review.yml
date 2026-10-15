@@ -1,0 +1,481 @@
+# AI 审查流水线：用第三方 Responses API 驱动的 Codex，对每个 PR 做三类专项审查。
+#
+# 【为什么需要】
+#   EditMode / PlayMode 只能验证「已知行为是否仍然成立」，无法判断
+#   「本次新增的语义是否正确、文档是否同步、注释是否还成立」。
+#   这三类问题恰好是本项目反复出现且成本最高的（改名不失效、身份混用、文档滞后）。
+#
+# 【结构】三个角色并行 + 一个汇总门禁
+#   prepare  轻量准备：固化成一次审查的范围（base / merge-base / head）与上下文文件。
+#   review   矩阵 job，max-parallel: 3，三个角色同时跑，fail-fast: false
+#            （一个角色失败不会掐掉另外两个，否则拿不到完整结论）。
+#   gate     唯一的判定点，job 名固定为 `AI 审查门禁`。
+#
+# 【为什么必须由脚本而不是 Agent 决定 CI 状态】
+#   Agent 进程正常退出只说明「它跑完了」，不代表「审查通过」。
+#   因此 review job 只产出报告，由 gate 重新校验三份报告再决定红绿。
+#
+# 【为什么「审查未完成」也算失败】
+#   报告缺失、JSON 非法、模型报告 insufficient 时，连「有没有问题」都无从谈起。
+#   把它判成绿等于用「没审」冒充「审过」，所以它和「发现问题」一样是红灯，
+#   只是文案不同（前者靠重跑或修接入配置解决，后者靠改代码解决）。
+#
+# 【为什么由仓库变量 CODEX_REVIEW_ENABLED 控制开关】
+#   本项目接入时尚未配置密钥与 endpoint，若直接执行会让所有 PR 亮红。
+#   变量不为 true 时三个审查 job 不执行，gate 会明确写出「本次未做任何 AI 审查」并放行。
+#   ⚠️ 只有在把 `CODEX_REVIEW_ENABLED` 置为 true 并至少跑通一次之后，
+#      才允许把 `AI 审查门禁` 加入分支规则集「main」的必需检查（见 docs/AI审查说明.md）。
+#
+# 【为什么没有 push 触发】
+#   与本仓库其他 workflow 一致：main 被规则集锁死（必须走 PR），PR 阶段测的就是合并结果，
+#   push 再跑一遍是纯冗余，还会重复消耗第三方 API 额度。需要手动复现时用 workflow_dispatch。
+name: Codex Review
+
+on:
+  # ⚠️ 本 workflow 产生的 job 名 `AI 审查门禁` 会被分支规则集「main」的必需检查按字符串精确引用。
+  # 在把它加进规则集之前，必须先完成 docs/AI审查说明.md 里的启用步骤。
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: '手动触发时的 base（默认取默认分支的最新提交）'
+        required: false
+        default: ''
+
+# 同一 PR 只保留最新一次 AI 审查：新提交会作废旧结论，旧运行继续跑纯属浪费 API 额度。
+# 这里可以安全地 cancel-in-progress —— AI 审查不占用 Unity 授权席位，
+# 不存在 unity-tests.yml 那种「中途取消导致席位泄漏」的问题。
+concurrency:
+  group: codex-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# 只读：审查不写仓库、不发 PR 评论（首版只写 Actions 摘要与产物）。
+# 必须带上 actions: read —— 一旦写了顶层 permissions，未列出的 scope 全部变成 none；
+# 三个 job 都要靠 artifacts 传递上下文、报告与汇总结果，少这个 scope 会直接 403。
+# 仍然不申请任何写权限。
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 准备阶段：把审查范围与上下文固化成产物
+  # ---------------------------------------------------------------------------
+  prepare:
+    # 未启用时不执行任何动作（gate 负责解释为什么是绿的）
+    if: ${{ vars.CODEX_REVIEW_ENABLED == 'true' }}
+    name: 准备审查上下文
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      head_sha: ${{ steps.scope.outputs.head }}
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          # 审查对象是 PR 的 head 提交本身（不是 merge 结果），手动触发时是当前提交。
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # 必须取全量历史：要算 base 与 head 的 merge-base，浅克隆算不出来。
+          fetch-depth: 0
+          # 审查只需要文本，跳过 LFS 大文件（图片/字体/图纸）可以显著减少克隆量。
+          lfs: false
+          persist-credentials: false
+
+      - name: 解析审查范围
+        id: scope
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          # 用 github.event.inputs（而不是 inputs 上下文），后者在非 dispatch 触发下取值不稳定
+          DISPATCH_BASE_REF: ${{ github.event.inputs.base_ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+
+          head="${PR_HEAD_SHA:-}"
+          base="${PR_BASE_SHA:-}"
+          base_ref=""
+
+          if [ -n "$head" ] && [ -n "$base" ]; then
+            echo "使用 PR 上下文提供的 base.sha / head.sha"
+          else
+            # 手动触发：head 就是本次检出的提交；base 给分支名，由 collect-context.mjs 解析。
+            #
+            # ⚠️ 不要把分支名当成 revision 直接传：actions/checkout 是按 SHA 检出的
+            # detached HEAD，本地并不存在 `main` 分支（只有 refs/remotes/origin/main），
+            # 传字面量 `main` 会让 rev-parse 失败、准备阶段直接挂掉。
+            # 解析逻辑放在脚本里，是因为它能被 node 用例直接覆盖（曾经这里就是错的）。
+            head="$(git rev-parse HEAD)"
+            base=""
+            base_ref="${DISPATCH_BASE_REF:-$DEFAULT_BRANCH}"
+            echo "手动触发：base 交给 collect-context 解析（输入：$base_ref）"
+          fi
+
+          head="$(git rev-parse --verify "${head}^{commit}")"
+          {
+            echo "base=$base"
+            echo "base_ref=$base_ref"
+            echo "head=$head"
+            echo "pr=$PR_NUMBER"
+          } >> "$GITHUB_OUTPUT"
+          echo "审查范围：base=${base:-（由 --base-ref 解析）} base_ref=${base_ref:-（无）} head=$head pr=${PR_NUMBER:-（手动触发）}"
+
+      - name: 准备 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 生成审查上下文
+        env:
+          BASE: ${{ steps.scope.outputs.base }}
+          BASE_REF: ${{ steps.scope.outputs.base_ref }}
+          HEAD: ${{ steps.scope.outputs.head }}
+          PR_NUMBER: ${{ steps.scope.outputs.pr }}
+          RULE_VERSION: v1
+          MAX_DIFF_BYTES: ${{ vars.CODEX_REVIEW_MAX_DIFF_BYTES }}
+        run: |
+          set -euo pipefail
+
+          # 检出内容必须与审查范围一致，否则会出现「报告说审了 A、实际看到的是 B」。
+          actual="$(git rev-parse HEAD)"
+          if [ "$actual" != "$HEAD" ]; then
+            echo "::error::检出的提交（$actual）与审查范围（$HEAD）不一致，拒绝继续"
+            exit 1
+          fi
+
+          node scripts/codex-review/collect-context.mjs \
+            --repo-root . \
+            --out codex-review-context \
+            --base "$BASE" \
+            --base-ref "$BASE_REF" \
+            --head "$HEAD" \
+            --pr-number "${PR_NUMBER:-}" \
+            --repository "${{ github.repository }}" \
+            --rule-version "$RULE_VERSION" \
+            --max-diff-bytes "${MAX_DIFF_BYTES:-1048576}"
+
+      - name: 输出改动清单到摘要
+        if: always()
+        run: |
+          if [ -f codex-review-context/change-list.md ]; then
+            cat codex-review-context/change-list.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: 上传审查上下文
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-review-context
+          path: codex-review-context
+          if-no-files-found: warn
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # 审查阶段：三个角色并行
+  # ---------------------------------------------------------------------------
+  review:
+    name: ${{ matrix.title }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    # 单个角色的时间上限。超时即该角色报告缺失 → 门禁判「审查未完成」。
+    timeout-minutes: 20
+    strategy:
+      # 一个角色失败不能掐掉另外两个：否则那份报告永远拿不到，结论也不能算完整。
+      fail-fast: false
+      # 三个角色并行。实际能否同时启动仍受 runner 并发额度与供应商 API 限流影响。
+      max-parallel: 3
+      matrix:
+        include:
+          - role: code
+            title: 代码与规范审查
+            prompt: .github/codex-review/prompts/code.md
+          - role: docs
+            title: 文档一致性审查
+            prompt: .github/codex-review/prompts/docs.md
+          - role: comments
+            title: 注释一致性审查
+            prompt: .github/codex-review/prompts/comments.md
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          # 与 prepare 用完全相同的表达式，保证三个角色审的是同一个提交。
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          lfs: false
+          persist-credentials: false
+
+      - name: 下载审查上下文
+        uses: actions/download-artifact@v4
+        with:
+          name: codex-review-context
+          path: codex-review-context
+
+      - name: 解析审查模型与推理强度
+        id: model
+        env:
+          # 模型：默认值 + 每角色覆盖
+          DEFAULT_MODEL: ${{ vars.CODEX_REVIEW_MODEL }}
+          CODE_MODEL: ${{ vars.CODEX_REVIEW_CODE_MODEL }}
+          DOCS_MODEL: ${{ vars.CODEX_REVIEW_DOCS_MODEL }}
+          COMMENTS_MODEL: ${{ vars.CODEX_REVIEW_COMMENTS_MODEL }}
+          # 推理强度（对应 Codex CLI 的 model_reasoning_effort）。
+          # 留空 = 不传该参数，由 CLI 用自己的默认值（官方文档为 medium）。
+          DEFAULT_EFFORT: ${{ vars.CODEX_REVIEW_EFFORT }}
+          CODE_EFFORT: ${{ vars.CODEX_REVIEW_CODE_EFFORT }}
+          DOCS_EFFORT: ${{ vars.CODEX_REVIEW_DOCS_EFFORT }}
+          COMMENTS_EFFORT: ${{ vars.CODEX_REVIEW_COMMENTS_EFFORT }}
+          ROLE: ${{ matrix.role }}
+        run: |
+          set -euo pipefail
+          # 用 case 而不是 vars[动态键]：GitHub 表达式不支持对 vars 做稳定可靠的动态索引。
+          case "$ROLE" in
+            code) role_model="$CODE_MODEL"; role_effort="$CODE_EFFORT" ;;
+            docs) role_model="$DOCS_MODEL"; role_effort="$DOCS_EFFORT" ;;
+            comments) role_model="$COMMENTS_MODEL"; role_effort="$COMMENTS_EFFORT" ;;
+            *) role_model=""; role_effort="" ;;
+          esac
+          model="${role_model:-$DEFAULT_MODEL}"
+          effort="${role_effort:-$DEFAULT_EFFORT}"
+
+          # 取值写错时 CLI 不会报错，而是把无效值原样发给供应商，表现为「改了配置但行为没变」。
+          # 这里提前拦住，避免白花一次调用的钱和 20 分钟。
+          case "$effort" in
+            ''|minimal|low|medium|high) ;;
+            *)
+              echo "::error::推理强度取值非法：$effort（允许 minimal / low / medium / high，留空表示用 CLI 默认值）"
+              exit 1
+              ;;
+          esac
+
+          {
+            echo "model=$model"
+            echo "effort=$effort"
+          } >> "$GITHUB_OUTPUT"
+          echo "角色 $ROLE：model=${model:-（未配置）} effort=${effort:-（不传，用 CLI 默认）}"
+
+      - name: 校验接入配置
+        env:
+          API_KEY: ${{ secrets.CODEX_REVIEW_API_KEY }}
+          ENDPOINT: ${{ vars.CODEX_REVIEW_RESPONSES_ENDPOINT }}
+          MODEL: ${{ steps.model.outputs.model }}
+        run: |
+          set -euo pipefail
+          missing=0
+
+          if [ -z "$API_KEY" ]; then
+            echo "::error::缺少 Secret CODEX_REVIEW_API_KEY（第三方供应商的 API Key）"
+            missing=1
+          fi
+          if [ -z "$ENDPOINT" ]; then
+            echo "::error::缺少仓库变量 CODEX_REVIEW_RESPONSES_ENDPOINT"
+            missing=1
+          fi
+          if [ -z "$MODEL" ]; then
+            echo "::error::缺少仓库变量 CODEX_REVIEW_MODEL（或该角色的专用模型变量）"
+            missing=1
+          fi
+
+          # 只接受 https，避免把 Key 发到明文地址；同时不接受把 Key 塞进 URL 的写法。
+          case "$ENDPOINT" in
+            https://*) ;;
+            '') ;;
+            *) echo "::error::CODEX_REVIEW_RESPONSES_ENDPOINT 必须以 https:// 开头"; missing=1 ;;
+          esac
+          case "$ENDPOINT" in
+            *'@'*) echo "::error::地址里不允许出现凭据（@）；Key 必须通过 Secret 传入"; missing=1 ;;
+            */responses) ;;
+            '') ;;
+            *) echo "::warning::地址不以 /responses 结尾，请确认供应商的 Responses 接口路径（本项目只验证 Responses 协议兼容性）" ;;
+          esac
+
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::AI 审查接入配置不完整，本次判为「审查未完成」"
+            exit 1
+          fi
+          echo "接入配置检查通过：endpoint 已设置，model=${MODEL}"
+
+      - name: 组装审查提示词
+        run: |
+          set -euo pipefail
+          mkdir -p codex-review-work codex-review-reports
+          # 任务头（含本次真实的 base/head）由脚本生成，角色规则由仓库维护，
+          # 两者拼接后交给 Codex，避免手写提示词把范围写错。
+          {
+            cat codex-review-context/task-header.md
+            echo
+            cat "${{ matrix.prompt }}"
+          } > codex-review-work/prompt.md
+          # codex-review-reports 必须预先存在：模型跑完才写文件，那时再建目录就来不及了。
+          echo "提示词已组装：$(wc -c < codex-review-work/prompt.md) 字节"
+
+      - name: 运行 Codex 审查
+        id: codex
+        uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1.13
+        with:
+          openai-api-key: ${{ secrets.CODEX_REVIEW_API_KEY }}
+          # 显式指定第三方 Responses 接口；不设置时 action 会回落到官方默认地址，
+          # 那会导致「以为在用第三方，其实打到了 OpenAI」，因此这里必须传入。
+          responses-api-endpoint: ${{ vars.CODEX_REVIEW_RESPONSES_ENDPOINT }}
+          model: ${{ steps.model.outputs.model }}
+          # 推理强度：对应 Codex CLI 的 model_reasoning_effort（minimal/low/medium/high）。
+          # 空值会被 action 当成 null 处理，等于不传该参数 —— 因此留空不会污染请求。
+          effort: ${{ steps.model.outputs.effort }}
+          prompt-file: codex-review-work/prompt.md
+          output-file: codex-review-reports/${{ matrix.role }}.json
+          output-schema-file: .github/codex-review/report.schema.json
+          # 只读沙箱：审查作业不得写仓库。用 legacy sandbox（而不是 beta 的 permission-profile）
+          # 是为了在不确定 CLI 版本的情况下选最稳的路径。
+          sandbox: read-only
+          # 固定 CLI 版本以便复现；如与 Action 版本不兼容，用仓库变量覆盖（见 docs/AI审查说明.md）。
+          codex-version: ${{ vars.CODEX_REVIEW_CLI_VERSION || '0.162.1' }}
+
+      - name: 校验审查报告
+        id: validate
+        if: always()
+        # 先捕获结果再统一失败：这样后面的产物上传一定执行，作者总能拿到现场。
+        continue-on-error: true
+        env:
+          ROLE: ${{ matrix.role }}
+        run: |
+          set -euo pipefail
+          mkdir -p codex-review-reports
+          node scripts/codex-review/validate-report.mjs \
+            --role "$ROLE" \
+            --report "codex-review-reports/${ROLE}.json" \
+            --context codex-review-context \
+            --head-sha "${{ needs.prepare.outputs.head_sha }}" 2>&1 \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: 上传本角色产物
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-review-report-${{ matrix.role }}
+          path: codex-review-reports
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: 判定本角色结果
+        if: always()
+        run: |
+          set -uo pipefail
+          outcome="${{ steps.validate.outcome }}"
+          if [ "$outcome" = "success" ]; then
+            echo "角色 ${{ matrix.role }}：报告合法。"
+            exit 0
+          fi
+          # 报告非法/缺失 → 本角色失败 → gate 会把整体判为「审查未完成」。
+          echo "::error::角色 ${{ matrix.role }} 的报告未通过校验（validate-report 结果：$outcome），本次判为「审查未完成」"
+          exit 1
+
+  # ---------------------------------------------------------------------------
+  # 门禁阶段：唯一决定 CI 状态的地方
+  # ---------------------------------------------------------------------------
+  gate:
+    # ⚠️ 本 job 名被分支规则集「main」的必需检查按字符串精确引用，改名必须同步改规则集，
+    #    否则所有 PR 会永久停在 pending 且没有任何报错提示（同 repo-hygiene.yml 的注意事项）。
+    name: AI 审查门禁
+    needs: [prepare, review]
+    # 必须 always()：准备阶段失败、某个角色被取消或失败时，这里仍要给出「审查未完成」的结论，
+    # 而不是让检查停在「未运行」的状态。
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          lfs: false
+          persist-credentials: false
+
+      - name: 准备 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # 产物可能不存在（准备阶段就失败、或未启用），因此下载步骤都不阻断后续判定逻辑。
+      - name: 下载审查上下文
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: codex-review-context
+          path: codex-review-context
+
+      - name: 下载三个角色的报告
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: codex-review-report-*
+          path: codex-review-reports
+          merge-multiple: true
+
+      - name: 生成门禁结论
+        id: summarize
+        if: always()
+        continue-on-error: true
+        env:
+          ENABLED: ${{ vars.CODEX_REVIEW_ENABLED }}
+          # 兜底 SHA 必须覆盖手动触发：那时 event.pull_request 不存在，只写
+          # github.event.pull_request.head.sha 会得到空串，汇总就拿不到可比对的提交（详见 summarize.mjs 的 fail-closed 注释）。
+          HEAD_SHA_FALLBACK: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p codex-review-reports
+          node scripts/codex-review/summarize.mjs \
+            --reports codex-review-reports \
+            --context codex-review-context \
+            --enabled "${ENABLED:-false}" \
+            --head-sha-fallback "${HEAD_SHA_FALLBACK:-}" \
+            --out codex-review-summary.md \
+            --json-out codex-review-summary.json 2>&1 \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: 上传汇总结果
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-review-summary
+          path: |
+            codex-review-summary.md
+            codex-review-summary.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: 判定门禁
+        if: always()
+        run: |
+          set -uo pipefail
+          if [ -f codex-review-summary.json ]; then
+            status="$(node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync("codex-review-summary.json","utf8"));process.stdout.write(String(j.status||"unknown"));')"
+          else
+            status="missing"
+          fi
+
+          case "$status" in
+            pass)
+              echo "AI 审查门禁：通过（三个角色均完成，无必须修复的问题）"
+              exit 0
+              ;;
+            disabled)
+              echo "AI 审查门禁：未启用（CODEX_REVIEW_ENABLED != true）——本次未做任何 AI 审查"
+              exit 0
+              ;;
+            blocked)
+              echo "::error::AI 审查不通过：存在必须修复的问题。详见本次运行的 Actions 摘要与 codex-review-summary 产物。"
+              exit 1
+              ;;
+            incomplete)
+              echo "::error::AI 审查未完成：报告缺失、格式非法或未能完整审查。这不代表通过，需要重跑或修复接入配置。"
+              exit 1
+              ;;
+            *)
+              echo "::error::AI 审查未能给出结论（status=$status）。请检查汇总步骤是否正常执行。"
+              exit 1
+              ;;
+          esac
