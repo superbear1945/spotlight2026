@@ -23,6 +23,8 @@
         <ui:VisualElement name="bottom-bar" picking-mode="Ignore" class="bottom-bar">
             <ui:Button name="bomb-deploy-button" text="布置炸弹" class="action-button bomb-button" style="display: none;" />
             <ui:Button name="bomb-skip-button" text="跳过炸弹" class="action-button bomb-button" style="display: none;" />
+            <ui:Button name="spawner-deploy-button" text="部署刷怪卡" class="action-button" style="display: none;" />
+            <ui:Button name="spawner-skip-button" text="跳过刷怪卡" class="action-button" style="display: none;" />
             <ui:Button name="end-turn-button" text="结束回合" class="action-button" />
             <ui:Button name="skip-deploy-button" text="跳过放牌并结束" class="action-button" />
             <ui:Button name="restart-button" text="重开" class="action-button" />
