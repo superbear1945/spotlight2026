@@ -52,7 +52,8 @@ namespace Spotlight.EditorTools
             "rabbit2,灵兔2,attack,default,1,1,2,1,0,2,true,false,false,false,false,false,\n" +
             "odysseus1,奥德修斯-1,special,default,2,0,0,1,0,1,true,false,false,false,false,false,\n" +
             "gate,星门,special,default,2,0,0,1,0,4,true,true,true,true,true,false,\n" +
-            "bossCombat,Boss敌兵,attack,default,3,1,1,1,0,0,false,false,false,false,false,false,";
+            "bossCombat,Boss敌兵,attack,default,3,1,1,1,0,0,false,false,false,false,false,false,\n" +
+            "bossSpawner,刷怪卡,special,default,1,0,0,0,0,0,false,false,false,false,false,false,";
 
         /// <summary>Deck 表内容（首行为表头，其余为数据行，列以逗号分隔）。</summary>
         private const string DeckSheetText =
@@ -66,8 +67,8 @@ namespace Spotlight.EditorTools
 
         /// <summary>Rules 表内容（首行为表头，第二行为唯一数据行，列以逗号分隔）。</summary>
         private const string RulesSheetText =
-            "rows,columns,homeRegionWidth,playerPlays,bossPlays,drawCount,handLimit,initialResources,bossRespawnDelay,playerSide,firstSide,bossCardType,playerControlsBoss,accumulateResources,summoningSickness,adjacentSwap,lineBlocking,bossBombInterval,bossBombDamage,bossBombColumn\n" +
-            "5,10,2,5,1,5,5,0,5,left,player,bossCombat,false,true,true,true,false,10,3,5";
+            "rows,columns,homeRegionWidth,playerPlays,bossPlays,drawCount,handLimit,initialResources,bossRespawnDelay,playerSide,firstSide,bossCardType,playerControlsBoss,accumulateResources,summoningSickness,adjacentSwap,lineBlocking,bossBombInterval,bossBombDamage,bossBombColumn,bossSpawnerAttackThreshold,bossSpawnerCountFromColumn,bossSpawnerUnitThreshold,bossSpawnerDeployFromColumn,bossSpawnerCardType,bossSpawnerSpawnCardType\n" +
+            "5,10,2,5,1,5,5,0,5,left,player,bossCombat,false,true,true,true,false,10,3,5,12,4,2,5,bossSpawner,bossCombat";
 
         /// <summary>Homes 表内容（首行为表头，其余为数据行，列以逗号分隔）。</summary>
         private const string HomesSheetText =
@@ -128,13 +129,14 @@ namespace Spotlight.EditorTools
             using (var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write))
             using (var archive = new ZipArchive(fileStream, ZipArchiveMode.Create))
             {
-                WriteContentTypes(archive, sheets.Count);
+                WriteContentTypes(archive, sheets);
                 WritePackageRelationships(archive);
                 WriteWorkbookPart(archive, sheets);
                 WriteWorkbookRelationships(archive, sheets.Count);
                 for (var index = 0; index < sheets.Count; index++)
                 {
                     WriteWorksheetPart(archive, index, sheets[index]);
+                    WorkbookNotes.Write(archive, index, sheets[index]);
                 }
 
                 WriteCoreProperties(archive);
@@ -202,7 +204,7 @@ namespace Spotlight.EditorTools
         /// 输入：ZIP 包与工作表数量；输出：无（写入条目）。
         /// 为什么需要：OOXML 读取器（含 ExcelDataReader）靠它判断每个部件的类型，缺少会导致包无法解析。
         /// </summary>
-        private static void WriteContentTypes(ZipArchive archive, int sheetCount)
+        private static void WriteContentTypes(ZipArchive archive, IReadOnlyList<SheetSpec> sheets)
         {
             WriteXmlEntry(archive, "[Content_Types].xml", writer =>
             {
@@ -210,14 +212,17 @@ namespace Spotlight.EditorTools
 
                 WriteDefaultContentType(writer, "rels", "application/vnd.openxmlformats-package.relationships+xml");
                 WriteDefaultContentType(writer, "xml", "application/xml");
+                WriteDefaultContentType(writer, "vml", "application/vnd.openxmlformats-officedocument.vmlDrawing");
 
                 WriteOverrideContentType(
                     writer,
                     "/xl/workbook.xml",
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml");
 
-                for (var index = 0; index < sheetCount; index++)
+                for (var index = 0; index < sheets.Count; index++)
                 {
+                    if (WorkbookNotes.Collect(sheets[index]).Count > 0)
+                        WriteOverrideContentType(writer, "/xl/comments" + ToInvariant(index + 1) + ".xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml");
                     WriteOverrideContentType(
                         writer,
                         "/xl/worksheets/sheet" + ToInvariant(index + 1) + ".xml",
@@ -364,6 +369,12 @@ namespace Spotlight.EditorTools
                 }
 
                 writer.WriteEndElement();
+                if (WorkbookNotes.Collect(sheet).Count > 0)
+                {
+                    writer.WriteStartElement("legacyDrawing", SpreadsheetNamespace);
+                    writer.WriteAttributeString("r", "id", DocumentRelationshipNamespace, "rIdNotesDrawing");
+                    writer.WriteEndElement();
+                }
                 writer.WriteEndElement();
             });
         }

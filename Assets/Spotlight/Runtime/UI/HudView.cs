@@ -30,6 +30,10 @@ namespace Spotlight
         public event Action BombDeployRequested;
         /// <summary>跳过本回合炸弹。</summary>
         public event Action BombSkipRequested;
+        /// <summary>进入刷怪卡合法空格选择模式。</summary>
+        public event Action SpawnerDeployRequested;
+        /// <summary>放弃本次刷怪卡部署机会。</summary>
+        public event Action SpawnerSkipRequested;
         /// <summary>点击“重开”。</summary>
         public event Action RestartRequested;
         /// <summary>点击“配置/调试”。</summary>
@@ -65,6 +69,8 @@ namespace Spotlight
         Button _withdrawButton;
         /// <summary>炸弹部署与跳过按钮，只有待处理机会时可见。</summary>
         Button _bombDeployButton, _bombSkipButton;
+        /// <summary>刷怪卡部署与跳过按钮，仅在 Boss 技能准备窗口显示。</summary>
+        Button _spawnerDeployButton, _spawnerSkipButton;
         /// <summary>胜负遮罩。</summary>
         VisualElement _victoryOverlay;
         /// <summary>胜负文本。</summary>
@@ -104,6 +110,8 @@ namespace Spotlight
             _withdrawButton = _root.Q<Button>("withdraw-button");
             _bombDeployButton = _root.Q<Button>("bomb-deploy-button");
             _bombSkipButton = _root.Q<Button>("bomb-skip-button");
+            _spawnerDeployButton = _root.Q<Button>("spawner-deploy-button");
+            _spawnerSkipButton = _root.Q<Button>("spawner-skip-button");
             _victoryOverlay = _root.Q<VisualElement>("victory-overlay");
             _victoryLabel = _root.Q<Label>("victory-label");
             _modalOverlay = _root.Q<VisualElement>("modal-overlay");
@@ -113,6 +121,8 @@ namespace Spotlight
             if (_withdrawButton != null) _withdrawButton.clicked += () => WithdrawRequested?.Invoke();
             if (_bombDeployButton != null) _bombDeployButton.clicked += () => BombDeployRequested?.Invoke();
             if (_bombSkipButton != null) _bombSkipButton.clicked += () => BombSkipRequested?.Invoke();
+            if (_spawnerDeployButton != null) _spawnerDeployButton.clicked += () => SpawnerDeployRequested?.Invoke();
+            if (_spawnerSkipButton != null) _spawnerSkipButton.clicked += () => SpawnerSkipRequested?.Invoke();
             var restart = _root.Q<Button>("restart-button");
             if (restart != null) restart.clicked += () => RestartRequested?.Invoke();
             var debug = _root.Q<Button>("debug-button");
@@ -147,7 +157,12 @@ namespace Spotlight
             if (_bossLabel != null) _bossLabel.text = BuildBossLine(snapshot, configuration);
             if (_phaseLabel != null) _phaseLabel.text = BuildPhaseLine(snapshot);
             if (_detailLabel != null) _detailLabel.text = BuildDetail(selection, snapshot, configuration);
-            if (_endTurnButton != null) _endTurnButton.SetEnabled(!inputBlocked && snapshot.Phase != MatchPhase.Finished && !snapshot.BossBombPending);
+            if (_endTurnButton != null) _endTurnButton.SetEnabled(!inputBlocked && snapshot.Phase != MatchPhase.Finished && !snapshot.BossBombPending && !snapshot.BossSpawnerPending);
+            var spawnerReady = snapshot.BossSpawnerPending && snapshot.Phase == MatchPhase.Action;
+            if (_spawnerDeployButton != null) _spawnerDeployButton.style.display = spawnerReady ? DisplayStyle.Flex : DisplayStyle.None;
+            if (_spawnerSkipButton != null) _spawnerSkipButton.style.display = spawnerReady ? DisplayStyle.Flex : DisplayStyle.None;
+            _spawnerDeployButton?.SetEnabled(!inputBlocked);
+            _spawnerSkipButton?.SetEnabled(!inputBlocked);
             _bombDeployButton?.SetEnabled(!inputBlocked);
             _bombSkipButton?.SetEnabled(!inputBlocked);
             var bombReady = snapshot.BossBombPending && snapshot.Phase == MatchPhase.Action;
@@ -157,7 +172,7 @@ namespace Spotlight
             {
                 var showSkip = snapshot.PlayerControlsBoss && snapshot.ActiveSide == Side.Boss && snapshot.PlaysRemaining > 0;
                 _skipButton.style.display = showSkip ? DisplayStyle.Flex : DisplayStyle.None;
-                _skipButton.SetEnabled(!inputBlocked && !snapshot.BossBombPending);
+                _skipButton.SetEnabled(!inputBlocked && !snapshot.BossBombPending && !snapshot.BossSpawnerPending);
             }
             if (_withdrawButton != null)
             {
@@ -185,6 +200,10 @@ namespace Spotlight
             foreach (var bomb in snapshot.BossBombs)
                 sb.Append("炸弹 ").Append(bomb.Position).Append(" · 第 ").Append(bomb.DueRound).Append(" 回合玩家行动前爆炸 · 伤害 ").Append(bomb.Damage).AppendLine();
             if (snapshot.BossBombPending) sb.AppendLine("炸弹机会：请先布置或跳过");
+            if (snapshot.BossSpawnerPending) sb.AppendLine("刷怪卡机会：请先部署或跳过");
+            var spawner = snapshot.Units.FirstOrDefault(u => u.IsBossSpawner);
+            if (spawner != null)
+                sb.Append("刷怪卡：").Append(spawner.Hp).Append(" 血 · ").AppendLine(snapshot.Round <= spawner.DeployedRound ? "下个 Boss 回合开始生成战机" : "每个 Boss 回合尝试生成一架战机");
             if (snapshot.PlayerControlsBoss)
             {
                 var bossName = configuration != null && configuration.Cards.TryGetValue(configuration.Rules.BossCardType, out var boss) ? boss.Name : configuration?.Rules.BossCardType;
@@ -207,6 +226,7 @@ namespace Spotlight
         string BuildPhaseLine(GameSnapshot snapshot)
         {
             if (snapshot.BossBombPending) return "先布置炸弹或跳过炸弹，再开始玩家行动";
+            if (snapshot.BossSpawnerPending) return "先部署刷怪卡或跳过，再开始 Boss 普通行动";
             if (snapshot.Phase == MatchPhase.Discard) return $"请弃牌至上限（剩余 {snapshot.Hand.Count} 张）";
             if (snapshot.ActiveSide == Side.Boss && !snapshot.PlayerControlsBoss) return "Boss 回合（AI 自动结算）";
             return string.Empty;
@@ -220,6 +240,7 @@ namespace Spotlight
         string BuildDetail(Selection selection, GameSnapshot snapshot, GameConfiguration configuration)
         {
             if (selection.Kind == SelectionKind.BossBombDeployment) return "选择高亮列中的任意格布置炸弹，可与单位或家同格";
+            if (selection.Kind == SelectionKind.BossSpawnerDeployment) return "选择高亮空格部署刷怪卡，列号从玩家一侧起算";
             if (selection.Kind == SelectionKind.Hand)
             {
                 var card = snapshot.Hand.FirstOrDefault(c => c.Id == selection.Id);
@@ -229,6 +250,7 @@ namespace Spotlight
             {
                 var unit = snapshot.Units.FirstOrDefault(u => u.Id == selection.Id);
                 if (unit == null) return string.Empty;
+                if (unit.IsBossSpawner) return $"{configuration.Cards[unit.TypeId].Name} · 当前生命 {unit.Hp}\n固定据点，不能攻击、移动或互换。下个 Boss 回合起，每回合在周围八格生成一架战机；满格时随机顶替玩家单位，无可用位置则暂停。";
                 var text = configuration.Cards.TryGetValue(unit.TypeId, out var arch) ? CardText.DetailLine(arch, unit.Owner) : string.Empty;
                 return text + Environment.NewLine + $"当前生命 {unit.Hp} · 行动机会 {(unit.CanAct ? "可用" : unit.Acted ? "已用完" : "维持费不足")}";
             }

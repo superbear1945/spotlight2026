@@ -108,6 +108,10 @@ namespace Spotlight
                 _hudView.BombDeployRequested += OnBombDeployRequested;
                 _hudView.BombSkipRequested -= OnBombSkipRequested;
                 _hudView.BombSkipRequested += OnBombSkipRequested;
+                _hudView.SpawnerDeployRequested -= OnSpawnerDeployRequested;
+                _hudView.SpawnerDeployRequested += OnSpawnerDeployRequested;
+                _hudView.SpawnerSkipRequested -= OnSpawnerSkipRequested;
+                _hudView.SpawnerSkipRequested += OnSpawnerSkipRequested;
                 _hudView.RestartRequested -= OnRestartRequested;
                 _hudView.RestartRequested += OnRestartRequested;
                 _hudView.DebugRequested -= OnDebugRequested;
@@ -179,6 +183,7 @@ namespace Spotlight
             if (_presentingTurn || _modalOpen || _session == null || card == null || card.Record == null) return;
             var snapshot = _session.GetSnapshot();
             if (snapshot.BossBombPending) { Show("请先布置炸弹或跳过炸弹，再开始玩家行动"); return; }
+            if (snapshot.BossSpawnerPending) { Show("请先部署刷怪卡或跳过，再开始 Boss 普通行动"); return; }
             if (snapshot.Phase == MatchPhase.Discard)
             {
                 Submit(new GameCommand(CommandKind.Discard, Side.Player, card.Record.Id));
@@ -204,6 +209,16 @@ namespace Spotlight
             var snapshot = _session.GetSnapshot();
             var actions = _session.GetLegalActions(_selection);
 
+            if (snapshot.BossSpawnerPending)
+            {
+                if (_selection.Kind == SelectionKind.BossSpawnerDeployment && actions.Deploy.Contains(cell))
+                {
+                    Submit(new GameCommand(CommandKind.DeployBossSpawner, Side.Boss, target: cell));
+                    _selection = new Selection(SelectionKind.None);
+                    Refresh();
+                }
+                return;
+            }
             if (snapshot.BossBombPending)
             {
                 if (_selection.Kind == SelectionKind.BossBombDeployment && actions.Deploy.Contains(cell))
@@ -382,6 +397,23 @@ namespace Spotlight
         {
             if (_session == null) return;
             Submit(new GameCommand(CommandKind.SkipBossBomb, Side.Boss));
+            _selection = new Selection(SelectionKind.None);
+            Refresh();
+        }
+
+        /// <summary>进入刷怪卡选格。输入：HUD 请求；输出：规则计算的区域空格高亮，提交时仍复验。</summary>
+        void OnSpawnerDeployRequested()
+        {
+            if (_presentingTurn || _modalOpen || _session == null) return;
+            _selection = new Selection(SelectionKind.BossSpawnerDeployment);
+            Refresh();
+        }
+
+        /// <summary>跳过本次刷怪卡机会。输入：HUD 请求；输出：提交命令、撤销选择并刷新普通操作。</summary>
+        void OnSpawnerSkipRequested()
+        {
+            if (_presentingTurn || _modalOpen || _session == null) return;
+            Submit(new GameCommand(CommandKind.SkipBossSpawner, Side.Boss));
             _selection = new Selection(SelectionKind.None);
             Refresh();
         }
