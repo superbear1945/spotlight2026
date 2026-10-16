@@ -28,7 +28,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f46270952f46ef441a82ecbe84dc9fd9, type: 3}
   m_Name: ge12_Resource
   m_EditorClassIdentifier: 
-  _produce: 1
+  _produce: 2
   _upkeep: 0
 --- !u!114 &11400000
 MonoBehaviour:

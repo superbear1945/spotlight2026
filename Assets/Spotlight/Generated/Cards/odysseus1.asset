@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c3099d18b4ff55c4cbe7732b2d6561a9, type: 3}
   m_Name: odysseus1_Combat
   m_EditorClassIdentifier: 
-  _hp: 2
+  _hp: 3
   _attack: 0
   _range: 0
   _moveDistance: 1
@@ -30,7 +30,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _id: odysseus1
   _name: "\u5965\u5FB7\u4FEE\u65AF-1"
-  _category: special
+  _category: attack
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 

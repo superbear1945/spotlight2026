@@ -77,17 +77,17 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ba99ca98405c48b4c93419f7e33c2e39, type: 2}
   _deck:
   - cardType: ge1
-    count: 4
+    count: 3
   - cardType: ge12
-    count: 4
+    count: 3
   - cardType: blade1
-    count: 4
+    count: 3
   - cardType: rabbit2
-    count: 4
+    count: 2
   - cardType: odysseus1
-    count: 4
+    count: 3
   - cardType: gate
-    count: 4
+    count: 2
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceHash: d2a5676636424c7dd3bbe3325c373cd2505462f5901130f7583a58b5a4fa0429
-  _compiledAtUtc: 2026-10-11T13:58:21.9681484Z
+  _sourceHash: 054bfd2b465e79d26606fb6da940b11a088b4907ef7f188609cde00c7ad5f9e8
+  _compiledAtUtc: 2026-10-15T09:14:40.4325345Z
