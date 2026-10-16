@@ -35,10 +35,16 @@ jobs:
       - name: 校验检查脚本自身（隔离回归用例）
         run: bash scripts/check-repo-hygiene.sh --self-test
 
+      - name: 校验字体 LFS 回归检查自身
+        run: bash scripts/test-font-lfs.sh --self-test
+
       - name: 大文件与 LFS 一致性检查
         env:
           MAX_FILE_MB: '5'
         run: bash scripts/check-repo-hygiene.sh
+
+      - name: 字体 LFS 存储回归检查
+        run: bash scripts/test-font-lfs.sh
 
       # 与本 job 同驻的理由：都是秒级、无 Unity 依赖的仓库配置守卫。
       # 它负责拦住“加回 push 触发”或“Unity 矩阵恢复并行授权”这类回归。
