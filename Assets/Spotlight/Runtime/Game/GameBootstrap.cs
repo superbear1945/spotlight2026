@@ -56,6 +56,8 @@ namespace Spotlight
         bool _presentingTurn;
         /// <summary>调试面板是否打开，动画结束不能解除此闸门。</summary>
         bool _modalOpen;
+        /// <summary>齿轮菜单是否打开。与模态闸门配套：菜单打开时挡输入，菜单自带遮罩而不显示配置面板用的那层遮罩。</summary>
+        bool _menuOpen;
         /// <summary>当前正在展示的阶段，避免选择或面板刷新提前读取最终快照。</summary>
         GameSnapshot _displaySnapshot;
 
@@ -108,6 +110,10 @@ namespace Spotlight
                 _hudView.BombDeployRequested += OnBombDeployRequested;
                 _hudView.BombSkipRequested -= OnBombSkipRequested;
                 _hudView.BombSkipRequested += OnBombSkipRequested;
+                _hudView.MenuRequested -= OnMenuRequested;
+                _hudView.MenuRequested += OnMenuRequested;
+                _hudView.MenuResumeRequested -= OnMenuResumeRequested;
+                _hudView.MenuResumeRequested += OnMenuResumeRequested;
                 _hudView.RestartRequested -= OnRestartRequested;
                 _hudView.RestartRequested += OnRestartRequested;
                 _hudView.DebugRequested -= OnDebugRequested;
@@ -167,8 +173,12 @@ namespace Spotlight
         public void SetModalOpen(bool blocked)
         {
             _modalOpen = blocked;
+            // 关闭模态时一并退出菜单视图，避免遮罩残留或界面停在菜单上。
+            if (!blocked) _menuOpen = false;
             UpdateInputGate();
-            _hudView?.SetModalVisible(blocked);
+            // 菜单自带全屏遮罩，此时不再叠加配置面板用的那层遮罩（否则会盖住「继续 / 重开」并吞掉点击）。
+            _hudView?.SetModalVisible(blocked && !_menuOpen);
+            _hudView?.SetMenuVisible(_menuOpen);
             if (blocked) _selection = new Selection(SelectionKind.None);
             Refresh();
         }
@@ -395,6 +405,23 @@ namespace Spotlight
 
         /// <summary>HUD 请求打开配置面板。输入：无；输出：无。</summary>
         void OnDebugRequested() => _debugPanel?.Open();
+
+        /// <summary>
+        /// 进入齿轮菜单。
+        /// 输入：无（由 HUD 的齿轮按钮触发）；输出：无。
+        /// 行为：切到“原有面板”视图（日志、Boss 状态与选中详情），并复用模态闸门挡住棋盘与手牌的点击。
+        /// 为什么复用 SetModalOpen：暂停的实质就是“期间不接受对局操作”，与配置面板完全一致，
+        /// 界面遮罩加规则层输入闸门已经足够，不需要给规则层增加“暂停”这种新概念。
+        /// </summary>
+        void OnMenuRequested()
+        {
+            if (_session == null) return;
+            _menuOpen = true;
+            SetModalOpen(true);
+        }
+
+        /// <summary>关闭齿轮菜单并继续对局。输入：无；输出：无。</summary>
+        void OnMenuResumeRequested() => SetModalOpen(false);
 
         /// <summary>
         /// 提交命令并刷新。
