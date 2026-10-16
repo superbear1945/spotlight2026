@@ -20,7 +20,7 @@ namespace Spotlight.Tests
     /// <summary>
     /// 棋盘交互与渲染的端到端测试。
     /// 输入：演示场景（真实配置资产 + 真实视图装配）；输出：卡牌父子关系、坐标、缩放与点击落点断言。
-    /// 用例通过 GameBootstrap 的私有输入入口驱动，等于复现玩家“点手牌 → 点格 → 结束回合 → 点单位 → 点目标格”的完整路径。
+    /// 用例通过手牌 UGUI 拖动及既有棋盘输入入口驱动，复现“拖拽部署 → 结束回合 → 点击单位移动”的路径。
     /// </summary>
     public class BoardMovePlayModeTests
     {
@@ -57,8 +57,7 @@ namespace Spotlight.Tests
                 break;
             }
             Assert.That(deployed, Is.Not.Null, "初始手牌里没有可部署的卡");
-            Invoke(bootstrap, "OnCardClicked", context.Hand.GetCard(deployed.Id));
-            Invoke(bootstrap, "OnCellClicked", deployCell);
+            HandDragInput.Deploy(context.Hand.GetCard(deployed.Id), board, deployCell);
             yield return WaitSeconds(SettleSeconds);
 
             var deployedUnit = session.GetSnapshot().Units.FirstOrDefault(u => u.SourceCardId == deployed.Id);
@@ -680,9 +679,8 @@ namespace Spotlight.Tests
                 if (requireMoveDistance && !HasMoveDistance(session, record.TypeId)) continue;
                 var options = session.GetLegalActions(new Selection(SelectionKind.Hand, record.Id));
                 if (options.Deploy.Count <= 0) continue;
-                Invoke(bootstrap, "OnCardClicked", hand.GetCard(record.Id));
-                Invoke(bootstrap, "OnCellClicked", options.Deploy[0]);
-                return true;
+                HandDragInput.Deploy(hand.GetCard(record.Id), Object.FindObjectOfType<BoardView>(), options.Deploy[0]);
+                return session.GetSnapshot().Units.Any(u => u.SourceCardId == record.Id);
             }
             return false;
         }
