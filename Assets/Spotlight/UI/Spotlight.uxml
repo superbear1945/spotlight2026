@@ -6,6 +6,9 @@
             <ui:Label name="resource-label" text="资源 0" class="info-label" />
             <ui:Label name="plays-label" text="剩余出牌 5" class="info-label" />
         </ui:VisualElement>
+        <!-- 齿轮：位于顶部信息条正下方（回合数下方）。图案是 gear.png（.action-button.menu-button 的背景图），
+             点击进入菜单：隐藏战斗界面、显示原有面板与「继续 / 重开 / 退出游戏」。 -->
+        <ui:Button name="menu-button" class="action-button menu-button" />
         <ui:VisualElement name="log-panel" picking-mode="Ignore" class="panel log-panel">
             <ui:Label text="对局日志" picking-mode="Ignore" class="section-label" />
             <ui:ScrollView name="log-list" class="log-list">
@@ -18,17 +21,47 @@
             <ui:Label name="phase-label" picking-mode="Ignore" class="warn-label" />
             <ui:Label text="选中详情" picking-mode="Ignore" class="section-label" />
             <ui:Label name="unit-detail" text="点击手牌、己方单位或己方家进行操作" picking-mode="Ignore" class="detail-label" />
+        </ui:VisualElement>
+        <!-- 左右详情区：只做信息展示（单选中槽）。左侧为我方选中的卡牌，右侧为敌方选中的卡牌；
+             平时为空，选中家时不显示。同时作为后续功能的占位区域。 -->
+        <ui:VisualElement name="detail-left" picking-mode="Ignore" class="panel detail-panel detail-panel-left">
+            <ui:Label name="detail-left-title" class="detail-title" />
+            <ui:Label name="detail-left-body" class="detail-body" />
             <ui:Button name="withdraw-button" text="离场" class="action-button withdraw-button" />
+        </ui:VisualElement>
+        <ui:VisualElement name="detail-right" picking-mode="Ignore" class="panel detail-panel detail-panel-right">
+            <ui:Label name="detail-right-title" class="detail-title" />
+            <ui:Label name="detail-right-body" class="detail-body" />
         </ui:VisualElement>
         <ui:VisualElement name="bottom-bar" picking-mode="Ignore" class="bottom-bar">
             <ui:Button name="bomb-deploy-button" text="布置炸弹" class="action-button bomb-button" style="display: none;" />
             <ui:Button name="bomb-skip-button" text="跳过炸弹" class="action-button bomb-button" style="display: none;" />
+            <!-- 刷怪卡按钮来自 main 的刷怪技能；结束回合按钮已被改版移入 pile-right，这里不重复声明以免重名。 -->
             <ui:Button name="spawner-deploy-button" text="部署刷怪卡" class="action-button" style="display: none;" />
             <ui:Button name="spawner-skip-button" text="跳过刷怪卡" class="action-button" style="display: none;" />
-            <ui:Button name="end-turn-button" text="结束回合" class="action-button" />
             <ui:Button name="skip-deploy-button" text="跳过放牌并结束" class="action-button" />
-            <ui:Button name="restart-button" text="重开" class="action-button" />
-            <ui:Button name="debug-button" text="配置/调试" class="action-button" />
+        </ui:VisualElement>
+        <!-- 手牌同一行的两侧：左侧墓地计数、右侧抽牌堆计数与结束回合。
+             目前只显示计数，保留后续（查看列表）的扩展位置。 -->
+        <ui:VisualElement name="pile-left" picking-mode="Ignore" class="panel pile-panel pile-left">
+            <ui:Label text="墓地" class="pile-title" />
+            <ui:Label name="grave-count" text="0" class="pile-count" />
+        </ui:VisualElement>
+        <ui:VisualElement name="pile-right" picking-mode="Ignore" class="panel pile-panel pile-right">
+            <ui:Label text="抽牌堆" class="pile-title" />
+            <ui:Label name="draw-count" text="0" class="pile-count" />
+            <ui:Button name="end-turn-button" text="结束回合" class="action-button" />
+        </ui:VisualElement>
+        <!-- 齿轮菜单：正中间放「继续」「重开」与「退出游戏」（退出会直接结束本次运行，不再返回对局）；
+             「配置/调试」也放在这里，且仍由 DebugSupport.IsDebugAvailable 决定是否出现（正式包不显示）。 -->
+        <ui:VisualElement name="menu-overlay" class="overlay">
+            <ui:VisualElement picking-mode="Ignore" class="overlay-card">
+                <ui:Label text="菜单" class="victory-label" />
+                <ui:Button name="menu-resume-button" text="继续" class="action-button" />
+                <ui:Button name="menu-restart-button" text="重开" class="action-button" />
+                <ui:Button name="menu-quit-button" text="退出游戏" class="action-button menu-quit-button" />
+                <ui:Button name="debug-button" text="配置/调试" class="action-button menu-debug-button" />
+            </ui:VisualElement>
         </ui:VisualElement>
         <ui:Label name="error-label" picking-mode="Ignore" class="error-label" />
         <ui:VisualElement name="victory-overlay" picking-mode="Ignore" class="overlay">

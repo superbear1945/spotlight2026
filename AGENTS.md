@@ -117,6 +117,7 @@ Assets/Spotlight/
 - 棋盘上的卡牌一律 `SetRaycastTarget(false)`，点击必须穿透到格子；手牌保持可点。
 - 规则快照变化后，界面位置必须跟随，不得把棋子留在旧格（DOTween 需 `SetTarget` + `OnComplete/OnKill`，`Kill` 用 `DOKill(true)`）。
 - `Card.OnDestroy` 只停止自身补间（不补完），避免访问已销毁的 `RectTransform`。
+- HUD 由同一个 `Spotlight.uxml` 承载两套视图：**战斗界面**（左右详情区、墓地/抽牌堆计数、齿轮、结束回合）默认显示；**原有面板**（对局日志、Boss 状态、选中详情）移入齿轮菜单，点齿轮切换视图并暂停（复用 `SetModalOpen` 的“界面遮罩 + 规则层输入闸门”）。新增界面元素要明确属于哪一套，避免菜单里点不到按钮或被遮罩压住。
 
 ### 4.3 编辑器工具（`Spotlight.EditorTools`）
 

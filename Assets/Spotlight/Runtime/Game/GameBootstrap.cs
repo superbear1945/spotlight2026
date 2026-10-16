@@ -56,6 +56,10 @@ namespace Spotlight
         bool _presentingTurn;
         /// <summary>调试面板是否打开，动画结束不能解除此闸门。</summary>
         bool _modalOpen;
+        /// <summary>齿轮菜单是否打开。与模态闸门配套：菜单打开时挡输入，菜单自带遮罩而不显示配置面板用的那层遮罩。</summary>
+        bool _menuOpen;
+        /// <summary>实际的退出动作（默认关闭播放模式 / 结束应用），可替换以便测试与后续平台适配。</summary>
+        Action _quitAction = DefaultQuit;
         /// <summary>当前正在展示的阶段，避免选择或面板刷新提前读取最终快照。</summary>
         GameSnapshot _displaySnapshot;
 
@@ -67,6 +71,32 @@ namespace Spotlight
 
         /// <summary>当前对局实例（只读，供调试与测试使用）。</summary>
         public GameSession Session => _session;
+
+        /// <summary>
+        /// 退出动作：默认在编辑器里停止播放模式、在独立运行包里结束进程。
+        /// 输入/输出：无参数的宿主环境操作。
+        /// 为什么抽成可替换属性：退出在 PlayMode 测试里无法真的执行（会直接中断测试运行），
+        /// 但又必须验证“菜单按钮 → 退出”这条链路，因此保留一个可替换的执行点。
+        /// </summary>
+        public Action QuitAction
+        {
+            get => _quitAction;
+            set => _quitAction = value;
+        }
+
+        /// <summary>
+        /// 默认退出：编辑器下停止播放模式，正式包里结束应用进程。
+        /// 输入/输出：无。
+        /// 为什么不用单一句 Application.Quit：编辑器里它不生效，开发者会以为按钮没接上。
+        /// </summary>
+        static void DefaultQuit()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
 
         /// <summary>
         /// 初始化对局并绑定视图。
@@ -112,8 +142,14 @@ namespace Spotlight
                 _hudView.SpawnerDeployRequested += OnSpawnerDeployRequested;
                 _hudView.SpawnerSkipRequested -= OnSpawnerSkipRequested;
                 _hudView.SpawnerSkipRequested += OnSpawnerSkipRequested;
+                _hudView.MenuRequested -= OnMenuRequested;
+                _hudView.MenuRequested += OnMenuRequested;
+                _hudView.MenuResumeRequested -= OnMenuResumeRequested;
+                _hudView.MenuResumeRequested += OnMenuResumeRequested;
                 _hudView.RestartRequested -= OnRestartRequested;
                 _hudView.RestartRequested += OnRestartRequested;
+                _hudView.QuitRequested -= OnQuitRequested;
+                _hudView.QuitRequested += OnQuitRequested;
                 _hudView.DebugRequested -= OnDebugRequested;
                 _hudView.DebugRequested += OnDebugRequested;
             }
@@ -171,8 +207,12 @@ namespace Spotlight
         public void SetModalOpen(bool blocked)
         {
             _modalOpen = blocked;
+            // 关闭模态时一并退出菜单视图，避免遮罩残留或界面停在菜单上。
+            if (!blocked) _menuOpen = false;
             UpdateInputGate();
-            _hudView?.SetModalVisible(blocked);
+            // 菜单自带全屏遮罩，此时不再叠加配置面板用的那层遮罩（否则会盖住「继续 / 重开」并吞掉点击）。
+            _hudView?.SetModalVisible(blocked && !_menuOpen);
+            _hudView?.SetMenuVisible(_menuOpen);
             if (blocked) _selection = new Selection(SelectionKind.None);
             Refresh();
         }
@@ -427,6 +467,35 @@ namespace Spotlight
 
         /// <summary>HUD 请求打开配置面板。输入：无；输出：无。</summary>
         void OnDebugRequested() => _debugPanel?.Open();
+
+        /// <summary>
+        /// 进入齿轮菜单。
+        /// 输入：无（由 HUD 的齿轮按钮触发）；输出：无。
+        /// 行为：切到“原有面板”视图（日志、Boss 状态与选中详情），并复用模态闸门挡住棋盘与手牌的点击。
+        /// 为什么复用 SetModalOpen：暂停的实质就是“期间不接受对局操作”，与配置面板完全一致，
+        /// 界面遮罩加规则层输入闸门已经足够，不需要给规则层增加“暂停”这种新概念。
+        /// </summary>
+        void OnMenuRequested()
+        {
+            if (_session == null) return;
+            _menuOpen = true;
+            SetModalOpen(true);
+        }
+
+        /// <summary>关闭齿轮菜单并继续对局。输入：无；输出：无。</summary>
+        void OnMenuResumeRequested() => SetModalOpen(false);
+
+        /// <summary>
+        /// HUD 请求退出游戏。
+        /// 输入：无（由菜单里的“退出游戏”按钮触发）；输出：无（调用宿主退出动作后进程/播放模式结束）。
+        /// 行为：先停掉所有补间，再做退出动作，避免退出过程中仍有 DOTween 回调访问即将销毁的界面对象。
+        /// 为什么不做“先结束对局”：本局不保存进度，退出就是终止运行，不存在需要回写的规则状态。
+        /// </summary>
+        void OnQuitRequested()
+        {
+            _feedback?.KillAll();
+            _quitAction?.Invoke();
+        }
 
         /// <summary>
         /// 提交命令并刷新。

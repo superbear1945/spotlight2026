@@ -99,10 +99,11 @@
     max-height: 420px;
 }
 
-/* 底部按钮条 */
+/* 底部按钮条：左移 252px，给同一行的左侧“墓地”计数让位（棋盘与手牌的位置不变）。
+   按钮仍然从左往右排列，因此不会与右侧的“抽牌堆 / 结束回合”区域重叠。 */
 .bottom-bar {
     position: absolute;
-    left: 12px;
+    left: 264px;
     right: 12px;
     bottom: 12px;
     flex-direction: row;
@@ -439,3 +440,112 @@
 }
 
 .bomb-button { border-bottom-color: rgb(220, 110, 45); border-bottom-width: 2px; }
+
+/* ── 战斗界面（新 UI，默认显示） ──────────────────────────────────────────
+   布局预算（与 SpotlightMenu 生成的容器尺寸保持一致，改动请同时改两处）：
+   - 棋盘维持现状：x∈[460,1520]、y∈[250,1010]（Canvas 参考分辨率 1920×1080）；
+     因此左侧余 460px、右侧余 400px，正好容纳左右详情区（左 420 / 右 380）；
+   - 手牌行：左“墓地”240 + 居中手牌 1020 + 右“抽牌堆 / 结束回合”380；
+   - 详情区与卡牌计数都只是占位与展示，真正的合法性仍由规则层给出。 */
+/* 齿轮按钮：图标按钮，图标来自 Assets/Spotlight/UI/Pictures/gear.png（背景图，不再用文字）。
+   为什么 margin: 0：Unity 默认主题的 .unity-button 自带 margin 2px 4px（调试器里看到的 “2px 0px 2px 4px”
+   就是它，加上这里原先的 margin-right: 0）。对固定尺寸 + 绝对定位的按钮来说，这些 margin 不会参与任何排版，
+   只会把方框顶偏、在四周留一圈点不到的死区，所以全部清零。
+   位置只改下面的 left / top（不要在 UXML 里加内联 style：内联样式会盖掉整条规则，同一个按钮就有两个真源）。 */
+.action-button.menu-button {
+    position: absolute;
+    left: 12px;
+    top: 61px;
+    width: 42px;
+    height: 42px;
+    margin: 0;
+    background-image: url("project://database/Assets/Spotlight/UI/Pictures/gear.png?fileID=2800000&guid=788226b706a331b438a4fa9013f33e42&type=3#gear");
+    /* 按比例缩放：以后换成非正方形图标也不会被拉扁。 */
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.detail-panel {
+    position: absolute;
+    top: 300px;
+    height: 400px;
+}
+
+.detail-panel-left {
+    left: 12px;
+    width: 420px;
+}
+
+.detail-panel-right {
+    right: 12px;
+    width: 380px;
+}
+
+.detail-title {
+    font-size: 16px;
+    color: rgb(160, 200, 255);
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+.detail-body {
+    font-size: 14px;
+    color: rgb(225, 232, 245);
+    white-space: normal;
+    margin-top: 6px;
+}
+
+/* 手牌同一行的卡牌计数区 */
+.pile-panel {
+    position: absolute;
+    bottom: 16px;
+    height: 190px;
+    align-items: center;
+    justify-content: center;
+}
+
+.pile-left {
+    left: 12px;
+    width: 240px;
+}
+
+.pile-right {
+    right: 12px;
+    width: 380px;
+}
+
+.pile-title {
+    font-size: 15px;
+    color: rgb(160, 200, 255);
+    -unity-font-style: bold;
+}
+
+.pile-count {
+    font-size: 36px;
+    color: rgb(240, 245, 255);
+    -unity-font-style: bold;
+    margin-bottom: 10px;
+}
+
+/* 齿轮菜单的遮罩：沿用 .overlay / .overlay-card，只加深底色以突出中间两个按钮。 */
+.menu-overlay {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* 菜单里的“配置/调试”：与「继续 / 重开」拉开距离，避免误点（正式包里该按钮不显示）。 */
+.action-button.menu-debug-button {
+    margin-top: 18px;
+}
+
+/* 菜单里的“退出游戏”：用警示色与「继续 / 重开」区分，降低误点退出（退出后无法回到本局）。 */
+.action-button.menu-quit-button {
+    background-color: rgb(96, 40, 48);
+    border-left-color: rgb(200, 96, 110);
+    border-right-color: rgb(200, 96, 110);
+    border-top-color: rgb(200, 96, 110);
+    border-bottom-color: rgb(200, 96, 110);
+}
+
+/* 上面的规则胜过后写的 .action-button:hover，因此退出按钮需要单独定义悬停色。 */
+.action-button.menu-quit-button:hover {
+    background-color: rgb(126, 52, 62);
+}

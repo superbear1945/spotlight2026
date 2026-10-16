@@ -230,6 +230,188 @@ namespace Spotlight.Tests
         }
 
         /// <summary>
+        /// 齿轮在两套界面之间切换：默认是战斗界面（左右详情区与卡牌计数可见、日志与 Boss 状态隐藏），
+        /// 点齿轮后隐藏战斗界面、显示原有面板与「继续 / 重开」，点「继续」恢复；菜单打开期间规则层不接受操作。
+        /// 输入：无；输出：NUnit 断言结果。
+        /// 为什么需要：原有面板没有删除，只是移进菜单，必须防止以后误删或忘记恢复，也要确认暂停真的挡住了输入。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator MenuButtonSwapsBattleAndLegacyHud()
+        {
+            var context = new SceneContext();
+            yield return context.Load();
+            var hud = Object.FindObjectOfType<HudView>();
+            Assert.That(hud, Is.Not.Null, "场景缺少 HudView");
+            var root = hud.Root;
+
+            var detailLeft = root.Q<VisualElement>("detail-left");
+            var pileLeft = root.Q<VisualElement>("pile-left");
+            var logPanel = root.Q<VisualElement>("log-panel");
+            var sidePanel = root.Q<VisualElement>("side-panel");
+            var menuOverlay = root.Q<VisualElement>("menu-overlay");
+            var menuButton = root.Q<VisualElement>("menu-button");
+            Assert.That(detailLeft, Is.Not.Null, "UXML 缺少 detail-left");
+            Assert.That(pileLeft, Is.Not.Null, "UXML 缺少 pile-left");
+            Assert.That(logPanel, Is.Not.Null, "UXML 缺少 log-panel");
+            Assert.That(sidePanel, Is.Not.Null, "UXML 缺少 side-panel");
+            Assert.That(menuOverlay, Is.Not.Null, "UXML 缺少 menu-overlay");
+            Assert.That(menuButton, Is.Not.Null, "UXML 缺少 menu-button");
+            // 齿轮按钮的全部外观就是那张背景图标（gear.png，由 .action-button.menu-button 指定）：
+            // 图标读不到就会剩下一个空方块，玩家再也找不到菜单入口，所以这里既不让它退回文字，也要求图标真的解析出来。
+            var gear = (UnityEngine.UIElements.Button)menuButton;
+            Assert.That(gear.text, Is.Empty, "齿轮按钮只显示图标，不应再有文字");
+            Assert.That(gear.resolvedStyle.backgroundImage.texture != null || gear.resolvedStyle.backgroundImage.sprite != null,
+                "齿轮按钮没有读到背景图标（gear.png），菜单入口会变成一个空方块");
+            var debugButton = root.Q<VisualElement>("debug-button");
+            Assert.That(debugButton, Is.Not.Null, "UXML 缺少 debug-button");
+            Assert.That(menuOverlay.Contains(debugButton), Is.True, "“配置/调试”入口应当位于齿轮菜单里");
+
+            Assert.That(detailLeft.style.display.value, Is.EqualTo(DisplayStyle.Flex), "默认应显示战斗界面的左右详情区");
+            Assert.That(pileLeft.style.display.value, Is.EqualTo(DisplayStyle.Flex), "默认应显示卡牌计数区");
+            Assert.That(logPanel.style.display.value, Is.EqualTo(DisplayStyle.None), "默认应隐藏对局日志");
+            Assert.That(sidePanel.style.display.value, Is.EqualTo(DisplayStyle.None), "默认应隐藏 Boss 状态");
+            Assert.That(menuOverlay.style.display.value, Is.EqualTo(DisplayStyle.None), "默认不该显示菜单");
+
+            Invoke(context.Bootstrap, "OnMenuRequested");
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(detailLeft.style.display.value, Is.EqualTo(DisplayStyle.None), "菜单打开时应隐藏战斗界面");
+            Assert.That(pileLeft.style.display.value, Is.EqualTo(DisplayStyle.None), "菜单打开时应隐藏卡牌计数区");
+            Assert.That(logPanel.style.display.value, Is.EqualTo(DisplayStyle.Flex), "菜单打开时应显示对局日志");
+            Assert.That(sidePanel.style.display.value, Is.EqualTo(DisplayStyle.Flex), "菜单打开时应显示 Boss 状态");
+            Assert.That(menuOverlay.style.display.value, Is.EqualTo(DisplayStyle.Flex), "菜单打开时应显示遮罩与两个按钮");
+
+            // 菜单是暂停状态：结束回合必须被规则层拒绝，回合数不推进。
+            var pausedRound = context.Session.GetSnapshot().Round;
+            Invoke(context.Bootstrap, "OnEndTurnRequested");
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(context.Session.GetSnapshot().Round, Is.EqualTo(pausedRound), "菜单打开期间不应能结束回合");
+
+            Invoke(context.Bootstrap, "OnMenuResumeRequested");
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(detailLeft.style.display.value, Is.EqualTo(DisplayStyle.Flex), "继续后应恢复战斗界面");
+            Assert.That(logPanel.style.display.value, Is.EqualTo(DisplayStyle.None), "继续后应重新隐藏日志");
+            Assert.That(menuOverlay.style.display.value, Is.EqualTo(DisplayStyle.None), "继续后应关闭菜单");
+        }
+
+        /// <summary>
+        /// 齿轮菜单里的“退出游戏”必须走到宿主退出动作：按钮位于菜单内，点击后只调用退出动作一次，且不改动对局。
+        /// 输入：无；输出：NUnit 断言结果。
+        /// 为什么需要：退出是菜单里唯一“离开对局生命周期”的动作（其他项都只是暂停或重建对局），
+        /// 一旦接错或被写成“结束回合”这类规则操作，玩家就会在毫不知情的情况下丢掉当前对局。
+        /// 为什么要把 QuitAction 换成计数委托：测试不能真的结束运行中的编辑器/播放会话。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator MenuQuitButtonRequestsQuit()
+        {
+            var context = new SceneContext();
+            yield return context.Load();
+            var hud = Object.FindObjectOfType<HudView>();
+            Assert.That(hud, Is.Not.Null, "场景缺少 HudView");
+            var menuOverlay = hud.Root.Q<VisualElement>("menu-overlay");
+            Assert.That(menuOverlay, Is.Not.Null, "UXML 缺少 menu-overlay");
+            var quitButton = hud.Root.Q<UnityEngine.UIElements.Button>("menu-quit-button");
+            Assert.That(quitButton, Is.Not.Null, "UXML 缺少 menu-quit-button");
+            Assert.That(menuOverlay.Contains(quitButton), Is.True, "“退出游戏”入口应当位于齿轮菜单里");
+            Assert.That(quitButton.text, Is.EqualTo("退出游戏"), "退出按钮的文案必须能看出会离开当前对局");
+
+            // 替换退出动作，避免测试真的结束运行会话。
+            var quitCalls = 0;
+            context.Bootstrap.QuitAction = () => quitCalls++;
+
+            Invoke(context.Bootstrap, "OnMenuRequested");
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(menuOverlay.style.display.value, Is.EqualTo(DisplayStyle.Flex), "菜单打开时才能看到退出按钮");
+
+            var before = context.Session.GetSnapshot();
+            Invoke(context.Bootstrap, "OnQuitRequested");
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(quitCalls, Is.EqualTo(1), "点击“退出游戏”没有触发宿主退出动作");
+
+            var after = context.Session.GetSnapshot();
+            Assert.That(after.Round, Is.EqualTo(before.Round), "退出不该推进对局");
+            Assert.That(after.Units.Count, Is.EqualTo(before.Units.Count), "退出不该改动棋盘上的单位");
+            Assert.That(after.Hand.Count, Is.EqualTo(before.Hand.Count), "退出不该改动手牌");
+        }
+
+        /// <summary>
+        /// 左右详情区采用单选中槽：我方手牌/单位只填左侧，敌方单位只填右侧，选中家时两侧都清空。
+        /// 输入：无；输出：NUnit 断言结果。
+        /// 为什么需要：详情区是给玩家的信息展示（同时充当后续功能的占位），
+        /// 必须保证“同一时刻只有一侧有内容”，否则会误导成两个对象同时被选中。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator DetailPanelsShowFriendlyOnLeftAndEnemyOnRight()
+        {
+            var context = new SceneContext();
+            yield return context.Load();
+            var hud = Object.FindObjectOfType<HudView>();
+            Assert.That(hud, Is.Not.Null, "场景缺少 HudView");
+            var leftBody = hud.Root.Q<Label>("detail-left-body");
+            var rightBody = hud.Root.Q<Label>("detail-right-body");
+            Assert.That(leftBody, Is.Not.Null, "UXML 缺少 detail-left-body");
+            Assert.That(rightBody, Is.Not.Null, "UXML 缺少 detail-right-body");
+            Assert.That(leftBody.text, Is.Empty, "未选中时左侧详情应为空");
+            Assert.That(rightBody.text, Is.Empty, "未选中时右侧详情应为空");
+
+            var record = context.Session.GetSnapshot().Hand.First();
+            Invoke(context.Bootstrap, "OnCardClicked", context.Hand.GetCard(record.Id));
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(leftBody.text, Is.Not.Empty, "选中我方手牌后左侧详情应有卡面信息");
+            Assert.That(rightBody.text, Is.Empty, "选中我方手牌时右侧应保持为空");
+
+            var home = context.Session.GetSnapshot().Homes.First(h => h.Owner == Side.Player);
+            Invoke(context.Bootstrap, "OnCellClicked", home.Position);
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(leftBody.text, Is.Empty, "选中家时左侧详情应清空（家不在卡面区显示）");
+            Assert.That(rightBody.text, Is.Empty, "选中家时右侧详情应清空");
+
+            // 结束回合让 Boss 部署，等回放结束后选中敌方单位。
+            Invoke(context.Bootstrap, "OnEndTurnRequested");
+            UnitState enemy = null;
+            var deadline = Time.realtimeSinceStartup + 15f;
+            while (Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+                enemy = context.Session.GetSnapshot().Units.FirstOrDefault(u => u.Owner == Side.Boss);
+                if (enemy != null && !context.Bootstrap.IsPresentingTurn) break;
+            }
+            Assert.That(enemy, Is.Not.Null, "Boss 回合结束后场上仍没有敌方单位");
+            Invoke(context.Bootstrap, "OnCellClicked", enemy.Position);
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(rightBody.text, Is.Not.Empty, "选中敌方单位后右侧详情应有卡面信息");
+            Assert.That(leftBody.text, Is.Empty, "选中敌方单位时左侧应保持为空");
+        }
+
+        /// <summary>
+        /// 墓地与抽牌堆的计数必须跟随快照（部署后来源卡进墓地，数字同步变化）。
+        /// 输入：无；输出：NUnit 断言结果。
+        /// 为什么需要：计数区目前只显示数字，但它是后续“查看牌区列表”的入口位置，先固定“数字来自快照”这条契约。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator PileCountersFollowSnapshot()
+        {
+            var context = new SceneContext();
+            yield return context.Load();
+            var hud = Object.FindObjectOfType<HudView>();
+            Assert.That(hud, Is.Not.Null, "场景缺少 HudView");
+            var grave = hud.Root.Q<Label>("grave-count");
+            var draw = hud.Root.Q<Label>("draw-count");
+            Assert.That(grave, Is.Not.Null, "UXML 缺少 grave-count");
+            Assert.That(draw, Is.Not.Null, "UXML 缺少 draw-count");
+
+            var start = context.Session.GetSnapshot();
+            Assert.That(grave.text, Is.EqualTo(start.Graveyard.Count.ToString()), "墓地计数与快照不一致");
+            Assert.That(draw.text, Is.EqualTo(start.DrawPile.Count.ToString()), "抽牌堆计数与快照不一致");
+
+            Assert.That(TryDeploy(context.Bootstrap, context.Session, context.Hand, requireMoveDistance: false), Is.True, "初始手牌里没有可部署的卡");
+            yield return WaitSeconds(SettleSeconds);
+            var after = context.Session.GetSnapshot();
+            Assert.That(after.Graveyard.Count, Is.GreaterThan(start.Graveyard.Count), "部署成功后来源卡应进入墓地");
+            Assert.That(grave.text, Is.EqualTo(after.Graveyard.Count.ToString()), "部署后墓地计数没有跟随快照");
+            Assert.That(draw.text, Is.EqualTo(after.DrawPile.Count.ToString()), "部署后抽牌堆计数没有跟随快照");
+        }
+
+        /// <summary>
         /// 开局第一帧渲染后，家的卡牌必须按所在格的实际尺寸布局，而不是布局完成前的占位尺寸。
         /// 输入：无；输出：NUnit 断言结果。
         /// 为什么必须放在 PlayMode：格子尺寸由 GridLayoutGroup 在真实 Canvas 布局中算出，
