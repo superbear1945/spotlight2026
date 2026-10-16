@@ -144,6 +144,34 @@ namespace Spotlight.Tests
         }
 
         /// <summary>
+        /// 悬停描边不能抢走射线，也不能给棋盘单位装上手牌拖动器。
+        /// 输入：最小棋盘及一次公开部署；输出：描边、身份和清理的视图契约断言。
+        /// </summary>
+        [Test]
+        public void DeploymentHoverIsIndependentAndNeverBlocksBoardInput()
+        {
+            var session = new GameSession(new GameConfiguration(Document()), new SeededRandom(7), 50);
+            using (var fixture = new BoardFixture())
+            {
+                fixture.Build(session.Configuration);
+                var record = session.GetSnapshot().Hand.First(r => r.TypeId == "soldier");
+                var target = new Cell(0, 1);
+                Assert.That(session.Execute(new GameCommand(CommandKind.Deploy, Side.Player, record.Id, target)).Success, Is.True);
+                fixture.Render(session);
+                fixture.Board.SetDeploymentHover(target);
+                Assert.That(fixture.Board.HoveredDeploymentCell, Is.EqualTo(target));
+                var outline = fixture.Board.CellRect(target).Find("DeploymentHover");
+                Assert.That(outline, Is.Not.Null);
+                Assert.That(outline.GetComponentsInChildren<Image>().Length, Is.EqualTo(4));
+                Assert.That(outline.GetComponentsInChildren<Image>().All(i => !i.raycastTarget), Is.True);
+                Assert.That(fixture.Board.UnitCards.Values.All(c => c.GetComponent<HandCardDrag>() == null), Is.True);
+                fixture.Board.SetDeploymentHover(null);
+                Assert.That(outline.gameObject.activeSelf, Is.False);
+                Assert.That(fixture.Board.HoveredDeploymentCell, Is.Null);
+            }
+        }
+
+        /// <summary>
         /// 棋盘视图测试夹具：用代码搭建 BoardView 与外层容器，并在结束时清理。
         /// 输入：Build 时传入本局配置；输出：可 Render 的 BoardView 与两个模板对象。
         /// 为什么需要：EditMode 下不能使用场景资产，必须自建最小视图依赖（格子模板、卡牌模板）。
