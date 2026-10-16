@@ -256,8 +256,12 @@ namespace Spotlight.Tests
             Assert.That(sidePanel, Is.Not.Null, "UXML 缺少 side-panel");
             Assert.That(menuOverlay, Is.Not.Null, "UXML 缺少 menu-overlay");
             Assert.That(menuButton, Is.Not.Null, "UXML 缺少 menu-button");
-            // 齿轮图标就是按钮的全部外观：丢了文案，玩家会看到一个空按钮，菜单再也进不去。
-            Assert.That(((UnityEngine.UIElements.Button)menuButton).text, Is.Not.Empty, "齿轮按钮没有文案，菜单入口会变成看不见的空按钮");
+            // 齿轮按钮的全部外观就是那张背景图标（gear.png，由 .action-button.menu-button 指定）：
+            // 图标读不到就会剩下一个空方块，玩家再也找不到菜单入口，所以这里既不让它退回文字，也要求图标真的解析出来。
+            var gear = (UnityEngine.UIElements.Button)menuButton;
+            Assert.That(gear.text, Is.Empty, "齿轮按钮只显示图标，不应再有文字");
+            Assert.That(gear.resolvedStyle.backgroundImage.texture != null || gear.resolvedStyle.backgroundImage.sprite != null,
+                "齿轮按钮没有读到背景图标（gear.png），菜单入口会变成一个空方块");
             var debugButton = root.Q<VisualElement>("debug-button");
             Assert.That(debugButton, Is.Not.Null, "UXML 缺少 debug-button");
             Assert.That(menuOverlay.Contains(debugButton), Is.True, "“配置/调试”入口应当位于齿轮菜单里");

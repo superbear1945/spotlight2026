@@ -6,8 +6,9 @@
             <ui:Label name="resource-label" text="资源 0" class="info-label" />
             <ui:Label name="plays-label" text="剩余出牌 5" class="info-label" />
         </ui:VisualElement>
-        <!-- 齿轮：位于顶部信息条正下方（回合数下方）。点击进入菜单：隐藏战斗界面、显示原有面板与「继续 / 重开 / 退出游戏」。 -->
-        <ui:Button name="menu-button" text="⚙" class="action-button menu-button" />
+        <!-- 齿轮：位于顶部信息条正下方（回合数下方）。图案是 gear.png（.action-button.menu-button 的背景图），
+             点击进入菜单：隐藏战斗界面、显示原有面板与「继续 / 重开 / 退出游戏」。 -->
+        <ui:Button name="menu-button" class="action-button menu-button" />
         <ui:VisualElement name="log-panel" picking-mode="Ignore" class="panel log-panel">
             <ui:Label text="对局日志" picking-mode="Ignore" class="section-label" />
             <ui:ScrollView name="log-list" class="log-list">

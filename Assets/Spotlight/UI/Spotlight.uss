@@ -447,15 +447,21 @@
      因此左侧余 460px、右侧余 400px，正好容纳左右详情区（左 420 / 右 380）；
    - 手牌行：左“墓地”240 + 居中手牌 1020 + 右“抽牌堆 / 结束回合”380；
    - 详情区与卡牌计数都只是占位与展示，真正的合法性仍由规则层给出。 */
+/* 齿轮按钮：图标按钮，图标来自 Assets/Spotlight/UI/Pictures/gear.png（背景图，不再用文字）。
+   为什么 margin: 0：Unity 默认主题的 .unity-button 自带 margin 2px 4px（调试器里看到的 “2px 0px 2px 4px”
+   就是它，加上这里原先的 margin-right: 0）。对固定尺寸 + 绝对定位的按钮来说，这些 margin 不会参与任何排版，
+   只会把方框顶偏、在四周留一圈点不到的死区，所以全部清零。
+   位置只改下面的 left / top（不要在 UXML 里加内联 style：内联样式会盖掉整条规则，同一个按钮就有两个真源）。 */
 .action-button.menu-button {
     position: absolute;
     left: 12px;
-    top: 46px;
+    top: 61px;
     width: 42px;
     height: 42px;
-    font-size: 20px;
-    margin-right: 0;
-    -unity-text-align: middle-center;
+    margin: 0;
+    background-image: url("project://database/Assets/Spotlight/UI/Pictures/gear.png?fileID=2800000&guid=788226b706a331b438a4fa9013f33e42&type=3#gear");
+    /* 按比例缩放：以后换成非正方形图标也不会被拉扁。 */
+    -unity-background-scale-mode: scale-to-fit;
 }
 
 .detail-panel {
