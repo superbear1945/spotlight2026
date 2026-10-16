@@ -55,7 +55,8 @@ namespace Spotlight.Tests
                     new CardRow { id = "miner", name = "矿机", category = "resource", hp = 2, produce = 1, resourceComponent = true, viewKey = "default" },
                     new CardRow { id = "soldier", name = "士兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, upkeep = 1, resourceComponent = true, viewKey = "default" },
                     new CardRow { id = "gate", name = "星门", category = "special", hp = 2, moveDistance = 1, upkeep = 4, resourceComponent = true, teleportComponent = true, permitsAttackDeploy = true, deployHomeOnly = true, avoidAdjacentSameType = true, viewKey = "default" },
-                    new CardRow { id = "boss", name = "Boss敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" }
+                    new CardRow { id = "boss", name = "Boss敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
+                    new CardRow { id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" }
                 },
                 deck = new[]
                 {
@@ -65,7 +66,7 @@ namespace Spotlight.Tests
                 },
                 rules = new[]
                 {
-                    new RulesRow { bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 5, bossPlays = 1, drawCount = 5, handLimit = 5, initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss", playerControlsBoss = false, accumulateResources = true, summoningSickness = true, adjacentSwap = true }
+                    new RulesRow { bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossSpawnerSpawnCardType = "boss", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 5, bossPlays = 1, drawCount = 5, handLimit = 5, initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss", playerControlsBoss = false, accumulateResources = true, summoningSickness = true, adjacentSwap = true }
                 },
                 homes = new[] { new HomeRow { owner = "player", hp = 10, produce = 2 }, new HomeRow { owner = "boss", hp = 10, produce = 0 } },
                 bossSlots = new[]
@@ -160,6 +161,52 @@ namespace Spotlight.Tests
             Assert.That(config.Rules.BossBombInterval, Is.EqualTo(4));
             Assert.That(config.Rules.BossBombDamage, Is.EqualTo(7));
             Assert.That(config.Rules.BossBombColumn, Is.EqualTo(2));
+        }
+
+        /// <summary>刷怪技能的数值、卡种引用和生命编辑都进入只读配置；输入为隔离草稿，输出为配置断言。</summary>
+        [Test]
+        public void SpawnerFieldsWriteBackAndReachNewConfiguration()
+        {
+            var draft = Open(Document());
+            var labels = new[] { "刷怪触发总攻击力（默认 12）", "攻击单位统计起始列（默认 4）", "攻击单位数量下限（默认 2）", "刷怪卡部署起始列（默认 5）", "刷怪卡生命（默认 1）" };
+            var values = new[] { 15, 3, 4, 20, 6 };
+            for (var i = 0; i < labels.Length; i++)
+            {
+                var field = FindIntegerField(labels[i]);
+                Assert.That(field, Is.Not.Null, labels[i]);
+                field.value = values[i];
+                ConfigFieldBuilder.ApplyCurrentValue(field);
+            }
+            var fighter = FindDropdownField("生成战机卡种");
+            fighter.index = fighter.choices.FindIndex(label => label.Contains("（soldier）"));
+            ConfigFieldBuilder.ApplyCurrentValue(fighter);
+            Assert.That(draft.TryCreateConfiguration(out var config, out var error), Is.True, error);
+            Assert.That(config.Rules.BossSpawnerAttackThreshold, Is.EqualTo(15));
+            Assert.That(config.Rules.BossSpawnerCountFromColumn, Is.EqualTo(3));
+            Assert.That(config.Rules.BossSpawnerUnitThreshold, Is.EqualTo(4));
+            Assert.That(config.Rules.BossSpawnerDeployFromColumn, Is.EqualTo(20));
+            Assert.That(config.Rules.BossSpawnerSpawnCardType, Is.EqualTo("soldier"));
+            Assert.That(draft.FindCard(config.Rules.BossSpawnerCardType).hp, Is.EqualTo(6));
+        }
+
+        /// <summary>换选刷怪卡后生命字段跟随新引用；输入为新合法特殊卡，输出为字段写回及引用断言。</summary>
+        [Test]
+        public void SpawnerChoiceRebindsHealthWithoutEditingAnotherCard()
+        {
+            var document = Document();
+            document.cards = document.cards.Concat(new[] { new CardRow { id = "nest", name = "新刷怪卡", category = "special", hp = 2, viewKey = "default" } }).ToArray();
+            var draft = Open(document);
+            var choice = FindDropdownField("刷怪卡卡种");
+            choice.index = choice.choices.FindIndex(label => label.Contains("（nest）"));
+            ConfigFieldBuilder.ApplyCurrentValue(choice);
+            var hp = FindIntegerField("刷怪卡生命（默认 1）");
+            Assert.That(hp.value, Is.EqualTo(2));
+            hp.value = 7;
+            ConfigFieldBuilder.ApplyCurrentValue(hp);
+            Assert.That(draft.Document.rules[0].bossSpawnerCardType, Is.EqualTo("nest"));
+            Assert.That(draft.FindCard("nest").hp, Is.EqualTo(7));
+            Assert.That(draft.FindCard("spawner").hp, Is.EqualTo(1));
+            Assert.That(draft.TryCreateConfiguration(out _, out var error), Is.True, error);
         }
 
         /// <summary>数字字段超出下限时被夹紧。输入：无；输出：无。</summary>

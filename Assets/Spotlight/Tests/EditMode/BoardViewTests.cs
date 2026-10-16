@@ -28,14 +28,15 @@ namespace Spotlight.Tests
                 {
                     new CardRow { id = "miner", name = "矿机", category = "resource", hp = 4, produce = 1, moveDistance = 0, resourceComponent = true, viewKey = "default" },
                     new CardRow { id = "soldier", name = "士兵", category = "attack", hp = 5, atk = 2, range = 1, moveDistance = 2, viewKey = "default" },
-                    new CardRow { id = "boss", name = "敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" }
+                    new CardRow { id = "boss", name = "敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
+                    new CardRow { id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" }
                 },
                 deck = new[] { new DeckRow { cardType = "soldier", count = 4 }, new DeckRow { cardType = "miner", count = 2 } },
                 rules = new[]
                 {
                     new RulesRow
                     {
-                        bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 20, bossPlays = 1, drawCount = 6, handLimit = 30,
+                        bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossSpawnerSpawnCardType = "boss", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 20, bossPlays = 1, drawCount = 6, handLimit = 30,
                         initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss",
                         playerControlsBoss = true, summoningSickness = false, adjacentSwap = true
                     }

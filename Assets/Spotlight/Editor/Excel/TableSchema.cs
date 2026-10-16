@@ -24,13 +24,16 @@ namespace Spotlight.EditorTools
         public ColumnType Type { get; }
         /// <summary>是否必需（缺失或整列为空时报错）。</summary>
         public bool Required { get; }
+        /// <summary>策划可读的字段说明，默认工作簿写入表头批注，避免说明行混入正式数据。</summary>
+        public string Description { get; }
 
-        /// <summary>构造列声明。输入：名称、类型与必需性；输出：声明对象。</summary>
-        public ColumnDefinition(string name, ColumnType type, bool required)
+        /// <summary>构造列声明。输入：名称、类型、必需性和可选中文说明；输出：校验和批注共用的声明对象。</summary>
+        public ColumnDefinition(string name, ColumnType type, bool required, string description = null)
         {
             Name = name;
             Type = type;
             Required = required;
+            Description = description;
         }
     }
 
@@ -119,7 +122,13 @@ namespace Spotlight.EditorTools
                 new ColumnDefinition("lineBlocking", ColumnType.Boolean, true),
                 new ColumnDefinition("bossBombInterval", ColumnType.Integer, true),
                 new ColumnDefinition("bossBombDamage", ColumnType.Integer, true),
-                new ColumnDefinition("bossBombColumn", ColumnType.Integer, true)
+                new ColumnDefinition("bossBombColumn", ColumnType.Integer, true),
+                new ColumnDefinition("bossSpawnerAttackThreshold", ColumnType.Integer, true, "刷怪卡触发总攻击力，默认 12，正整数。每个 Boss 回合开始统计一次全部在场玩家单位的攻击力（包括资源单位），大于等于此值才继续检查数量。"),
+                new ColumnDefinition("bossSpawnerCountFromColumn", ColumnType.Integer, true, "攻击单位统计起始列，默认 4，正整数。从玩家一侧第 1 列起算，包含本列及之后各列；超过棋盘宽度时范围为空。每个 Boss 回合开始生效。"),
+                new ColumnDefinition("bossSpawnerUnitThreshold", ColumnType.Integer, true, "前线玩家攻击类单位数量下限，默认 2，正整数。仅统计 category=attack，不以攻击力是否非零判断。与总攻击力条件同时满足才触发。"),
+                new ColumnDefinition("bossSpawnerDeployFromColumn", ColumnType.Integer, true, "刷怪卡部署起始列，默认 5，正整数。从玩家一侧第 1 列起算，包含本列及之后的空格；超过棋盘宽度或没有空格则跳过当次机会，不累计。"),
+                new ColumnDefinition("bossSpawnerCardType", ColumnType.Text, true, "刷怪卡卡种 ID，默认 bossSpawner，须引用已注册特殊卡。生命可配置为正整数，攻击/射程/移动为 0，无资源和传送能力。场上最多一张，不能移动或互换，部署后下一个 Boss 回合开始生成。"),
+                new ColumnDefinition("bossSpawnerSpawnCardType", ColumnType.Text, true, "生成战机卡种 ID，默认 bossCombat，须引用已注册攻击类卡种。每个 Boss 回合在八邻随机空格生成一架；满格随机顶替玩家单位，无目标则暂停，下回合重试。遵守召唤失调，不占固定兵位。")
             }),
             new TableDefinition("Homes", new[]
             {

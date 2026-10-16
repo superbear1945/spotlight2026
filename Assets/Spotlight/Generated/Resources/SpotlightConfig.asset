@@ -33,6 +33,12 @@ MonoBehaviour:
     bossBombInterval: 10
     bossBombDamage: 3
     bossBombColumn: 5
+    bossSpawnerAttackThreshold: 12
+    bossSpawnerCountFromColumn: 4
+    bossSpawnerUnitThreshold: 2
+    bossSpawnerDeployFromColumn: 5
+    bossSpawnerCardType: bossSpawner
+    bossSpawnerSpawnCardType: bossCombat
   _homes:
   - owner: player
     hp: 10
@@ -75,6 +81,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 93f542aa595fce7458309d8d7bbcc9bd, type: 2}
   - {fileID: 11400000, guid: 20a2b65ed7a0bdb4daa3ea33d3a71941, type: 2}
   - {fileID: 11400000, guid: ba99ca98405c48b4c93419f7e33c2e39, type: 2}
+  - {fileID: 11400000, guid: 7c6a8025c3715e94cb41db9ad3127869, type: 2}
   _deck:
   - cardType: ge1
     count: 3
@@ -89,5 +96,5 @@ MonoBehaviour:
   - cardType: gate
     count: 2
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceHash: 054bfd2b465e79d26606fb6da940b11a088b4907ef7f188609cde00c7ad5f9e8
-  _compiledAtUtc: 2026-10-15T09:14:40.4325345Z
+  _sourceHash: 5b54e18e729d47c67fb417f6220bdd04f1c845f2431738bdbe1ead37c8d36164
+  _compiledAtUtc: 2026-10-16T14:50:46.3607736Z

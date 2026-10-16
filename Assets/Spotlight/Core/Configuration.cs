@@ -177,6 +177,18 @@ namespace Spotlight
         public int bossBombDamage;
         /// <summary>从屏幕左侧起算的部署列号（从 1 开始），实际不超过棋盘列数的一半向下取整。</summary>
         public int bossBombColumn;
+        /// <summary>刷怪卡部署所需的玩家在场单位总攻击力下限，正整数。</summary>
+        public int bossSpawnerAttackThreshold;
+        /// <summary>统计玩家攻击类单位的起始列（玩家一侧起算，1 开始，包含本列）。</summary>
+        public int bossSpawnerCountFromColumn;
+        /// <summary>指定列范围内玩家攻击类单位的数量下限，正整数。</summary>
+        public int bossSpawnerUnitThreshold;
+        /// <summary>刷怪卡部署起始列（玩家一侧起算，1 开始，包含本列）；超过棋盘宽度时无合法格。</summary>
+        public int bossSpawnerDeployFromColumn;
+        /// <summary>技能部署的刷怪卡卡种 ID，引用不具备攻击、移动、资源与传送能力的特殊卡。</summary>
+        public string bossSpawnerCardType;
+        /// <summary>刷怪卡每回合生成的已有攻击类卡种 ID，不占固定兵位。</summary>
+        public string bossSpawnerSpawnCardType;
     }
 
     /// <summary>
@@ -313,7 +325,7 @@ namespace Spotlight
         public CardArchetype(CardRow row, ICombatConfig combat, IResourceConfig resource, ITeleportConfig teleport)
         {
             Id = row.id;
-            Name = row.name.Trim();
+            Name = row.name?.Trim();
             Category = row.category == "resource" ? CardCategory.Resource : row.category == "attack" ? CardCategory.Attack : CardCategory.Special;
             Combat = combat;
             Resource = resource;
@@ -356,6 +368,18 @@ namespace Spotlight
         public int BossBombDamage { get; }
         /// <summary>炸弹期望显示列号（从 1 开始）。</summary>
         public int BossBombColumn { get; }
+        /// <summary>玩家在场单位总攻击力下限。</summary>
+        public int BossSpawnerAttackThreshold { get; }
+        /// <summary>玩家攻击类单位统计起始列（玩家一侧起算）。</summary>
+        public int BossSpawnerCountFromColumn { get; }
+        /// <summary>前线玩家攻击类单位数量下限。</summary>
+        public int BossSpawnerUnitThreshold { get; }
+        /// <summary>刷怪卡部署起始列（玩家一侧起算）。</summary>
+        public int BossSpawnerDeployFromColumn { get; }
+        /// <summary>刷怪卡的配置引用。</summary>
+        public string BossSpawnerCardType { get; }
+        /// <summary>生成战机的配置引用。</summary>
+        public string BossSpawnerSpawnCardType { get; }
         /// <summary>玩家是否在左侧。</summary>
         public bool PlayerOnLeft { get; }
         /// <summary>先手阵营。</summary>
@@ -391,6 +415,12 @@ namespace Spotlight
             BossBombInterval = r.bossBombInterval;
             BossBombDamage = r.bossBombDamage;
             BossBombColumn = r.bossBombColumn;
+            BossSpawnerAttackThreshold = r.bossSpawnerAttackThreshold;
+            BossSpawnerCountFromColumn = r.bossSpawnerCountFromColumn;
+            BossSpawnerUnitThreshold = r.bossSpawnerUnitThreshold;
+            BossSpawnerDeployFromColumn = r.bossSpawnerDeployFromColumn;
+            BossSpawnerCardType = r.bossSpawnerCardType;
+            BossSpawnerSpawnCardType = r.bossSpawnerSpawnCardType;
             PlayerOnLeft = r.playerSide == "left";
             FirstSide = r.firstSide == "player" ? Side.Player : Side.Boss;
             BossCardType = r.bossCardType;
@@ -561,6 +591,7 @@ namespace Spotlight
             if (playerHomeHp < 1 || bossHomeHp < 1 || playerHomeProduce < 0) errors.Add("家数值非法");
             if (rules.BossBombInterval < 1 || rules.BossBombDamage < 1 || rules.BossBombColumn < 1) errors.Add("Rules：bossBombInterval、bossBombDamage、bossBombColumn 必须至少为 1");
             if (rules.Rows < 1 || rules.Columns < 2 || rules.HomeRegionWidth < 1 || rules.HomeRegionWidth > rules.Columns) errors.Add("棋盘尺寸非法");
+            ConfigValidation.ValidateBossSpawner(rules, list, errors);
             return errors;
         }
     }
@@ -657,6 +688,8 @@ namespace Spotlight
             if (r.bossBombInterval < 1 || r.bossBombDamage < 1 || r.bossBombColumn < 1) errors.Add("Rules：bossBombInterval、bossBombDamage、bossBombColumn 必须至少为 1");
             var boss = d.cards.FirstOrDefault(c => c.id == r.bossCardType);
             if (boss == null || (!r.playerControlsBoss && boss.category != "attack")) errors.Add("Rules bossCardType：AI 必须使用攻击卡，手动模式必须使用已注册卡种");
+            ValidateBossSpawner(new MatchConfig(r), d.cards.Select(c => new CardArchetype(c, c,
+                c.resourceComponent ? c : null, c.teleportComponent ? c : null)), errors);
 
             if (d.homes.Count(h => h.owner == "player") != 1 || d.homes.Count(h => h.owner == "boss") != 1 || d.homes.Any(h => h.hp < 1 || h.produce < 0 || (h.owner == "boss" && h.produce != 0))) errors.Add("Homes：阵营唯一、生命正数、产出非负且 Boss 产出为零");
             if (d.bossSlots.Select(s => s.id).Distinct().Count() != d.bossSlots.Length || d.bossSlots.Any(s => string.IsNullOrWhiteSpace(s.id) || double.IsNaN(s.rowFraction) || s.rowFraction < 0 || s.rowFraction > 1 || s.edgeOffset < 0 || s.edgeOffset >= r.homeRegionWidth)) errors.Add("BossSlots：ID、行比例或边缘偏移非法");
@@ -666,6 +699,28 @@ namespace Spotlight
             foreach (var f in typeof(PresentationRow).GetFields().Where(f => f.FieldType == typeof(string)))
                 if (!System.Text.RegularExpressions.Regex.IsMatch((string)f.GetValue(pz) ?? "", "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$")) errors.Add("Presentation " + f.Name + "：需要 #RRGGBB 或 #RRGGBBAA");
             return errors;
+        }
+
+        /// <summary>
+        /// 共用刷怪技能业务校验。输入：规则、卡种及问题列表；输出：追加全部可发现的问题。
+        /// 文档与 SO 组合入口均调用，防止手工破坏资产后绕过 Excel 校验；列号不钳制到棋盘宽度。
+        /// </summary>
+        internal static void ValidateBossSpawner(MatchConfig rules, IEnumerable<CardArchetype> cards, List<string> errors)
+        {
+            if (rules.BossSpawnerAttackThreshold < 1) errors.Add("Rules bossSpawnerAttackThreshold：必须为正整数，旧配置请补齐字段");
+            if (rules.BossSpawnerCountFromColumn < 1) errors.Add("Rules bossSpawnerCountFromColumn：必须为正整数（玩家一侧起算）");
+            if (rules.BossSpawnerUnitThreshold < 1) errors.Add("Rules bossSpawnerUnitThreshold：必须为正整数");
+            if (rules.BossSpawnerDeployFromColumn < 1) errors.Add("Rules bossSpawnerDeployFromColumn：必须为正整数（玩家一侧起算）");
+            var spawner = cards.FirstOrDefault(c => c.Id == rules.BossSpawnerCardType);
+            if (string.IsNullOrWhiteSpace(rules.BossSpawnerCardType) || spawner == null)
+                errors.Add("Rules bossSpawnerCardType：必须引用已注册的刷怪卡");
+            else if (spawner.Category != CardCategory.Special || spawner.Combat == null || spawner.Combat.Hp < 1 ||
+                spawner.Combat.Attack != 0 || spawner.Combat.Range != 0 || spawner.Combat.MoveDistance != 0 ||
+                spawner.Resource != null || spawner.Teleport != null || spawner.RequiresUpgrade)
+                errors.Add("Rules bossSpawnerCardType：须为生命正数、攻击/射程/移动为零且无资源、传送和升级能力的特殊卡");
+            var fighter = cards.FirstOrDefault(c => c.Id == rules.BossSpawnerSpawnCardType);
+            if (string.IsNullOrWhiteSpace(rules.BossSpawnerSpawnCardType) || fighter == null || fighter.Category != CardCategory.Attack || fighter.Combat == null || fighter.Combat.Hp < 1)
+                errors.Add("Rules bossSpawnerSpawnCardType：必须引用生命正数的已注册攻击类卡种");
         }
 
         /// <summary>判断浮点值是否为有限数；NaN/无穷会让动画参数比较失效，因此单独抽取。</summary>
