@@ -6,7 +6,7 @@
             <ui:Label name="resource-label" text="资源 0" class="info-label" />
             <ui:Label name="plays-label" text="剩余出牌 5" class="info-label" />
         </ui:VisualElement>
-        <!-- 齿轮：位于顶部信息条正下方（回合数下方）。点击进入菜单：隐藏战斗界面、显示原有面板与「继续 / 重开」。 -->
+        <!-- 齿轮：位于顶部信息条正下方（回合数下方）。点击进入菜单：隐藏战斗界面、显示原有面板与「继续 / 重开 / 退出游戏」。 -->
         <ui:Button name="menu-button" text="⚙" class="action-button menu-button" />
         <ui:VisualElement name="log-panel" picking-mode="Ignore" class="panel log-panel">
             <ui:Label text="对局日志" picking-mode="Ignore" class="section-label" />
@@ -48,13 +48,14 @@
             <ui:Label name="draw-count" text="0" class="pile-count" />
             <ui:Button name="end-turn-button" text="结束回合" class="action-button" />
         </ui:VisualElement>
-        <!-- 齿轮菜单：正中间放「继续」与「重开」（退出功能暂不实现）；
+        <!-- 齿轮菜单：正中间放「继续」「重开」与「退出游戏」（退出会直接结束本次运行，不再返回对局）；
              「配置/调试」也放在这里，且仍由 DebugSupport.IsDebugAvailable 决定是否出现（正式包不显示）。 -->
         <ui:VisualElement name="menu-overlay" class="overlay">
             <ui:VisualElement picking-mode="Ignore" class="overlay-card">
                 <ui:Label text="菜单" class="victory-label" />
                 <ui:Button name="menu-resume-button" text="继续" class="action-button" />
                 <ui:Button name="menu-restart-button" text="重开" class="action-button" />
+                <ui:Button name="menu-quit-button" text="退出游戏" class="action-button menu-quit-button" />
                 <ui:Button name="debug-button" text="配置/调试" class="action-button menu-debug-button" />
             </ui:VisualElement>
         </ui:VisualElement>

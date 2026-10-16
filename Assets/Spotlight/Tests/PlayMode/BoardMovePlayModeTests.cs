@@ -256,6 +256,8 @@ namespace Spotlight.Tests
             Assert.That(sidePanel, Is.Not.Null, "UXML 缺少 side-panel");
             Assert.That(menuOverlay, Is.Not.Null, "UXML 缺少 menu-overlay");
             Assert.That(menuButton, Is.Not.Null, "UXML 缺少 menu-button");
+            // 齿轮图标就是按钮的全部外观：丢了文案，玩家会看到一个空按钮，菜单再也进不去。
+            Assert.That(((UnityEngine.UIElements.Button)menuButton).text, Is.Not.Empty, "齿轮按钮没有文案，菜单入口会变成看不见的空按钮");
             var debugButton = root.Q<VisualElement>("debug-button");
             Assert.That(debugButton, Is.Not.Null, "UXML 缺少 debug-button");
             Assert.That(menuOverlay.Contains(debugButton), Is.True, "“配置/调试”入口应当位于齿轮菜单里");
@@ -285,6 +287,46 @@ namespace Spotlight.Tests
             Assert.That(detailLeft.style.display.value, Is.EqualTo(DisplayStyle.Flex), "继续后应恢复战斗界面");
             Assert.That(logPanel.style.display.value, Is.EqualTo(DisplayStyle.None), "继续后应重新隐藏日志");
             Assert.That(menuOverlay.style.display.value, Is.EqualTo(DisplayStyle.None), "继续后应关闭菜单");
+        }
+
+        /// <summary>
+        /// 齿轮菜单里的“退出游戏”必须走到宿主退出动作：按钮位于菜单内，点击后只调用退出动作一次，且不改动对局。
+        /// 输入：无；输出：NUnit 断言结果。
+        /// 为什么需要：退出是菜单里唯一“离开对局生命周期”的动作（其他项都只是暂停或重建对局），
+        /// 一旦接错或被写成“结束回合”这类规则操作，玩家就会在毫不知情的情况下丢掉当前对局。
+        /// 为什么要把 QuitAction 换成计数委托：测试不能真的结束运行中的编辑器/播放会话。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator MenuQuitButtonRequestsQuit()
+        {
+            var context = new SceneContext();
+            yield return context.Load();
+            var hud = Object.FindObjectOfType<HudView>();
+            Assert.That(hud, Is.Not.Null, "场景缺少 HudView");
+            var menuOverlay = hud.Root.Q<VisualElement>("menu-overlay");
+            Assert.That(menuOverlay, Is.Not.Null, "UXML 缺少 menu-overlay");
+            var quitButton = hud.Root.Q<UnityEngine.UIElements.Button>("menu-quit-button");
+            Assert.That(quitButton, Is.Not.Null, "UXML 缺少 menu-quit-button");
+            Assert.That(menuOverlay.Contains(quitButton), Is.True, "“退出游戏”入口应当位于齿轮菜单里");
+            Assert.That(quitButton.text, Is.EqualTo("退出游戏"), "退出按钮的文案必须能看出会离开当前对局");
+
+            // 替换退出动作，避免测试真的结束运行会话。
+            var quitCalls = 0;
+            context.Bootstrap.QuitAction = () => quitCalls++;
+
+            Invoke(context.Bootstrap, "OnMenuRequested");
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(menuOverlay.style.display.value, Is.EqualTo(DisplayStyle.Flex), "菜单打开时才能看到退出按钮");
+
+            var before = context.Session.GetSnapshot();
+            Invoke(context.Bootstrap, "OnQuitRequested");
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(quitCalls, Is.EqualTo(1), "点击“退出游戏”没有触发宿主退出动作");
+
+            var after = context.Session.GetSnapshot();
+            Assert.That(after.Round, Is.EqualTo(before.Round), "退出不该推进对局");
+            Assert.That(after.Units.Count, Is.EqualTo(before.Units.Count), "退出不该改动棋盘上的单位");
+            Assert.That(after.Hand.Count, Is.EqualTo(before.Hand.Count), "退出不该改动手牌");
         }
 
         /// <summary>

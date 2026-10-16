@@ -40,6 +40,8 @@ namespace Spotlight
         public event Action MenuRequested;
         /// <summary>点击菜单里的“继续”：请求关闭菜单并恢复对局。</summary>
         public event Action MenuResumeRequested;
+        /// <summary>点击菜单里的“退出游戏”：请求结束本次运行（对局不保存，也不会返回棋盘）。</summary>
+        public event Action QuitRequested;
 
         /// <summary>界面根元素。</summary>
         VisualElement _root;
@@ -71,7 +73,7 @@ namespace Spotlight
         Button _bombDeployButton, _bombSkipButton;
         /// <summary>齿轮按钮（战斗界面显示，菜单打开时隐藏）。</summary>
         Button _menuButton;
-        /// <summary>菜单遮罩（含「继续 / 重开」两个按钮）。</summary>
+        /// <summary>菜单遮罩（含「继续 / 重开 / 退出游戏」三个按钮）。</summary>
         VisualElement _menuOverlay;
         /// <summary>战斗界面的左右详情区：左为我方选中，右为敌方选中。</summary>
         VisualElement _detailLeft, _detailRight;
@@ -149,6 +151,9 @@ namespace Spotlight
             if (menuResume != null) menuResume.clicked += () => MenuResumeRequested?.Invoke();
             var menuRestart = _root.Q<Button>("menu-restart-button");
             if (menuRestart != null) menuRestart.clicked += () => RestartRequested?.Invoke();
+            // 退出游戏是宿主环境行为（关播放模式 / 结束进程），HUD 只上报点击，具体怎么做由 GameBootstrap 决定。
+            var menuQuit = _root.Q<Button>("menu-quit-button");
+            if (menuQuit != null) menuQuit.clicked += () => QuitRequested?.Invoke();
             var debug = _root.Q<Button>("debug-button");
             if (debug != null) debug.clicked += () => DebugRequested?.Invoke();
             var victoryRestart = _root.Q<Button>("victory-restart-button");

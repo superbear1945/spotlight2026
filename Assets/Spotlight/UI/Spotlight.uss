@@ -529,3 +529,17 @@
 .action-button.menu-debug-button {
     margin-top: 18px;
 }
+
+/* 菜单里的“退出游戏”：用警示色与「继续 / 重开」区分，降低误点退出（退出后无法回到本局）。 */
+.action-button.menu-quit-button {
+    background-color: rgb(96, 40, 48);
+    border-left-color: rgb(200, 96, 110);
+    border-right-color: rgb(200, 96, 110);
+    border-top-color: rgb(200, 96, 110);
+    border-bottom-color: rgb(200, 96, 110);
+}
+
+/* 上面的规则胜过后写的 .action-button:hover，因此退出按钮需要单独定义悬停色。 */
+.action-button.menu-quit-button:hover {
+    background-color: rgb(126, 52, 62);
+}

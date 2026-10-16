@@ -58,6 +58,8 @@ namespace Spotlight
         bool _modalOpen;
         /// <summary>齿轮菜单是否打开。与模态闸门配套：菜单打开时挡输入，菜单自带遮罩而不显示配置面板用的那层遮罩。</summary>
         bool _menuOpen;
+        /// <summary>实际的退出动作（默认关闭播放模式 / 结束应用），可替换以便测试与后续平台适配。</summary>
+        Action _quitAction = DefaultQuit;
         /// <summary>当前正在展示的阶段，避免选择或面板刷新提前读取最终快照。</summary>
         GameSnapshot _displaySnapshot;
 
@@ -69,6 +71,32 @@ namespace Spotlight
 
         /// <summary>当前对局实例（只读，供调试与测试使用）。</summary>
         public GameSession Session => _session;
+
+        /// <summary>
+        /// 退出动作：默认在编辑器里停止播放模式、在独立运行包里结束进程。
+        /// 输入/输出：无参数的宿主环境操作。
+        /// 为什么抽成可替换属性：退出在 PlayMode 测试里无法真的执行（会直接中断测试运行），
+        /// 但又必须验证“菜单按钮 → 退出”这条链路，因此保留一个可替换的执行点。
+        /// </summary>
+        public Action QuitAction
+        {
+            get => _quitAction;
+            set => _quitAction = value;
+        }
+
+        /// <summary>
+        /// 默认退出：编辑器下停止播放模式，正式包里结束应用进程。
+        /// 输入/输出：无。
+        /// 为什么不用单一句 Application.Quit：编辑器里它不生效，开发者会以为按钮没接上。
+        /// </summary>
+        static void DefaultQuit()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
 
         /// <summary>
         /// 初始化对局并绑定视图。
@@ -116,6 +144,8 @@ namespace Spotlight
                 _hudView.MenuResumeRequested += OnMenuResumeRequested;
                 _hudView.RestartRequested -= OnRestartRequested;
                 _hudView.RestartRequested += OnRestartRequested;
+                _hudView.QuitRequested -= OnQuitRequested;
+                _hudView.QuitRequested += OnQuitRequested;
                 _hudView.DebugRequested -= OnDebugRequested;
                 _hudView.DebugRequested += OnDebugRequested;
             }
@@ -422,6 +452,18 @@ namespace Spotlight
 
         /// <summary>关闭齿轮菜单并继续对局。输入：无；输出：无。</summary>
         void OnMenuResumeRequested() => SetModalOpen(false);
+
+        /// <summary>
+        /// HUD 请求退出游戏。
+        /// 输入：无（由菜单里的“退出游戏”按钮触发）；输出：无（调用宿主退出动作后进程/播放模式结束）。
+        /// 行为：先停掉所有补间，再做退出动作，避免退出过程中仍有 DOTween 回调访问即将销毁的界面对象。
+        /// 为什么不做“先结束对局”：本局不保存进度，退出就是终止运行，不存在需要回写的规则状态。
+        /// </summary>
+        void OnQuitRequested()
+        {
+            _feedback?.KillAll();
+            _quitAction?.Invoke();
+        }
 
         /// <summary>
         /// 提交命令并刷新。
