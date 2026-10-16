@@ -24,7 +24,7 @@ namespace Spotlight
         /// <summary>构造一个棋盘坐标。输入：行、列；输出：值类型坐标。</summary>
         public Cell(int row, int col) { Row = row; Col = col; }
 
-        /// <summary>曼哈顿距离，是移动与攻击唯一使用的度量方式（本项目没有斜向）。</summary>
+        /// <summary>曼哈顿距离，用于四向移动、攻击和普通邻接；刷怪技能的八邻单独枚举，不改变此度量。</summary>
         public int Distance(Cell other) => Math.Abs(Row - other.Row) + Math.Abs(Col - other.Col);
 
         /// <summary>值相等比较，用于去重与哈希键。</summary>
@@ -91,9 +91,13 @@ namespace Spotlight
         public long DeploymentOrder { get; internal set; }
         /// <summary>AI 兵位 ID；非 AI 兵位单位该值为 null，因此不会触发补兵计时。</summary>
         public string BossSlotId { get; internal set; }
+        /// <summary>是否由 Boss 刷怪技能部署的固定据点；身份不依赖卡名，不允许移动、攻击或互换。</summary>
+        public bool IsBossSpawner { get; internal set; }
+        /// <summary>部署时的完整回合号；刷怪卡在之后的 Boss 回合才开始生成战机。</summary>
+        public long DeployedRound { get; internal set; }
 
-        /// <summary>是否本回合仍可行动：未行动且维持费已付。</summary>
-        public bool CanAct => !Acted && UpkeepPaid;
+        /// <summary>是否本回合仍可行动：不是固定刷怪卡、未行动且维持费已付。</summary>
+        public bool CanAct => !IsBossSpawner && !Acted && UpkeepPaid;
 
         /// <summary>浅拷贝，供 GetSnapshot 输出与真实对局解耦。</summary>
         internal UnitState Copy() => (UnitState)MemberwiseClone();
@@ -195,7 +199,7 @@ namespace Spotlight
     public enum MatchOutcome { None, PlayerWins, BossWins, Draw }
 
     /// <summary>命令种类。玩家与 AI 共用同一入口，区别只在 ExecuteCommand 的 fromAi 标记。</summary>
-    public enum CommandKind { Deploy, BossDeploy, Move, MoveHome, Attack, Swap, Withdraw, Discard, EndTurn, DeployBossBomb, SkipBossBomb }
+    public enum CommandKind { Deploy, BossDeploy, Move, MoveHome, Attack, Swap, Withdraw, Discard, EndTurn, DeployBossBomb, SkipBossBomb, DeployBossSpawner, SkipBossSpawner }
 
     /// <summary>
     /// 不可变操作请求。
@@ -227,7 +231,7 @@ namespace Spotlight
     }
 
     /// <summary>界面选择上下文种类。显式区分卡牌身份与单位身份，避免 ID 语义歧义。</summary>
-    public enum SelectionKind { None, Hand, Unit, Home, BossDeployment, BossBombDeployment }
+    public enum SelectionKind { None, Hand, Unit, Home, BossDeployment, BossBombDeployment, BossSpawnerDeployment }
 
     /// <summary>
     /// 界面选择上下文。
@@ -357,6 +361,8 @@ namespace Spotlight
         public int BossRespawnDelay { get; internal set; }
         /// <summary>玩家行动前必须先部署或跳过炸弹；只有手动控制 Boss 的技能准备窗口可能为 true。</summary>
         public bool BossBombPending { get; internal set; }
+        /// <summary>Boss 行动前必须先部署或跳过刷怪卡；只保存当次机会，不跨回合累计。</summary>
+        public bool BossSpawnerPending { get; internal set; }
         /// <summary>尚未爆炸的不可变地面标记。</summary>
         public IReadOnlyList<BossBombState> BossBombs { get; internal set; } = Array.Empty<BossBombState>();
         /// <summary>玩家手牌。</summary>

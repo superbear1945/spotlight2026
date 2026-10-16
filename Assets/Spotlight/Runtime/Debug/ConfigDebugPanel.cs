@@ -394,6 +394,16 @@ namespace Spotlight
             var section = ConfigFieldBuilder.Section("Boss 战斗卡（Boss 无资源限制，维持费默认忽略）", out var content);
             content.Add(ConfigFieldBuilder.Toggle("玩家控制 Boss", () => rules.playerControlsBoss, value => { rules.playerControlsBoss = value; ChangedStructure(); }));
             content.Add(ConfigFieldBuilder.Grid(
+                ConfigFieldBuilder.Number("刷怪触发总攻击力（默认 12）", () => rules.bossSpawnerAttackThreshold, value => { rules.bossSpawnerAttackThreshold = value; Changed(); }, 1),
+                ConfigFieldBuilder.Number("攻击单位统计起始列（默认 4）", () => rules.bossSpawnerCountFromColumn, value => { rules.bossSpawnerCountFromColumn = value; Changed(); }, 1),
+                ConfigFieldBuilder.Number("攻击单位数量下限（默认 2）", () => rules.bossSpawnerUnitThreshold, value => { rules.bossSpawnerUnitThreshold = value; Changed(); }, 1),
+                ConfigFieldBuilder.Number("刷怪卡部署起始列（默认 5）", () => rules.bossSpawnerDeployFromColumn, value => { rules.bossSpawnerDeployFromColumn = value; Changed(); }, 1),
+                ConfigFieldBuilder.Choice("刷怪卡卡种", CardOptions(document, "special", rules.bossSpawnerCardType), () => rules.bossSpawnerCardType, value => { rules.bossSpawnerCardType = value; ChangedStructure(); }),
+                ConfigFieldBuilder.Choice("生成战机卡种", CardOptions(document, "attack", rules.bossSpawnerSpawnCardType), () => rules.bossSpawnerSpawnCardType, value => { rules.bossSpawnerSpawnCardType = value; Changed(); })));
+            var spawner = _draft.FindCard(rules.bossSpawnerCardType);
+            if (spawner != null) content.Add(ConfigFieldBuilder.Number("刷怪卡生命（默认 1）", () => spawner.hp, value => { spawner.hp = value; Changed(); }, 1));
+            content.Add(ConfigFieldBuilder.Note("每个 Boss 回合开始仅检查一次。总攻击力包含全部玩家单位，数量只统计攻击类；列号从玩家一侧起算并包含本列，超过棋盘宽度则范围为空。刷怪卡同时最多一张，固定不动，从下个 Boss 回合起持续在八邻生成战机；满格优先顶替玩家单位，无可用位置暂停，下回合重试。技能不消耗普通放牌次数。"));
+            content.Add(ConfigFieldBuilder.Grid(
                 ConfigFieldBuilder.Number("炸弹部署间隔（回合）", () => rules.bossBombInterval, value => { rules.bossBombInterval = value; Changed(); }, 1),
                 ConfigFieldBuilder.Number("炸弹总伤害", () => rules.bossBombDamage, value => { rules.bossBombDamage = value; Changed(); }, 1),
                 ConfigFieldBuilder.Number("炸弹部署列号", () => rules.bossBombColumn, value => { rules.bossBombColumn = value; Changed(); }, 1)));
@@ -410,6 +420,19 @@ namespace Spotlight
             }
             content.Add(ConfigFieldBuilder.Note("取消勾选启用 AI：首次 Boss 回合均匀部署三卡，玩家先手时须等玩家结束回合并完成弃牌后才部署。阵亡后按间隔补卡，自动移动、攻击并结束回合。第 N 回合阵亡，在第 N+间隔 回合的 Boss 行动开始时补回。AI 仅支持攻击类 Boss 卡种。"));
             _bossContainer.Add(section);
+        }
+
+        /// <summary>
+        /// 生成技能卡种选项。输入：草稿、所需分类和当前 ID；输出：名称与稳定 ID 对应的选项。
+        /// 保留不合法的当前引用供用户看到并修复，避免显示为第一项却仍保存旧值；选择刷怪卡后再重建生命字段。
+        /// </summary>
+        static List<(string Value, string Label)> CardOptions(ConfigDocument document, string category, string current)
+        {
+            var options = new List<(string Value, string Label)>();
+            foreach (var card in document.cards)
+                if (card != null && card.category == category) options.Add((card.id, $"{card.name}（{card.id}）"));
+            if (!options.Exists(option => option.Value == current)) options.Insert(0, (current, $"无效引用（{current}）"));
+            return options;
         }
 
         /// <summary>构建“回合规则”分区。输入：草稿文档；输出：无。</summary>

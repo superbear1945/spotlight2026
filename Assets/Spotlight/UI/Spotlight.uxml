@@ -36,6 +36,9 @@
         <ui:VisualElement name="bottom-bar" picking-mode="Ignore" class="bottom-bar">
             <ui:Button name="bomb-deploy-button" text="布置炸弹" class="action-button bomb-button" style="display: none;" />
             <ui:Button name="bomb-skip-button" text="跳过炸弹" class="action-button bomb-button" style="display: none;" />
+            <!-- 刷怪卡按钮来自 main 的刷怪技能；结束回合按钮已被改版移入 pile-right，这里不重复声明以免重名。 -->
+            <ui:Button name="spawner-deploy-button" text="部署刷怪卡" class="action-button" style="display: none;" />
+            <ui:Button name="spawner-skip-button" text="跳过刷怪卡" class="action-button" style="display: none;" />
             <ui:Button name="skip-deploy-button" text="跳过放牌并结束" class="action-button" />
         </ui:VisualElement>
         <!-- 手牌同一行的两侧：左侧墓地计数、右侧抽牌堆计数与结束回合。
