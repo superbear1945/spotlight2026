@@ -32,13 +32,13 @@ jobs:
           # 不拉取 LFS 内容：本检查只看指针文本与 blob 大小，省带宽也更快
           lfs: false
 
+      - name: 校验检查脚本自身（隔离回归用例）
+        run: bash scripts/check-repo-hygiene.sh --self-test
+
       - name: 大文件与 LFS 一致性检查
         env:
           MAX_FILE_MB: '5'
         run: bash scripts/check-repo-hygiene.sh
-
-      - name: 校验检查脚本自身（3 个用例）
-        run: bash scripts/check-repo-hygiene.sh --self-test
 
       # 与本 job 同驻的理由：都是秒级、无 Unity 依赖的仓库配置守卫。
       # 它负责拦住“加回 push 触发”或“Unity 矩阵恢复并行授权”这类回归。
@@ -48,5 +48,5 @@ jobs:
       - name: CI 配置守卫（PR 入口与 Unity 矩阵串行）
         run: bash scripts/check-ci-config.sh
 
-      - name: 校验 CI 配置守卫脚本自身（8 个用例）
+      - name: 校验 CI 配置守卫脚本自身
         run: bash scripts/check-ci-config.sh --self-test
