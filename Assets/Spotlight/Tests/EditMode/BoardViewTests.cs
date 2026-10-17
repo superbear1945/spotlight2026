@@ -26,10 +26,10 @@ namespace Spotlight.Tests
             {
                 cards = new[]
                 {
-                    new CardRow { id = "miner", name = "矿机", category = "resource", hp = 4, produce = 1, moveDistance = 0, resourceComponent = true, viewKey = "default" },
-                    new CardRow { id = "soldier", name = "士兵", category = "attack", hp = 5, atk = 2, range = 1, moveDistance = 2, viewKey = "default" },
-                    new CardRow { id = "boss", name = "敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
-                    new CardRow { id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" }
+                    new CardRow { tier = "basic", id = "miner", name = "矿机", category = "resource", hp = 4, produce = 1, moveDistance = 0, resourceComponent = true, viewKey = "default" },
+                    new CardRow { tier = "basic", id = "soldier", name = "士兵", category = "attack", hp = 5, atk = 2, range = 1, moveDistance = 2, viewKey = "default" },
+                    new CardRow { tier = "none", id = "boss", name = "敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
+                    new CardRow { tier="none", id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" }
                 },
                 deck = new[] { new DeckRow { cardType = "soldier", count = 4 }, new DeckRow { cardType = "miner", count = 2 } },
                 rules = new[]

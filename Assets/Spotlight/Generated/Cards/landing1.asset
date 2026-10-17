@@ -15,6 +15,7 @@ MonoBehaviour:
   _id: landing1
   _name: "\u661F\u94C6-1\u590D\u5408\u7740\u9646\u673A"
   _category: attack
+  _tier: intermediate
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 

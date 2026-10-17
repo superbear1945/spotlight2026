@@ -77,6 +77,7 @@ Assets/Spotlight/
 配置契约（`Core/Configuration.cs`）：
 
 - `Side`：`Player` / `Boss`；`CardCategory`：`Resource` / `Attack` / `Special`。
+- `CardTier`：独立卡牌阶级 `Basic`（初级）/ `Intermediate`（中级）/ `Advanced`（高级）；`None` 为 Boss 专用不适用状态，`Invalid` 仅用于报告缺失或非法配置。`Cards.tier` 必填，通过 `CardTiers.Parse` 严格转换；`none` 卡种不能以正数数量进入玩家卡组。阶级按张数统计，暂不设携带上限或部署回合限制，不引入卡组包分类。
 - 只读配置接口：`ICombatConfig` / `IResourceConfig` / `ITeleportConfig` —— **规则内核依赖接口，不依赖 ScriptableObject**。
 - 表行类型：`CardRow` / `DeckRow` / `RulesRow` / `HomeRow` / `BossSlotRow` / `PresentationRow`。
 - 配置聚合：`ConfigDocument`（Excel 中间态）→ `GameConfiguration`（运行态，含 `MatchConfig` / `PresentationConfig` / `CardArchetype` / `DeckEntry` / `SpawnSlot`）。

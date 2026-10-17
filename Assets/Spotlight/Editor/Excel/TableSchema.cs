@@ -108,7 +108,8 @@ namespace Spotlight.EditorTools
                 new ColumnDefinition("deathGrowthLimit", ColumnType.Integer, true, "死亡加攻最多触发次数，默认 0，正整数。注意是“触发次数上限”，不是“攻击力上限”；达到后不再增加。"),
                 new ColumnDefinition("attacksAlliesAsHeal", ColumnType.Boolean, true, "是否允许攻击友方单位并把对友方的结算改为治疗（生命 + 当前攻击，受生命上限限流），默认 false。只允许攻击类卡启用；满血也允许白打并消耗行动。"),
                 new ColumnDefinition("leaveAfterDeploy", ColumnType.Boolean, true, "是否“部署即结算、结算即退场”（即时卡），默认 false。启用后该卡在场时间视为 0：不参与一次性减攻与入场标记，结算完 deployGainResource 后立即离场（原因为 Consumed，不触发补兵/死亡加攻/标记奖励）。Boss 卡种与刷怪卡卡种不得指向即时卡。"),
-                new ColumnDefinition("deployGainResource", ColumnType.Integer, true, "即时卡结算时立即获得的资源，默认 0，正整数。启用 leaveAfterDeploy 时必须为正整数，禁用时必须为 0。")
+                new ColumnDefinition("deployGainResource", ColumnType.Integer, true, "即时卡结算时立即获得的资源，默认 0，正整数。启用 leaveAfterDeploy 时必须为正整数，禁用时必须为 0。"),
+                new ColumnDefinition("tier", ColumnType.Text, true, "卡牌阶级，独立于 category：basic=初级，intermediate=中级，advanced=高级；Boss 专用卡填 none（不适用），不可加入玩家卡组。必须显式填写；仅用于卡组张数统计，暂不限制携带数量与部署回合。")
             }),
             new TableDefinition("Deck", new[]
             {

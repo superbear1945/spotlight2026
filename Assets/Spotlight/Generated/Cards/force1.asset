@@ -15,6 +15,7 @@ MonoBehaviour:
   _id: force1
   _name: "\u529B\u573A-I"
   _category: attack
+  _tier: intermediate
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 

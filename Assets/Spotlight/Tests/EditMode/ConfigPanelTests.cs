@@ -52,11 +52,11 @@ namespace Spotlight.Tests
             {
                 cards = new[]
                 {
-                    new CardRow { id = "miner", name = "矿机", category = "resource", hp = 2, produce = 1, resourceComponent = true, viewKey = "default" },
-                    new CardRow { id = "soldier", name = "士兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, upkeep = 1, resourceComponent = true, viewKey = "default" },
-                    new CardRow { id = "gate", name = "星门", category = "special", hp = 2, moveDistance = 1, upkeep = 4, resourceComponent = true, teleportComponent = true, permitsAttackDeploy = true, deployHomeOnly = true, avoidAdjacentSameType = true, viewKey = "default" },
-                    new CardRow { id = "boss", name = "Boss敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
-                    new CardRow { id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" }
+                    new CardRow { tier = "basic", id = "miner", name = "矿机", category = "resource", hp = 2, produce = 1, resourceComponent = true, viewKey = "default" },
+                    new CardRow { tier = "intermediate", id = "soldier", name = "士兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, upkeep = 1, resourceComponent = true, viewKey = "default" },
+                    new CardRow { tier = "advanced", id = "gate", name = "星门", category = "special", hp = 2, moveDistance = 1, upkeep = 4, resourceComponent = true, teleportComponent = true, permitsAttackDeploy = true, deployHomeOnly = true, avoidAdjacentSameType = true, viewKey = "default" },
+                    new CardRow { tier = "none", id = "boss", name = "Boss敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
+                    new CardRow { tier="none", id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" }
                 },
                 deck = new[]
                 {
@@ -130,6 +130,40 @@ namespace Spotlight.Tests
             Assert.That(summary.text, Does.Contain("特殊卡 4 张"));
         }
 
+        /// <summary>阶级下拉按实际张数刷新摘要并进入新配置，验证编辑、持久化和分类独立性。</summary>
+        [Test]
+        public void EditingTierUpdatesSummaryAndConfiguration()
+        {
+            var draft = Open(Document());
+            var box = _root.Query<VisualElement>(className: "cfg-card").ToList()
+                .Single(e => e.Q<Label>(className: "cfg-card-title").text == "矿机");
+            var field = box.Q<DropdownField>();
+            Assert.That(field.value, Is.EqualTo("初级"));
+            field.value = "中级";
+            ConfigFieldBuilder.ApplyCurrentValue(field);
+            Assert.That(draft.FindCard("miner").tier, Is.EqualTo("intermediate"));
+            Assert.That(draft.FindCard("miner").category, Is.EqualTo("resource"));
+            Assert.That(DeckSummary().text, Does.Contain("初级 0 张 / 中级 8 张 / 高级 4 张"));
+            Assert.That(draft.TryCreateConfiguration(out var config, out var error), Is.True, error);
+            Assert.That(config.Cards["miner"].Tier, Is.EqualTo(CardTier.Intermediate));
+        }
+
+        /// <summary>旧 JSON 缺阶级时保留待修正提示，禁止应用；用户选择后可恢复，不静默显示初级。</summary>
+        [Test]
+        public void MissingTierStaysVisibleUntilExplicitlyRepaired()
+        {
+            var document = Document();
+            document.cards[0].tier = null;
+            var draft = Open(document);
+            var field = _root.Query<DropdownField>().ToList().Single(f => f.value.StartsWith("请补齐阶级"));
+            Assert.That(_root.Q<Button>("debug-apply-button").enabledSelf, Is.False);
+            Assert.That(DeckSummary().text, Does.Contain("阶级待修正 4 张"));
+            field.value = "初级";
+            ConfigFieldBuilder.ApplyCurrentValue(field);
+            Assert.That(draft.Validate(), Is.Empty);
+            Assert.That(_root.Q<Button>("debug-apply-button").enabledSelf, Is.True);
+        }
+
         /// <summary>编辑数字字段会立刻写回草稿。输入：无；输出：无。</summary>
         [Test]
         public void EditingNumberFieldWritesBackToDraft()
@@ -194,7 +228,7 @@ namespace Spotlight.Tests
         public void SpawnerChoiceRebindsHealthWithoutEditingAnotherCard()
         {
             var document = Document();
-            document.cards = document.cards.Concat(new[] { new CardRow { id = "nest", name = "新刷怪卡", category = "special", hp = 2, viewKey = "default" } }).ToArray();
+            document.cards = document.cards.Concat(new[] { new CardRow { tier = "none", id = "nest", name = "新刷怪卡", category = "special", hp = 2, viewKey = "default" } }).ToArray();
             var draft = Open(document);
             var choice = FindDropdownField("刷怪卡卡种");
             choice.index = choice.choices.FindIndex(label => label.Contains("（nest）"));

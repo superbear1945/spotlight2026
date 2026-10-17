@@ -15,6 +15,7 @@ MonoBehaviour:
   _id: bossSpawner
   _name: "\u5237\u602A\u5361"
   _category: special
+  _tier: none
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 

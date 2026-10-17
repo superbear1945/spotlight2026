@@ -21,6 +21,8 @@ namespace Spotlight
         [SerializeField] string _name;
         /// <summary>分类文本：resource / attack / special。</summary>
         [SerializeField] string _category;
+        /// <summary>独立于卡牌分类的阶级；玩家卡为 basic/intermediate/advanced，Boss 专用卡为 none。</summary>
+        [SerializeField] string _tier;
         /// <summary>外观模板键；当前用于把卡种映射到 Prefab 外观模板。</summary>
         [SerializeField] string _viewKey;
         /// <summary>是否必须覆盖指定己方资源单位才能部署。</summary>
@@ -66,6 +68,8 @@ namespace Spotlight
         public string Name => _name;
         /// <summary>分类文本，运行期由 ToArchetype 转成枚举。</summary>
         public string CategoryText => _category;
+        /// <summary>卡种阶级文本，转为配置的严格枚举时不推测缺失值。</summary>
+        public string TierText => _tier;
         /// <summary>外观模板键。</summary>
         public string ViewKey => _viewKey;
         /// <summary>是否必须覆盖升级。</summary>
@@ -118,6 +122,7 @@ namespace Spotlight
                 id = _id,
                 name = _name,
                 category = _category,
+                tier = _tier,
                 upgradeFrom = _upgradeFrom,
                 viewKey = _viewKey,
                 hp = _combat != null ? _combat.Hp : 1,
@@ -170,6 +175,7 @@ namespace Spotlight
             _id = row.id;
             _name = row.name.Trim();
             _category = row.category;
+            _tier = row.tier;
             _viewKey = row.viewKey;
             _requiresUpgrade = row.requiresUpgrade;
             _upgradeFrom = row.upgradeFrom;

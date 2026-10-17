@@ -174,6 +174,7 @@ namespace Spotlight
                 id = $"custom_{normalized}_{index}",
                 name = prefix + index,
                 category = normalized,
+                tier = "basic",
                 viewKey = "default",
                 hp = 1,
                 moveDistance = 0,
@@ -209,6 +210,29 @@ namespace Spotlight
                 else combat += count;
             }
             return (total, resource, combat, special);
+        }
+
+        /// <summary>
+        /// 按卡牌张数统计阶级，供面板独立显示三种阶级构成。
+        /// 输入：当前草稿；输出：初级/中级/高级及未计入三类的张数（非法或不适用卡由校验阻止应用）。
+        /// 同种卡带多张逐张累计，数量 0 不贡献统计，不设置携带上限。
+        /// </summary>
+        public (long Basic, long Intermediate, long Advanced, long Unclassified) GetDeckTierSummary()
+        {
+            long basic = 0, intermediate = 0, advanced = 0, unclassified = 0;
+            foreach (var entry in _document.deck ?? Array.Empty<DeckRow>())
+            {
+                if (entry == null) continue;
+                var count = Math.Max(0, entry.count);
+                switch (CardTiers.Parse(FindCard(entry.cardType)?.tier))
+                {
+                    case CardTier.Basic: basic += count; break;
+                    case CardTier.Intermediate: intermediate += count; break;
+                    case CardTier.Advanced: advanced += count; break;
+                    default: unclassified += count; break;
+                }
+            }
+            return (basic, intermediate, advanced, unclassified);
         }
 
         /// <summary>

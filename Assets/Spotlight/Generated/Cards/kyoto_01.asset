@@ -31,6 +31,7 @@ MonoBehaviour:
   _id: kyoto_01
   _name: "\u4EAC\u90FD\u58F9\u53F7"
   _category: resource
+  _tier: basic
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 

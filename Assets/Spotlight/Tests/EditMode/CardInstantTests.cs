@@ -23,14 +23,14 @@ namespace Spotlight.Tests
         /// <summary>战时储备式即时卡：特殊卡，部署后获得 3 资源并立即离场。</summary>
         static CardRow Reserve() => new CardRow
         {
-            id = "reserve", name = "战时储备", category = "special", hp = 1,
+            tier = "intermediate", id = "reserve", name = "战时储备", category = "special", hp = 1,
             leaveAfterDeploy = true, deployGainResource = 3, viewKey = "default"
         };
 
         /// <summary>星棹式标记来源：资源卡，半径 1、奖励 1。</summary>
         static CardRow Collector() => new CardRow
         {
-            id = "collector", name = "收集系统", category = "resource", hp = 1, produce = 1, resourceComponent = true,
+            tier = "intermediate", id = "collector", name = "收集系统", category = "resource", hp = 1, produce = 1, resourceComponent = true,
             markOnEnterComponent = true, markOnEnterRadius = 1, markRewardResource = 1, viewKey = "default"
         };
 
@@ -92,8 +92,8 @@ namespace Spotlight.Tests
             var document = GameSessionTests.Document();
             document.cards = document.cards.Concat(new[]
             {
-                new CardRow { id = "badInstant1", name = "缺收益", category = "special", hp = 1, leaveAfterDeploy = true, viewKey = "default" },
-                new CardRow { id = "badInstant2", name = "多数益", category = "special", hp = 1, deployGainResource = 3, viewKey = "default" }
+                new CardRow { tier = "intermediate", id = "badInstant1", name = "缺收益", category = "special", hp = 1, leaveAfterDeploy = true, viewKey = "default" },
+                new CardRow { tier = "intermediate", id = "badInstant2", name = "多数益", category = "special", hp = 1, deployGainResource = 3, viewKey = "default" }
             }).ToArray();
             var errors = ConfigValidation.Validate(document);
             var all = string.Join(" / ", errors);

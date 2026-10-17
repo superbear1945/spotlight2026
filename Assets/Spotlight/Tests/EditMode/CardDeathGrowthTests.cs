@@ -32,7 +32,7 @@ namespace Spotlight.Tests
         /// <summary>力场式单位：攻击 0、射程 1，每次阵亡 +1，最多 2 次。</summary>
         static CardRow Force() => new CardRow
         {
-            id = "force", name = "力场", category = "attack", hp = 3, atk = 0, range = 1, moveDistance = 1,
+            tier = "intermediate", id = "force", name = "力场", category = "attack", hp = 3, atk = 0, range = 1, moveDistance = 1,
             deathGrowthComponent = true, deathGrowthPerKill = 1, deathGrowthLimit = 2, viewKey = "default"
         };
 
@@ -97,8 +97,8 @@ namespace Spotlight.Tests
             var document = GameSessionTests.Document();
             document.cards = document.cards.Concat(new[]
             {
-                new CardRow { id = "badGrowth1", name = "缺数值", category = "attack", hp = 1, deathGrowthComponent = true, viewKey = "default" },
-                new CardRow { id = "badGrowth2", name = "多数值", category = "attack", hp = 1, deathGrowthPerKill = 1, deathGrowthLimit = 4, viewKey = "default" }
+                new CardRow { tier = "intermediate", id = "badGrowth1", name = "缺数值", category = "attack", hp = 1, deathGrowthComponent = true, viewKey = "default" },
+                new CardRow { tier = "intermediate", id = "badGrowth2", name = "多数值", category = "attack", hp = 1, deathGrowthPerKill = 1, deathGrowthLimit = 4, viewKey = "default" }
             }).ToArray();
 
             var errors = ConfigValidation.Validate(document);

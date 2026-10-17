@@ -37,14 +37,14 @@ namespace Spotlight.Tests
         /// <summary>攻击卡夹具：可指定部署消耗。</summary>
         static CardRow Costly(int cost) => new CardRow
         {
-            id = "costly", name = "昂贵卡", category = "attack", hp = 2, atk = 1, range = 1, moveDistance = 1,
+            tier = "basic", id = "costly", name = "昂贵卡", category = "attack", hp = 2, atk = 1, range = 1, moveDistance = 1,
             deployCost = cost, viewKey = "default"
         };
 
         /// <summary>资源卡夹具：要求四邻至少有 count 个资源卡单位。</summary>
         static CardRow Kepler(int count) => new CardRow
         {
-            id = "kepler", name = "开普勒", category = "resource", hp = 2, produce = 3, resourceComponent = true,
+            tier = "intermediate", id = "kepler", name = "开普勒", category = "resource", hp = 2, produce = 3, resourceComponent = true,
             deployRequireAdjacentCategory = "resource", deployRequireAdjacentCount = count, viewKey = "default"
         };
 
@@ -101,7 +101,7 @@ namespace Spotlight.Tests
             var document = GameSessionTests.Document();
             document.cards = document.cards.Concat(new[]
             {
-                new CardRow { id = "bossCostly", name = "Boss贵兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, deployCost = 999, viewKey = "default" }
+                new CardRow { tier = "none", id = "bossCostly", name = "Boss贵兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, deployCost = 999, viewKey = "default" }
             }).ToArray();
             document.rules[0].bossCardType = "bossCostly";
             document.rules[0].playerControlsBoss = true;
@@ -163,9 +163,9 @@ namespace Spotlight.Tests
             var document = GameSessionTests.Document();
             document.cards = document.cards.Concat(new[]
             {
-                new CardRow { id = "badCost", name = "负消耗", category = "attack", hp = 1, deployCost = -1, viewKey = "default" },
-                new CardRow { id = "badAdj", name = "缺分类", category = "resource", hp = 1, deployRequireAdjacentCount = 2, viewKey = "default" },
-                new CardRow { id = "badAdj2", name = "多余分类", category = "resource", hp = 1, deployRequireAdjacentCategory = "resource", viewKey = "default" }
+                new CardRow { tier = "intermediate", id = "badCost", name = "负消耗", category = "attack", hp = 1, deployCost = -1, viewKey = "default" },
+                new CardRow { tier = "intermediate", id = "badAdj", name = "缺分类", category = "resource", hp = 1, deployRequireAdjacentCount = 2, viewKey = "default" },
+                new CardRow { tier = "intermediate", id = "badAdj2", name = "多余分类", category = "resource", hp = 1, deployRequireAdjacentCategory = "resource", viewKey = "default" }
             }).ToArray();
 
             var errors = ConfigValidation.Validate(document);

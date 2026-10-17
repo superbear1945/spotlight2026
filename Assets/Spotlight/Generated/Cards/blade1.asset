@@ -45,6 +45,7 @@ MonoBehaviour:
   _id: blade1
   _name: "\u5C16\u52001"
   _category: attack
+  _tier: basic
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 
