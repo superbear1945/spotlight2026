@@ -4,10 +4,12 @@
 // 测试只读写临时目录，不触碰 Assets/Spotlight/Generated 下的正式产物。
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text;
+using System.Xml.Linq;
 using NUnit.Framework;
 using Spotlight;
 using Spotlight.EditorTools;
@@ -194,6 +196,149 @@ namespace Spotlight.Tests
             Assert.That(session.GetSnapshot().Round, Is.EqualTo(1));
         }
 
+        /// <summary>
+        /// 验证默认表按声明保存原生数字/布尔单元格，而不是看起来像数字的文本。
+        /// 输入：临时默认工作簿；输出：六张表所有数据单元格的 OOXML 类型断言，防止生成器再次把数值写成文本。
+        /// </summary>
+        [Test]
+        public void DefaultWorkbookStoresNativeCellTypes()
+        {
+            var path = Path.Combine(_tempDirectory, "typed.xlsx");
+            DefaultWorkbookWriter.WriteDefault(path);
+            using (var archive = ZipFile.OpenRead(path))
+            {
+                for (var sheetIndex = 0; sheetIndex < TableSchema.All.Count; sheetIndex++)
+                {
+                    var schema = TableSchema.All[sheetIndex];
+                    var sheet = ReadWorksheet(archive, sheetIndex + 1);
+                    XNamespace ns = sheet.Root.Name.Namespace;
+                    var rows = sheet.Descendants(ns + "row").ToArray();
+                    var headers = rows[0].Elements(ns + "c").Select(c => c.Value).ToArray();
+                    Assert.That(headers, Is.EqualTo(schema.Columns.Select(c => c.Name)));
+                    foreach (var row in rows.Skip(1))
+                    {
+                        var cells = row.Elements(ns + "c").ToArray();
+                        for (var column = 0; column < cells.Length; column++)
+                        {
+                            var type = schema.Find(headers[column]).Type;
+                            var expected = type == ColumnType.Text ? "inlineStr" : type == ColumnType.Boolean ? "b" : "n";
+                            Assert.That((string)cells[column].Attribute("t"), Is.EqualTo(expected),
+                                schema.SheetName + "!" + (string)cells[column].Attribute("r"));
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 模拟 Excel 持有可读写句柄的状态，确认扫描、读取和摘要计算均允许共享读取。
+        /// 输入：打开且已保存的临时工作簿；输出：整条校验管线成功，防止文件锁被误认作数值格式错误。
+        /// </summary>
+        [Test]
+        public void WorkbookCompilesWhileOpenForEditing()
+        {
+            var path = Path.Combine(_tempDirectory, "open-in-excel.xlsx");
+            DefaultWorkbookWriter.WriteDefault(path);
+            using (File.Open(path, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite))
+            {
+                var report = ConfigCompiler.Compile(path, false);
+                Assert.That(report.Success, Is.True, string.Join("\n", report.Issues));
+                Assert.That(report.Document.cards[0].hp, Is.EqualTo(1));
+            }
+        }
+
+        /// <summary>
+        /// 验证真正的 Excel 数字不受小数点区域设置或 XML 中的数值写法影响。
+        /// 输入：整数、带零小数位和科学记数法的原生单元格；输出：强类型 int/float/double 值。
+        /// </summary>
+        [TestCase("en-US", "8")]
+        [TestCase("de-DE", "8.0")]
+        [TestCase("fr-FR", "8E0")]
+        public void NativeNumbersCompileToNumericFields(string cultureName, string hp)
+        {
+            var path = Path.Combine(_tempDirectory, "numeric.xlsx");
+            DefaultWorkbookWriter.WriteDefault(path);
+            ReplaceWorksheetCell(path, 1, "E2", "n", hp);
+            ReplaceWorksheetCell(path, 6, "E2", "n", "0.125");
+            var previousCulture = CultureInfo.CurrentCulture;
+            try
+            {
+                CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(cultureName);
+                var report = ConfigCompiler.Compile(path, false);
+                Assert.That(report.Success, Is.True, string.Join("\n", report.Issues));
+                Assert.That(report.Document.cards[0].hp, Is.EqualTo(8));
+                Assert.That(report.Document.presentation[0].moveSeconds, Is.EqualTo(0.125f));
+                Assert.That(report.Document.bossSlots[1].rowFraction, Is.EqualTo(0.5d));
+                Assert.That(report.Document.rules[0].bossBombDamage, Is.EqualTo(3));
+            }
+            finally { CultureInfo.CurrentCulture = previousCulture; }
+        }
+
+        /// <summary>
+        /// 原生数字仍须满足整数列约束，不能把小数四舍五入或把越界值截断后放行。
+        /// 输入：原生小数或超出 Int32 的数字；输出：Cards 第 2 行第 5 列的类型错误。
+        /// </summary>
+        [TestCase("1.5")]
+        [TestCase("2147483648")]
+        public void InvalidNativeIntegerIsRejectedWithLocation(string value)
+        {
+            var path = Path.Combine(_tempDirectory, "invalid-number.xlsx");
+            DefaultWorkbookWriter.WriteDefault(path);
+            ReplaceWorksheetCell(path, 1, "E2", "n", value);
+            var report = ConfigCompiler.Compile(path, false);
+            Assert.That(report.Success, Is.False);
+            Assert.That(report.Issues.Any(i => i.Sheet == "Cards" && i.Row == 2 && i.Column == 5 &&
+                i.Reason.Contains("不是合法的整数")), Is.True, string.Join("\n", report.Issues));
+        }
+
+        /// <summary>
+        /// 保持旧版文本数值与新版原生数字的兼容性，不强迫已有工作簿重填。
+        /// 输入：同一工作簿分别用数字和文本保存 hp/动画秒数；输出：编译后的文档完全一致。
+        /// </summary>
+        [Test]
+        public void LegacyTextNumbersCompileToSameDocument()
+        {
+            var path = Path.Combine(_tempDirectory, "legacy.xlsx");
+            DefaultWorkbookWriter.WriteDefault(path);
+            var numeric = ConfigCompiler.Compile(path, false);
+            Assert.That(numeric.Success, Is.True, string.Join("\n", numeric.Issues));
+            ReplaceWorksheetCell(path, 1, "E2", "inlineStr", "1");
+            ReplaceWorksheetCell(path, 6, "E2", "inlineStr", "0.2");
+            var text = ConfigCompiler.Compile(path, false);
+            Assert.That(text.Success, Is.True, string.Join("\n", text.Issues));
+            Assert.That(UnityEngine.JsonUtility.ToJson(text.Document), Is.EqualTo(UnityEngine.JsonUtility.ToJson(numeric.Document)));
+        }
+
+        /// <summary>
+        /// 生成器按列名而非列位置/文本外观选择类型，并保留非法输入供编译器定位。
+        /// 输入：重排列、数字外观的文本 ID 和非法整数；输出：hp 为数字，ID 与非法值仍为原样文本。
+        /// </summary>
+        [Test]
+        public void WorkbookWriterUsesColumnNamesAndPreservesInvalidValues()
+        {
+            var path = Path.Combine(_tempDirectory, "reordered.xlsx");
+            DefaultWorkbookWriter.WriteWorkbook(path, new[]
+            {
+                new DefaultWorkbookWriter.SheetSpec
+                {
+                    Name = "Cards", Headers = new[] { "hp", "id", "atk" },
+                    Rows = new[] { new[] { "8", "00123", "not-a-number" } }
+                }
+            });
+            using (var archive = ZipFile.OpenRead(path))
+            {
+                var sheet = ReadWorksheet(archive, 1);
+                XNamespace ns = sheet.Root.Name.Namespace;
+                var cells = sheet.Descendants(ns + "row").Last().Elements(ns + "c").ToArray();
+                Assert.That((string)cells[0].Attribute("t"), Is.EqualTo("n"));
+                Assert.That(cells[0].Value, Is.EqualTo("8"));
+                Assert.That((string)cells[1].Attribute("t"), Is.EqualTo("inlineStr"));
+                Assert.That(cells[1].Value, Is.EqualTo("00123"));
+                Assert.That((string)cells[2].Attribute("t"), Is.EqualTo("inlineStr"));
+                Assert.That(cells[2].Value, Is.EqualTo("not-a-number"));
+            }
+        }
+
         [Test]
         public void FailedValidationKeepsPreviousProductsIntact()
         {
@@ -285,6 +430,37 @@ namespace Spotlight.Tests
                 WriteEntry(archive, "xl/worksheets/sheet1.xml",
                     "<?xml version=\"1.0\" encoding=\"UTF-8\"?><worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheetData><row r=\"1\">" +
                     cellXml + "</row></sheetData>" + trailingXml + "</worksheet>");
+            }
+        }
+
+        /// <summary>
+        /// 读取临时工作簿的原始工作表 XML，避免只测映射结果而遗漏 Excel 存储类型。
+        /// 输入：压缩包与从 1 开始的表序号；输出：独立 XML 文档，读取流在返回前关闭。
+        /// </summary>
+        static XDocument ReadWorksheet(ZipArchive archive, int sheetNumber)
+        {
+            using (var stream = archive.GetEntry("xl/worksheets/sheet" + sheetNumber + ".xml").Open())
+                return XDocument.Load(stream);
+        }
+
+        /// <summary>
+        /// 在临时工作簿中构造指定类型的单元格，不依赖生成器自身的类型选择逻辑。
+        /// 输入：文件、表序号、坐标、OOXML 类型和值；输出：仅替换该单元格的工作簿，用于独立验证读取端。
+        /// </summary>
+        static void ReplaceWorksheetCell(string path, int sheetNumber, string reference, string type, string value)
+        {
+            using (var archive = ZipFile.Open(path, ZipArchiveMode.Update))
+            {
+                var sheet = ReadWorksheet(archive, sheetNumber);
+                XNamespace ns = sheet.Root.Name.Namespace;
+                var cell = sheet.Descendants(ns + "c").Single(c => (string)c.Attribute("r") == reference);
+                cell.SetAttributeValue("t", type);
+                cell.ReplaceNodes(type == "inlineStr"
+                    ? new XElement(ns + "is", new XElement(ns + "t", value))
+                    : new XElement(ns + "v", value));
+                var name = "xl/worksheets/sheet" + sheetNumber + ".xml";
+                archive.GetEntry(name).Delete();
+                WriteEntry(archive, name, sheet.ToString());
             }
         }
 

@@ -348,10 +348,10 @@ namespace Spotlight.EditorTools
         }
 
         /// <summary>
-        /// 写出单张工作表部件，所有单元格使用内联字符串。
+        /// 写出单张工作表部件，按 TableSchema 的列名选择数字、布尔或文本单元格。
         /// 输入：ZIP 包、工作表从 0 开始的序号、表定义；输出：无（写入条目）。
-        /// 为什么需要：内联字符串无需 sharedStrings.xml，也无需任何样式和公式，
-        /// 能让包保持最小且被 ExcelDataReader 直接解析。
+        /// 为什么需要：数值在 Excel 内也必须是真正的数字；按表头查类型支持列重排，
+        /// 文本仍用内联字符串，让包无需 sharedStrings.xml、样式或公式。
         /// </summary>
         private static void WriteWorksheetPart(ZipArchive archive, int sheetIndex, SheetSpec sheet)
         {
@@ -362,10 +362,14 @@ namespace Spotlight.EditorTools
                 writer.WriteStartElement("sheetData", SpreadsheetNamespace);
 
                 WriteRow(writer, 1, sheet.Headers);
+                var schema = TableSchema.For(sheet.Name);
+                var columns = new List<ColumnDefinition>();
+                foreach (var header in sheet.Headers ?? Array.Empty<string>())
+                    columns.Add(schema?.Find((header ?? string.Empty).Trim()));
                 var rows = sheet.Rows ?? Array.Empty<IReadOnlyList<string>>();
                 for (var index = 0; index < rows.Count; index++)
                 {
-                    WriteRow(writer, index + 2, rows[index]);
+                    WriteRow(writer, index + 2, rows[index], columns);
                 }
 
                 writer.WriteEndElement();
@@ -380,12 +384,12 @@ namespace Spotlight.EditorTools
         }
 
         /// <summary>
-        /// 写出一行单元格，全部使用内联字符串（t="inlineStr"）。
-        /// 输入：XmlWriter、1 开始的行号、该行按列顺序排列的取值；输出：无。
-        /// 为什么需要：统一单元格格式，保证列名与列序和表头一致，且不写出任何公式。
-        /// 空字符串会写成内容为空的 &lt;t/&gt;（t="inlineStr"），读取端可能将其视为 null 或空字符串，需要自行兜底。
+        /// 写出一行单元格，并保持原有列序与坐标。
+        /// 输入：XmlWriter、1 开始的行号、取值与可选列声明；输出：无（写入 row/c 节点）。
+        /// 为什么需要：表头或未知列使用文本，正式数据按声明写入，避免数字外观的 ID 被误转或丢失前导零。
+        /// 空字符串和非法值保留为原样文本，交给编译器报告，而不是静默变成 0。
         /// </summary>
-        private static void WriteRow(XmlWriter writer, int rowNumber, IReadOnlyList<string> values)
+        private static void WriteRow(XmlWriter writer, int rowNumber, IReadOnlyList<string> values, IReadOnlyList<ColumnDefinition> columns = null)
         {
             writer.WriteStartElement("row", SpreadsheetNamespace);
             writer.WriteAttributeString("r", ToInvariant(rowNumber));
@@ -395,15 +399,38 @@ namespace Spotlight.EditorTools
             {
                 writer.WriteStartElement("c", SpreadsheetNamespace);
                 writer.WriteAttributeString("r", GetColumnName(column) + ToInvariant(rowNumber));
-                writer.WriteAttributeString("t", "inlineStr");
-                writer.WriteStartElement("is", SpreadsheetNamespace);
-                writer.WriteStartElement("t", SpreadsheetNamespace);
-                writer.WriteString(values[column] ?? string.Empty);
-                writer.WriteEndElement();
-                writer.WriteEndElement();
+                var type = columns != null && column < columns.Count ? columns[column]?.Type ?? ColumnType.Text : ColumnType.Text;
+                WriteCellValue(writer, values[column], type);
                 writer.WriteEndElement();
             }
 
+            writer.WriteEndElement();
+        }
+
+        /// <summary>
+        /// 按列类型写入单元格内容，使用 OOXML 的 n/b/inlineStr 标记。
+        /// 输入：已打开 c 节点的 XmlWriter、原始取值和目标列类型；输出：类型属性及内容节点。
+        /// 为什么需要：让 Excel 可直接编辑和计算数字，保持旧文本、空值与非法输入可被读取和定位；
+        /// 数字验证后写入原始十进制文本，避免生成阶段额外引入浮点舍入。
+        /// </summary>
+        private static void WriteCellValue(XmlWriter writer, string raw, ColumnType type)
+        {
+            var text = raw ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(text) && type != ColumnType.Text &&
+                TableMapper.TryConvert(text.Trim(), type, out var value) &&
+                !(value is float number && (float.IsNaN(number) || float.IsInfinity(number))))
+            {
+                writer.WriteAttributeString("t", type == ColumnType.Boolean ? "b" : "n");
+                writer.WriteElementString("v", SpreadsheetNamespace,
+                    type == ColumnType.Boolean ? ((bool)value ? "1" : "0") : text.Trim());
+                return;
+            }
+
+            writer.WriteAttributeString("t", "inlineStr");
+            writer.WriteStartElement("is", SpreadsheetNamespace);
+            writer.WriteStartElement("t", SpreadsheetNamespace);
+            writer.WriteString(text);
+            writer.WriteEndElement();
             writer.WriteEndElement();
         }
 

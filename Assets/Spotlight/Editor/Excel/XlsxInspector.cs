@@ -34,7 +34,9 @@ namespace Spotlight.EditorTools
             }
             try
             {
-                using (var archive = ZipFile.OpenRead(xlsxPath))
+                // Excel 会持有可写句柄；与 WorkbookReader/摘要计算一样允许共享读写，读取最近一次保存的数据。
+                using (var stream = File.Open(xlsxPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (var archive = new ZipArchive(stream, ZipArchiveMode.Read))
                 {
                     var sheets = ReadSheetMap(archive, xlsxPath, issues);
                     foreach (var pair in sheets) InspectSheet(archive, xlsxPath, pair.Key, pair.Value, issues);
