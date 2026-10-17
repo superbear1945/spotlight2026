@@ -146,6 +146,15 @@ namespace Spotlight.EditorTools
             }
             else RemoveSubAsset(assetPath, teleport);
 
+            // 新能力同样只在启用时保留子资产：禁用后必须移除，否则导入器会认为配置仍在启用。
+            var penalty = EnsureSubAsset<DeploymentPenaltyConfigSO>(assetPath, definition, row.id + "_DeploymentPenalty");
+            if (row.deploymentPenaltyComponent)
+            {
+                penalty.EditorApply(row.deploymentAttackReduction);
+                EditorUtility.SetDirty(penalty);
+            }
+            else RemoveSubAsset(assetPath, penalty);
+
             var prefabPath = CardPrefabPath(row.id);
             var instance = template != null ? (GameObject)PrefabUtility.InstantiatePrefab(template) : ViewTemplateBuilder.BuildTemplateObject();
             instance.name = row.id;
@@ -153,17 +162,20 @@ namespace Spotlight.EditorTools
             var combatComponent = instance.GetComponent<CombatComponent>() ?? instance.AddComponent<CombatComponent>();
             var resourceComponent = SyncComponent<ResourceComponent>(instance, row.resourceComponent);
             var teleportComponent = SyncComponent<TeleportComponent>(instance, row.teleportComponent);
+            var penaltyComponent = SyncComponent<DeploymentPenaltyComponent>(instance, row.deploymentPenaltyComponent);
 
             var cardSerialized = new SerializedObject(card);
             ViewTemplateBuilder.AssignReference(cardSerialized, "_definition", definition);
             ViewTemplateBuilder.AssignReference(cardSerialized, "_combat", combatComponent);
             ViewTemplateBuilder.AssignReference(cardSerialized, "_resource", row.resourceComponent ? resourceComponent : null);
             ViewTemplateBuilder.AssignReference(cardSerialized, "_teleport", row.teleportComponent ? teleportComponent : null);
+            ViewTemplateBuilder.AssignReference(cardSerialized, "_deploymentPenalty", row.deploymentPenaltyComponent ? penaltyComponent : null);
             cardSerialized.ApplyModifiedPropertiesWithoutUndo();
 
             AssignComponentConfig(combatComponent, combat);
             if (row.resourceComponent) AssignComponentConfig(resourceComponent, resource);
             if (row.teleportComponent) AssignComponentConfig(teleportComponent, teleport);
+            if (row.deploymentPenaltyComponent) AssignComponentConfig(penaltyComponent, penalty);
 
             PrefabUtility.SaveAsPrefabAsset(instance, prefabPath);
             UnityEngine.Object.DestroyImmediate(instance);
@@ -176,7 +188,7 @@ namespace Spotlight.EditorTools
                 return null;
             }
 
-            definition.EditorApply(row, combat, row.resourceComponent ? resource : null, row.teleportComponent ? teleport : null, prefabCard, sourceWorkbook, "Cards");
+            definition.EditorApply(row, combat, row.resourceComponent ? resource : null, row.teleportComponent ? teleport : null, row.deploymentPenaltyComponent ? penalty : null, prefabCard, sourceWorkbook, "Cards");
             EditorUtility.SetDirty(definition);
             return definition;
         }
@@ -255,6 +267,10 @@ namespace Spotlight.EditorTools
                 if (prefab.Combat == null) issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0, $"卡种 {definition.Id} 的 Prefab 缺少战斗组件"));
                 if ((prefab.Resource != null) != (definition.Resource != null)) issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0, $"卡种 {definition.Id} 的资源组件与配置不一致"));
                 if ((prefab.Teleport != null) != (definition.Teleport != null)) issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0, $"卡种 {definition.Id} 的传送组件与配置不一致"));
+                if ((prefab.DeploymentPenalty != null) != (definition.DeploymentPenalty != null)) issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0, $"卡种 {definition.Id} 的一次性部署减攻组件与配置不一致"));
+                if (prefab.DeploymentPenalty != null && prefab.DeploymentPenalty.Config == null) issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0, $"卡种 {definition.Id} 的部署减攻组件缺少配置引用"));
+                if (prefab.Resource != null && prefab.Resource.Config == null) issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0, $"卡种 {definition.Id} 的资源组件缺少配置引用"));
+                if (prefab.Teleport != null && prefab.Teleport.Config == null) issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0, $"卡种 {definition.Id} 的传送组件缺少配置引用"));
             }
             return issues;
         }
