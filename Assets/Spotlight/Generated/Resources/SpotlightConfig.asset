@@ -82,6 +82,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 20a2b65ed7a0bdb4daa3ea33d3a71941, type: 2}
   - {fileID: 11400000, guid: ba99ca98405c48b4c93419f7e33c2e39, type: 2}
   - {fileID: 11400000, guid: 7c6a8025c3715e94cb41db9ad3127869, type: 2}
+  - {fileID: 11400000, guid: f700582269960bf42b61a58fb21feb0d, type: 2}
   _deck:
   - cardType: ge1
     count: 3
@@ -95,6 +96,8 @@ MonoBehaviour:
     count: 3
   - cardType: gate
     count: 2
+  - cardType: kyoto_01
+    count: 2
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceHash: 8624bf620c4d91be441e872e88c2fb31963912ba517e8fc647127643f10a62af
-  _compiledAtUtc: 2026-10-17T05:33:22.6226725Z
+  _sourceHash: 3c5e9ea3e96b75555bada25f019a09b0c810f658592d0fe1473c9c590f394dad
+  _compiledAtUtc: 2026-10-17T07:32:41.8914843Z

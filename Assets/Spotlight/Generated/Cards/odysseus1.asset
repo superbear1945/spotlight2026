@@ -39,6 +39,7 @@ MonoBehaviour:
   _combat: {fileID: -4838446569150869107}
   _resource: {fileID: 5492580657133909310}
   _teleport: {fileID: 0}
+  _deploymentPenalty: {fileID: 0}
   _prefab: {fileID: 3712024423335596556, guid: 0edda512eb8b5274ab45664ff24c4a1a, type: 3}
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
   _sourceSheet: Cards
