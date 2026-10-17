@@ -43,7 +43,11 @@ namespace Spotlight.Tests
             var context = new SceneContext();
             yield return context.Load();
             var bootstrap = context.Bootstrap;
-            var session = context.Session;
+            bootstrap.RestartWith(CreateMovementConfiguration(bootstrap));
+            yield return null;
+            yield return WaitForPresentation(bootstrap);
+            // 重开创建了新会话，不能继续使用 SceneContext 缓存的上一局引用。
+            var session = bootstrap.Session;
             var board = context.Board;
 
             var deployed = default(CardRecord);
@@ -63,26 +67,23 @@ namespace Spotlight.Tests
             var deployedUnit = session.GetSnapshot().Units.FirstOrDefault(u => u.SourceCardId == deployed.Id);
             Assert.That(deployedUnit, Is.Not.Null, "部署后棋盘上没有对应单位");
 
-            // 推进回合直到有己方单位可以移动（覆盖召唤失调与 Boss AI 回合）。
-            // 不绑定刚部署的单位：它可能在等待期间被 AI 击杀，因此每轮都补一张带移动距离的牌，
-            // 断言只关心“界面上的某个棋子确实跟着规则移动”。
-            UnitState live = null;
-            for (var turn = 0; turn < 10 && live == null; turn++)
-            {
-                TryDeploy(bootstrap, session, context.Hand, requireMoveDistance: true);
-                yield return WaitSeconds(SettleSeconds);
-                live = session.GetSnapshot().Units.FirstOrDefault(u =>
-                    u.Owner == Side.Player &&
-                    session.GetLegalActions(new Selection(SelectionKind.Unit, u.Id)).Move.Count > 0);
-                if (live != null) break;
-                Invoke(bootstrap, "OnEndTurnRequested");
-                yield return null;
-                yield return FinishDiscard(bootstrap, session, context.Hand);
-            }
+            // 保留召唤失调覆盖，经过完整的 Boss 回合后验证同一个单位恢复移动。
+            Assert.That(session.GetLegalActions(new Selection(SelectionKind.Unit, deployedUnit.Id)).Move,
+                Is.Empty, "刚部署的单位应受到召唤失调限制");
+            var roundBefore = session.GetSnapshot().Round;
+            Invoke(bootstrap, "OnEndTurnRequested");
+            yield return WaitForPresentation(bootstrap);
 
-            Assert.That(live, Is.Not.Null, "推进 10 个回合后仍没有可移动的己方单位");
+            var ready = session.GetSnapshot();
+            var state = $"回合={ready.Round}，行动方={ready.ActiveSide}，阶段={ready.Phase}，演示中={bootstrap.IsPresentingTurn}";
+            Assert.That(ready.Round, Is.EqualTo(roundBefore + 1), $"结束回合没有推进到下一轮：{state}");
+            Assert.That(ready.ActiveSide, Is.EqualTo(Side.Player), $"Boss 回合结束后没有回到玩家：{state}");
+            Assert.That(ready.Phase, Is.EqualTo(MatchPhase.Action), $"尚未进入行动阶段：{state}");
+            var live = ready.Units.FirstOrDefault(u => u.Id == deployedUnit.Id);
+            Assert.That(live, Is.Not.Null, $"准备移动的单位 {deployedUnit.Id} 在回合切换后消失：{state}");
             var moveTargets = session.GetLegalActions(new Selection(SelectionKind.Unit, live.Id)).Move;
-            Assert.That(moveTargets.Count, Is.GreaterThan(0), "单位始终无法移动，无法验证移动渲染");
+            Assert.That(moveTargets.Count, Is.GreaterThan(0),
+                $"单位没有合法移动目标：{state}，单位={live.Id}，位置={live.Position}，移动距离={live.MoveDistance}，已行动={live.Acted}，维持费已付={live.UpkeepPaid}");
 
             var from = live.Position;
             var target = moveTargets[0];
@@ -745,6 +746,45 @@ namespace Spotlight.Tests
                 Invoke(bootstrap, "OnCardClicked", hand.GetCard(discard.Id));
                 yield return null;
             }
+        }
+
+        /// <summary>
+        /// 创建移动渲染用例的独立配置，避免随机起手、欠费与 Boss 击杀干扰测试准备。
+        /// 输入：已加载正式配置的引导器；输出：仅供本用例重开的配置副本，不修改生成资产。
+        /// 保留召唤失调和真实动画时长，用单一卡种牌堆消除洗牌顺序对准备条件的影响。
+        /// </summary>
+        static GameConfiguration CreateMovementConfiguration(GameBootstrap bootstrap)
+        {
+            var document = JsonUtility.FromJson<ConfigDocument>(JsonUtility.ToJson(bootstrap.CurrentAsset.ToDocument()));
+            var rules = document.rules[0];
+            rules.firstSide = "player";
+            rules.playerControlsBoss = false;
+            rules.drawCount = 1;
+            rules.handLimit = 10;
+            rules.summoningSickness = true;
+            rules.bossBombInterval = 1000;
+            document.deck = new[] { new DeckRow { cardType = "blade1", count = 3 } };
+            var fighter = document.cards.Single(c => c.id == "blade1");
+            fighter.moveDistance = 1;
+            fighter.upkeep = 0;
+            var boss = document.cards.Single(c => c.id == rules.bossCardType);
+            boss.atk = 0;
+            boss.moveDistance = 0;
+            return new GameConfiguration(document);
+        }
+
+        /// <summary>
+        /// 等待阶段演示结束，使后续输入和合法动作查询可用。
+        /// 输入：当前对局引导器；输出：有限时间的逐帧等待，超时明确报告当时的对局阶段。
+        /// 按实际完成状态继续，避免固定延时误把动画中的输入屏蔽当成无法移动。
+        /// </summary>
+        static IEnumerator WaitForPresentation(GameBootstrap bootstrap)
+        {
+            var deadline = Time.realtimeSinceStartup + 10f;
+            while (bootstrap.IsPresentingTurn && Time.realtimeSinceStartup < deadline) yield return null;
+            var snapshot = bootstrap.Session.GetSnapshot();
+            Assert.That(bootstrap.IsPresentingTurn, Is.False,
+                $"阶段演示超时：回合={snapshot.Round}，行动方={snapshot.ActiveSide}，阶段={snapshot.Phase}");
         }
 
         /// <summary>按真实时间等待若干秒。输入：秒数；输出：协程。</summary>
