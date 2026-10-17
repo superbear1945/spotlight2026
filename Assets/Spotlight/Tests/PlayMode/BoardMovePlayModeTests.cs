@@ -54,6 +54,9 @@ namespace Spotlight.Tests
             var deployCell = default(Cell);
             foreach (var record in session.GetSnapshot().Hand)
             {
+                // 即时卡（leaveAfterDeploy）部署后立即离场，本用例结尾断言“部署后棋盘上有对应单位”，
+                // 因此必须跳过它们，否则抽到即时卡就会得到假失败。
+                if (IsInstant(session, record.TypeId)) continue;
                 var options = session.GetLegalActions(new Selection(SelectionKind.Hand, record.Id));
                 if (options.Deploy.Count <= 0) continue;
                 deployed = record;
@@ -159,7 +162,10 @@ namespace Spotlight.Tests
             var session = context.Session;
             var board = context.Board;
 
-            TryDeploy(bootstrap, session, context.Hand, requireMoveDistance: true);
+            // 这条用例只验证“点击棋子能命中它所在的格子”，不需要移动能力。
+            // 为什么不再要求可移动：开局只抽 3 张，而正式卡组 26 张里移 0 的卡占一半（资源卡/星铆-1/战时储备），
+            // 一旦 3 张都是移 0 的卡就会“没有部署成功任何己方单位”而偶发失败（CI 上曾命中）。
+            Assert.That(TryDeploy(bootstrap, session, context.Hand, requireMoveDistance: false), Is.True, "初始手牌里没有可部署的卡");
             yield return WaitSeconds(SettleSeconds);
 
             var unit = session.GetSnapshot().Units.FirstOrDefault(u => u.Owner == Side.Player);
@@ -677,6 +683,8 @@ namespace Spotlight.Tests
         {
             foreach (var record in session.GetSnapshot().Hand)
             {
+                // 即时卡部署后不留下单位，任何“按单位断言”的用例都不能选它。
+                if (IsInstant(session, record.TypeId)) continue;
                 if (requireMoveDistance && !HasMoveDistance(session, record.TypeId)) continue;
                 var options = session.GetLegalActions(new Selection(SelectionKind.Hand, record.Id));
                 if (options.Deploy.Count <= 0) continue;
@@ -684,6 +692,16 @@ namespace Spotlight.Tests
                 return session.GetSnapshot().Units.Any(u => u.SourceCardId == record.Id);
             }
             return false;
+        }
+
+        /// <summary>
+        /// 判断某卡种是否为即时卡。
+        /// 输入：对局与卡种 ID；输出：是否配置了“部署即结算、结算即退场”。
+        /// 为什么需要：即时卡部署后不产生在场单位，按单位断言或按移动能力筛选的用例必须跳过它。
+        /// </summary>
+        static bool IsInstant(GameSession session, string typeId)
+        {
+            return session.Configuration.Cards.TryGetValue(typeId, out var archetype) && archetype.Instant != null;
         }
 
         /// <summary>判断某卡种是否具备移动能力。输入：对局与卡种 ID；输出：是否配置了移动距离。</summary>

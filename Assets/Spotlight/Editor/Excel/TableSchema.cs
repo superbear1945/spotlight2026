@@ -96,7 +96,19 @@ namespace Spotlight.EditorTools
                 new ColumnDefinition("requiresUpgrade", ColumnType.Boolean, false),
                 new ColumnDefinition("upgradeFrom", ColumnType.Text, false),
                 new ColumnDefinition("deploymentPenaltyComponent", ColumnType.Boolean, true, "是否启用一次性部署减攻组件，默认 false。启用后该单位在场期间可使用一次：使随后成功上场的一个同阵营攻击类单位攻击力降低 deploymentAttackReduction。未启用时必须填 false，且减攻量必须为 0。"),
-                new ColumnDefinition("deploymentAttackReduction", ColumnType.Integer, true, "一次性部署减攻量，默认 0，非负整数。启用组件时必须为正整数；禁用时必须为 0。减攻下限为 0，持续到目标单位离场；京都壹号默认为 2。")
+                new ColumnDefinition("deploymentAttackReduction", ColumnType.Integer, true, "一次性部署减攻量，默认 0，非负整数。启用组件时必须为正整数；禁用时必须为 0。减攻下限为 0，持续到目标单位离场；京都壹号默认为 2。"),
+                new ColumnDefinition("deployCost", ColumnType.Integer, true, "成功部署这张卡的一次性资源消耗，默认 0，非负整数。资源不足时该目标不合法（高亮也不会出现）；Boss 部署不受此限制。开普勒-I/II 为 10。"),
+                new ColumnDefinition("deployRequireAdjacentCategory", ColumnType.Text, false, "部署时四邻（上下左右）必须存在的单位分类：resource/attack/special；默认留空表示无要求。必须与 deployRequireAdjacentCount 同时使用，数量为 0 时本列必须留空。"),
+                new ColumnDefinition("deployRequireAdjacentCount", ColumnType.Integer, false, "四邻中该分类单位的最小数量，默认 0（0 表示无要求）。只统计在场单位，不含家，不区分阵营。"),
+                new ColumnDefinition("markOnEnterComponent", ColumnType.Boolean, true, "是否启用入场标记能力，默认 false。启用后该单位入场时把半径内的其它单位标记（先到先得、不叠加），被标记单位阵亡时给标记者阵营发资源。未启用时必须填 false，半径与奖励必须为 0。"),
+                new ColumnDefinition("markOnEnterRadius", ColumnType.Integer, true, "标记半径，默认 0，正整数。1 表示以自身为中心的 3×3 八邻（不含自己）；启用能力时必须为正整数。"),
+                new ColumnDefinition("markRewardResource", ColumnType.Integer, true, "被标记单位阵亡时给标记者阵营的资源，默认 0，正整数。启用能力时必须为正整数；Boss 侧没有资源系统，Boss 标记暂不产生资源。"),
+                new ColumnDefinition("deathGrowthComponent", ColumnType.Boolean, true, "是否启用死亡加攻能力，默认 false。启用后全棋盘任一单位因战斗阵亡时本单位攻击力 +deathGrowthPerKill，最多触发 deathGrowthLimit 次。未启用时必须填 false，加成与上限必须为 0。"),
+                new ColumnDefinition("deathGrowthPerKill", ColumnType.Integer, true, "每次全棋盘单位因战斗阵亡时增加的攻击力，默认 0，正整数。启用能力时必须为正整数。"),
+                new ColumnDefinition("deathGrowthLimit", ColumnType.Integer, true, "死亡加攻最多触发次数，默认 0，正整数。注意是“触发次数上限”，不是“攻击力上限”；达到后不再增加。"),
+                new ColumnDefinition("attacksAlliesAsHeal", ColumnType.Boolean, true, "是否允许攻击友方单位并把对友方的结算改为治疗（生命 + 当前攻击，受生命上限限流），默认 false。只允许攻击类卡启用；满血也允许白打并消耗行动。"),
+                new ColumnDefinition("leaveAfterDeploy", ColumnType.Boolean, true, "是否“部署即结算、结算即退场”（即时卡），默认 false。启用后该卡在场时间视为 0：不参与一次性减攻与入场标记，结算完 deployGainResource 后立即离场（原因为 Consumed，不触发补兵/死亡加攻/标记奖励）。Boss 卡种与刷怪卡卡种不得指向即时卡。"),
+                new ColumnDefinition("deployGainResource", ColumnType.Integer, true, "即时卡结算时立即获得的资源，默认 0，正整数。启用 leaveAfterDeploy 时必须为正整数，禁用时必须为 0。")
             }),
             new TableDefinition("Deck", new[]
             {

@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: ConfigManifest
   m_EditorClassIdentifier: 
   _sourceWorkbookPath: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceHash: 3c5e9ea3e96b75555bada25f019a09b0c810f658592d0fe1473c9c590f394dad
-  _compiledAtUtc: 2026-10-17T07:32:41.8914843Z
+  _sourceHash: ac0cf976257cbedbad069c8ba136a768a2dee09c052edba4849bf4e0b84f3592
+  _compiledAtUtc: 2026-10-17T12:20:43.4417394Z
   _generatedPaths:
   - Assets/Spotlight/Generated/Cards/ge1.asset
   - Assets/Spotlight/Generated/Cards/ge1.prefab
@@ -34,4 +34,20 @@ MonoBehaviour:
   - Assets/Spotlight/Generated/Cards/bossSpawner.prefab
   - Assets/Spotlight/Generated/Cards/kyoto_01.asset
   - Assets/Spotlight/Generated/Cards/kyoto_01.prefab
+  - Assets/Spotlight/Generated/Cards/kepler1.asset
+  - Assets/Spotlight/Generated/Cards/kepler1.prefab
+  - Assets/Spotlight/Generated/Cards/kepler2.asset
+  - Assets/Spotlight/Generated/Cards/kepler2.prefab
+  - Assets/Spotlight/Generated/Cards/landing1.asset
+  - Assets/Spotlight/Generated/Cards/landing1.prefab
+  - Assets/Spotlight/Generated/Cards/houyi1.asset
+  - Assets/Spotlight/Generated/Cards/houyi1.prefab
+  - Assets/Spotlight/Generated/Cards/collector1.asset
+  - Assets/Spotlight/Generated/Cards/collector1.prefab
+  - Assets/Spotlight/Generated/Cards/force1.asset
+  - Assets/Spotlight/Generated/Cards/force1.prefab
+  - Assets/Spotlight/Generated/Cards/flounder1.asset
+  - Assets/Spotlight/Generated/Cards/flounder1.prefab
+  - Assets/Spotlight/Generated/Cards/reserve1.asset
+  - Assets/Spotlight/Generated/Cards/reserve1.prefab
   - Assets/Spotlight/Generated/Resources/SpotlightConfig.asset
