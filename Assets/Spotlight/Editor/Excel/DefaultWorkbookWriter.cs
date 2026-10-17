@@ -45,21 +45,23 @@ namespace Spotlight.EditorTools
 
         /// <summary>Cards 表内容（首行为表头，其余为数据行，列以逗号分隔）。</summary>
         private const string CardsSheetText =
-            "id,name,category,viewKey,hp,atk,range,moveDistance,produce,upkeep,resourceComponent,teleportComponent,permitsAttackDeploy,deployHomeOnly,avoidAdjacentSameType,requiresUpgrade,upgradeFrom\n" +
-            "ge1,GE-1开采机,resource,default,1,0,0,0,1,0,true,false,false,false,false,false,\n" +
-            "ge12,GE-12开采机,resource,default,1,1,1,0,1,0,true,false,false,false,false,true,ge1\n" +
-            "blade1,尖刀1,attack,default,2,1,1,1,0,2,true,false,false,false,false,false,\n" +
-            "rabbit2,灵兔2,attack,default,1,1,2,1,0,2,true,false,false,false,false,false,\n" +
-            "odysseus1,奥德修斯-1,special,default,2,0,0,1,0,1,true,false,false,false,false,false,\n" +
-            "gate,星门,special,default,2,0,0,1,0,4,true,true,true,true,true,false,\n" +
-            "bossCombat,Boss敌兵,attack,default,3,1,1,1,0,0,false,false,false,false,false,false,\n" +
-            "bossSpawner,刷怪卡,special,default,1,0,0,0,0,0,false,false,false,false,false,false,";
+            "id,name,category,viewKey,hp,atk,range,moveDistance,produce,upkeep,resourceComponent,teleportComponent,permitsAttackDeploy,deployHomeOnly,avoidAdjacentSameType,requiresUpgrade,upgradeFrom,deploymentPenaltyComponent,deploymentAttackReduction\n" +
+            "ge1,GE-1开采机,resource,default,1,0,0,0,1,0,true,false,false,false,false,false,,false,0\n" +
+            "ge12,GE-12开采机,resource,default,1,1,1,0,1,0,true,false,false,false,false,true,ge1,false,0\n" +
+            "kyoto_01,京都壹号,resource,default,1,0,0,0,3,0,true,false,false,false,false,false,,true,2\n" +
+            "blade1,尖刀1,attack,default,2,1,1,1,0,2,true,false,false,false,false,false,,false,0\n" +
+            "rabbit2,灵兔2,attack,default,1,1,2,1,0,2,true,false,false,false,false,false,,false,0\n" +
+            "odysseus1,奥德修斯-1,special,default,2,0,0,1,0,1,true,false,false,false,false,false,,false,0\n" +
+            "gate,星门,special,default,2,0,0,1,0,4,true,true,true,true,true,false,,false,0\n" +
+            "bossCombat,Boss敌兵,attack,default,3,1,1,1,0,0,false,false,false,false,false,false,,false,0\n" +
+            "bossSpawner,刷怪卡,special,default,1,0,0,0,0,0,false,false,false,false,false,false,,false,0";
 
         /// <summary>Deck 表内容（首行为表头，其余为数据行，列以逗号分隔）。</summary>
         private const string DeckSheetText =
             "cardType,count\n" +
             "ge1,4\n" +
             "ge12,4\n" +
+            "kyoto_01,2\n" +
             "blade1,4\n" +
             "rabbit2,4\n" +
             "odysseus1,4\n" +

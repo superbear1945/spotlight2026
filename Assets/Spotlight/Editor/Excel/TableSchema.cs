@@ -94,7 +94,9 @@ namespace Spotlight.EditorTools
                 new ColumnDefinition("deployHomeOnly", ColumnType.Boolean, false),
                 new ColumnDefinition("avoidAdjacentSameType", ColumnType.Boolean, false),
                 new ColumnDefinition("requiresUpgrade", ColumnType.Boolean, false),
-                new ColumnDefinition("upgradeFrom", ColumnType.Text, false)
+                new ColumnDefinition("upgradeFrom", ColumnType.Text, false),
+                new ColumnDefinition("deploymentPenaltyComponent", ColumnType.Boolean, true, "是否启用一次性部署减攻组件，默认 false。启用后该单位在场期间可使用一次：使随后成功上场的一个同阵营攻击类单位攻击力降低 deploymentAttackReduction。未启用时必须填 false，且减攻量必须为 0。"),
+                new ColumnDefinition("deploymentAttackReduction", ColumnType.Integer, true, "一次性部署减攻量，默认 0，非负整数。启用组件时必须为正整数；禁用时必须为 0。减攻下限为 0，持续到目标单位离场；京都壹号默认为 2。")
             }),
             new TableDefinition("Deck", new[]
             {

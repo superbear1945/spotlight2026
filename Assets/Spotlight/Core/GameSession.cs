@@ -256,7 +256,7 @@ namespace Spotlight
                     var mover = _units.FirstOrDefault(u => u.Id == c.SubjectId);
                     if (!Available(mover)) return "该单位本回合不能行动";
                     var path = Paths(mover.Position);
-                    if (c.Target == mover.Position || !path.TryGetValue(c.Target, out var movePath) || movePath.Count > Type(mover).Combat.MoveDistance) return "不在合法移动范围";
+                    if (c.Target == mover.Position || !path.TryGetValue(c.Target, out var movePath) || movePath.Count > mover.MoveDistance) return "不在合法移动范围";
                     var origin = mover.Position;
                     mover.Position = c.Target;
                     mover.Acted = true;
@@ -275,8 +275,9 @@ namespace Spotlight
                     var target = Targets(attacker.Owner).FirstOrDefault(t => t.Id == c.TargetId);
                     if (target == null || !CanAttack(attacker, attacker.Position, target.Position)) return "目标不在合法攻击范围";
                     // 只扣目标生命：不存在反击、连锁或动画回调产生的补充伤害。
+                    // 伤害读取攻击者的当前攻击力（部署时从配置初始化、可被一次性减攻降低），不重读卡种配置。
                     attacker.Acted = true;
-                    var damage = Type(attacker).Combat.Attack;
+                    var damage = attacker.Attack;
                     if (target.Unit != null)
                     {
                         target.Unit.Hp = Math.Max(0, target.Unit.Hp - damage);
@@ -367,7 +368,7 @@ namespace Spotlight
                 actions.CanWithdraw = _activeSide == Side.Player && u != null && u.Owner == Side.Player;
                 if (Available(u))
                 {
-                    actions.Move = Paths(u.Position).Where(p => p.Value.Count > 0 && p.Value.Count <= Type(u).Combat.MoveDistance).Select(p => p.Key).ToArray();
+                    actions.Move = Paths(u.Position).Where(p => p.Value.Count > 0 && p.Value.Count <= u.MoveDistance).Select(p => p.Key).ToArray();
                     actions.Attack = Targets(_activeSide).Where(t => CanAttack(u, u.Position, t.Position)).Select(t => t.Position).ToArray();
                     // 资源卡既不发起互换也不作为互换目标，因此它选中时没有互换高亮，
                     // 点击相邻己方卡牌会落到“切换选中对象”这条分支上（与关闭 adjacentSwap 时的行为一致）。
@@ -400,24 +401,74 @@ namespace Spotlight
         /// <summary>
         /// 在指定格创建新单位。
         /// 输入：来源卡、目标格、firstSpawn（是否为 AI 兵位的首次成功部署）、兵位 ID（可空）。
-        /// 输出：新建的 UnitState。
-        /// 规则：目标格已有单位时先按“被覆盖升级”移除；新单位总是满血，不继承旧伤势。
+        /// 输出：已初始化场上属性、并已完成一次性减攻结算的新 UnitState。
+        /// 规则：目标格已有单位时先按“被覆盖升级”移除；新单位总是按配置满生命，不继承旧单位任何属性或能力状态；
         /// 玩家卡在本次成功部署时进入墓地，成为可再次抽到的循环卡；
         /// 场上单位只保存值副本，与墓地中这张卡互不影响。
         /// firstSpawn 是唯一豁免召唤失调的入口：死亡补兵必须遵守“刚上场不能行动”。
+        /// 所有创建路径（玩家部署、手动 Boss、AI 首次与补兵、刷怪卡战机）都只经过这里一次，
+        /// 因此一次性减攻只会在本函数内结算一次，调用方不可重复处理。
         /// </summary>
         UnitState Place(CardRecord card, Cell p, bool firstSpawn, string slotId)
         {
             var covered = _units.FirstOrDefault(u => u.Position == p);
             if (covered != null) Remove(covered, Removal.Upgrade);
-            var u = new UnitState { Id = ++_nextUnit, SourceCardId = card.Id, TypeId = card.TypeId, Owner = card.Owner, Position = p, Hp = _config.Cards[card.TypeId].Combat.Hp, Acted = !firstSpawn && Rules.SummoningSickness, UpkeepPaid = true, DeploymentOrder = ++_order, BossSlotId = slotId };
+            var type = _config.Cards[card.TypeId];
+            var combat = type.Combat;
+            var penalty = type.DeploymentPenalty;
+            var u = new UnitState
+            {
+                Id = ++_nextUnit,
+                SourceCardId = card.Id,
+                TypeId = card.TypeId,
+                Owner = card.Owner,
+                Position = p,
+                Hp = combat != null ? combat.Hp : 1,
+                MaxHp = combat != null ? combat.Hp : 1,
+                Attack = combat != null ? combat.Attack : 0,
+                Range = combat != null ? combat.Range : 0,
+                MoveDistance = combat != null ? combat.MoveDistance : 0,
+                DeploymentPenaltyPending = penalty != null,
+                DeploymentAttackReduction = penalty != null ? penalty.AttackReduction : 0,
+                Acted = !firstSpawn && Rules.SummoningSickness,
+                UpkeepPaid = true,
+                DeploymentOrder = ++_order,
+                BossSlotId = slotId
+            };
             _units.Add(u);
             u.DeployedRound = _round;
             // 玩家卡：成功部署即进入墓地，成为可再次抽到的循环卡；
             // 场上单位只保存值副本，与墓地中的这张卡互不影响。
             if (card.Owner == Side.Player) _grave.Add(card);
-            Emit("deploy", $"{SideName(card.Owner)}部署 {Type(u).Name} 至 {p}", u.Id);
+            Emit("deploy", $"{SideName(card.Owner)}部署 {type.Name} 至 {p}", u.Id);
+            ApplyDeploymentPenalty(u);
             return u;
+        }
+
+        /// <summary>
+        /// 结算新上场攻击类单位的一次性部署减攻。
+        /// 输入：刚刚入场（已加入 _units、已有 DeploymentOrder）的新单位；输出：无。
+        /// 规则：只有目标为攻击类卡时寻找来源；只考虑同阵营、仍然在场、更早入场且效果未消耗的来源，
+        /// 按 DeploymentOrder 升序取最早的一个；每次入场最多消耗一个来源，其余来源等后续目标。
+        /// 减攻量取来源单位的配置副本，结果下限为 0；原攻击为 0 时同样消耗一次效果，不保留“剩余减攻”。
+        /// 为什么只在 Place 中调用：玩家、手动 Boss、AI 首次/补兵与刷怪卡生成共用同一创建流程，
+        /// 放在调用方会让不同入口各自实现一遍，容易重复触发或漏触发。
+        /// </summary>
+        void ApplyDeploymentPenalty(UnitState target)
+        {
+            if (Type(target).Category != CardCategory.Attack) return;
+            var source = _units
+                .Where(u => u.Owner == target.Owner && u.Id != target.Id && u.DeploymentOrder < target.DeploymentOrder && u.DeploymentPenaltyPending)
+                .OrderBy(u => u.DeploymentOrder)
+                .FirstOrDefault();
+            if (source == null) return;
+            var reduction = source.DeploymentAttackReduction;
+            var before = target.Attack;
+            target.Attack = Math.Max(0, before - reduction);
+            source.DeploymentPenaltyPending = false;
+            Emit("deployment-penalty",
+                $"{Type(source).Name} 触发一次性部署减攻：{Type(target).Name} 攻击力 {before} → {target.Attack}（配置减攻 {reduction}）",
+                source.Id);
         }
 
         /// <summary>
@@ -533,7 +584,7 @@ namespace Spotlight
         bool MeetsSpawnerTrigger()
         {
             var playerUnits = _units.Where(u => u.Owner == Side.Player).ToArray();
-            var attack = playerUnits.Sum(u => (long)(Type(u).Combat?.Attack ?? 0));
+            var attack = playerUnits.Sum(u => (long)u.Attack);
             return attack >= Rules.BossSpawnerAttackThreshold && playerUnits.Count(u =>
                 Type(u).Category == CardCategory.Attack && PlayerColumn(u.Position) >= Rules.BossSpawnerCountFromColumn) >= Rules.BossSpawnerUnitThreshold;
         }
@@ -751,9 +802,10 @@ namespace Spotlight
         /// AI 的攻击优先级。
         /// 输入：行动单位与候选目标；输出：越小越优先。
         /// 规则：可一击摧毁的玩家家 → 可一击击杀的普通单位 → 玩家家 → 攻击卡 → 资源卡 → 特殊卡。
-        /// 已确认“特殊卡在非致死优先级中排在资源卡之后”。
+        /// 已确认“特殊卡在非致死优先级中排在资源卡之后”。当前攻击力取单位快照值，
+        /// 因此被一次性减攻降为 0 的单位不会再把目标判定为“可一击击杀”。
         /// </summary>
-        int AttackPriority(UnitState u, Target t) => t.Hp <= Type(u).Combat.Attack ? (t.Home != null ? 0 : 1) : 2 + TargetKind(t);
+        int AttackPriority(UnitState u, Target t) => t.Hp <= u.Attack ? (t.Home != null ? 0 : 1) : 2 + TargetKind(t);
 
         /// <summary>
         /// 执行一个完整的 Boss 回合。
@@ -778,7 +830,7 @@ namespace Spotlight
                     .ThenBy(t => t.Position.Col)
                     .FirstOrDefault();
                 if (target != null) { ExecuteCommand(new GameCommand(CommandKind.Attack, Side.Boss, u.Id, targetId: target.Id), true); continue; }
-                if (Type(u).Combat.Attack <= 0 || Type(u).Combat.Range <= 0 || Type(u).Combat.MoveDistance <= 0) { Emit("wait", $"{Type(u).Name} 待机", u.Id); continue; }
+                if (u.Attack <= 0 || u.Range <= 0 || u.MoveDistance <= 0) { Emit("wait", $"{Type(u).Name} 待机", u.Id); continue; }
                 var paths = Paths(u.Position);
                 var best = Targets(Side.Boss)
                     .SelectMany(t => paths.Where(p => p.Value.Count > 0 && CanAttack(u, p.Key, t.Position)).Select(p => new { Target = t, Path = p.Value }))
@@ -787,7 +839,7 @@ namespace Spotlight
                     .ThenBy(x => x.Target.Position.Row)
                     .ThenBy(x => x.Target.Position.Col)
                     .FirstOrDefault();
-                if (best != null) ExecuteCommand(new GameCommand(CommandKind.Move, Side.Boss, u.Id, best.Path[Math.Min(Type(u).Combat.MoveDistance, best.Path.Count) - 1]), true);
+                if (best != null) ExecuteCommand(new GameCommand(CommandKind.Move, Side.Boss, u.Id, best.Path[Math.Min(u.MoveDistance, best.Path.Count) - 1]), true);
                 else Emit("wait", $"{Type(u).Name} 无可通行路径，待机", u.Id);
             }
             CapturePresentationFrame();
@@ -801,8 +853,7 @@ namespace Spotlight
         /// </summary>
         bool CanAttack(UnitState u, Cell from, Cell to)
         {
-            var stats = Type(u).Combat;
-            if (stats.Attack <= 0 || from.Distance(to) < 1 || from.Distance(to) > stats.Range) return false;
+            if (u.Attack <= 0 || from.Distance(to) < 1 || from.Distance(to) > u.Range) return false;
             if (Rules.LineBlocking && (from.Row == to.Row || from.Col == to.Col))
             {
                 var dr = Math.Sign(to.Row - from.Row);

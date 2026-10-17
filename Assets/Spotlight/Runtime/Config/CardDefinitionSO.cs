@@ -37,6 +37,8 @@ namespace Spotlight
         [SerializeField] ResourceConfigSO _resource;
         /// <summary>传送组件配置；为 null 表示没有传送组件。</summary>
         [SerializeField] TeleportConfigSO _teleport;
+        /// <summary>一次性部署减攻组件配置；为 null 表示该卡种没有这项能力。</summary>
+        [SerializeField] DeploymentPenaltyConfigSO _deploymentPenalty;
         /// <summary>卡牌 Prefab，由外观模板生成；手牌与棋盘共用同一模板。</summary>
         [SerializeField] Card _prefab;
         /// <summary>源工作簿文件名，用于 Inspector 提示与校验报告。</summary>
@@ -66,6 +68,8 @@ namespace Spotlight
         public ResourceConfigSO Resource => _resource;
         /// <summary>传送配置 SO（可能为 null）。</summary>
         public TeleportConfigSO Teleport => _teleport;
+        /// <summary>一次性部署减攻配置 SO（可能为 null）。</summary>
+        public DeploymentPenaltyConfigSO DeploymentPenalty => _deploymentPenalty;
         /// <summary>卡牌 Prefab，UI 实例化手牌与棋盘单位时使用。</summary>
         public Card Prefab => _prefab;
         /// <inheritdoc />
@@ -99,7 +103,9 @@ namespace Spotlight
                 permitsAttackDeploy = _teleport != null && _teleport.PermitsAttackDeploy,
                 deployHomeOnly = _deployHomeOnly,
                 avoidAdjacentSameType = _avoidAdjacentSameType,
-                requiresUpgrade = _requiresUpgrade
+                requiresUpgrade = _requiresUpgrade,
+                deploymentPenaltyComponent = _deploymentPenalty != null,
+                deploymentAttackReduction = _deploymentPenalty != null ? _deploymentPenalty.AttackReduction : 0
             };
         }
 
@@ -110,15 +116,16 @@ namespace Spotlight
         public CardArchetype ToArchetype()
         {
             var row = ToCardRow();
-            return new CardArchetype(row, _combat, _resource, _teleport);
+            return new CardArchetype(row, _combat, _resource, _teleport, _deploymentPenalty);
         }
 
         /// <summary>
         /// 编译期写入全部字段。
         /// 输入：已校验的行数据、组件 SO 与 Prefab；输出：无。
         /// 说明：只允许编辑器编译器调用；运行时不修改已发布资产。
+        /// 一次性减攻配置为 null 时引用被清空，因此 SO 与 Excel 行始终一致（禁用即无能力）。
         /// </summary>
-        public void EditorApply(CardRow row, CombatConfigSO combat, ResourceConfigSO resource, TeleportConfigSO teleport, Card prefab, string sourceWorkbook, string sourceSheet)
+        public void EditorApply(CardRow row, CombatConfigSO combat, ResourceConfigSO resource, TeleportConfigSO teleport, DeploymentPenaltyConfigSO deploymentPenalty, Card prefab, string sourceWorkbook, string sourceSheet)
         {
             _id = row.id;
             _name = row.name.Trim();
@@ -131,6 +138,7 @@ namespace Spotlight
             _combat = combat;
             _resource = resource;
             _teleport = teleport;
+            _deploymentPenalty = deploymentPenalty;
             _prefab = prefab;
             _sourceWorkbook = sourceWorkbook;
             _sourceSheet = sourceSheet;

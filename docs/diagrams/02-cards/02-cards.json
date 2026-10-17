@@ -8,7 +8,7 @@
  "width": 1600,
  "height": 1720,
  "title": "Spotlight 卡牌类、组件与运行状态关系",
- "subtitle": "Card 只保存引用并绑定身份；三个能力组件持有只读配置 SO；战斗单位状态与卡牌记录分离",
+ "subtitle": "Card 只保存引用并绑定身份；四个能力组件持有只读配置 SO；战斗单位状态与卡牌记录分离",
  "containers": [
   {
    "id": "c-asset",
@@ -17,7 +17,7 @@
    "width": 1440,
    "height": 900,
    "label": "配置资产与显示层（编辑器生成）",
-   "subtitle": "CardDefinitionSO 与三个组件 SO 由 Excel 编译产物提供",
+   "subtitle": "CardDefinitionSO 与四个组件 SO 由 Excel 编译产物提供",
    "preserve_case": true
   },
   {
@@ -49,9 +49,9 @@
   {
    "id": "n-combat-cfg",
    "kind": "double_rect",
-   "x": 140,
+   "x": 130,
    "y": 360,
-   "width": 240,
+   "width": 260,
    "height": 110,
    "label": "CombatConfigSO",
    "type_label": "只读配置",
@@ -63,9 +63,9 @@
   {
    "id": "n-resource-cfg",
    "kind": "double_rect",
-   "x": 560,
+   "x": 470,
    "y": 360,
-   "width": 240,
+   "width": 260,
    "height": 110,
    "label": "ResourceConfigSO",
    "type_label": "只读配置",
@@ -77,9 +77,9 @@
   {
    "id": "n-teleport-cfg",
    "kind": "double_rect",
-   "x": 980,
+   "x": 810,
    "y": 360,
-   "width": 240,
+   "width": 260,
    "height": 110,
    "label": "TeleportConfigSO",
    "type_label": "只读配置",
@@ -91,9 +91,9 @@
   {
    "id": "n-combat-comp",
    "kind": "double_rect",
-   "x": 140,
+   "x": 130,
    "y": 600,
-   "width": 240,
+   "width": 260,
    "height": 110,
    "label": "CombatComponent",
    "type_label": "MonoBehaviour",
@@ -105,9 +105,9 @@
   {
    "id": "n-resource-comp",
    "kind": "double_rect",
-   "x": 560,
+   "x": 470,
    "y": 600,
-   "width": 240,
+   "width": 260,
    "height": 110,
    "label": "ResourceComponent",
    "type_label": "MonoBehaviour",
@@ -119,13 +119,41 @@
   {
    "id": "n-teleport-comp",
    "kind": "double_rect",
-   "x": 980,
+   "x": 810,
    "y": 600,
-   "width": 240,
+   "width": 260,
    "height": 110,
    "label": "TeleportComponent",
    "type_label": "MonoBehaviour",
    "sublabel": "四邻部署扩展开关",
+   "fill": "#faf5ff",
+   "stroke": "#7c3aed",
+   "flat": true
+  },
+  {
+   "id": "n-penalty-cfg",
+   "kind": "double_rect",
+   "x": 1150,
+   "y": 360,
+   "width": 260,
+   "height": 110,
+   "label": "DeploymentPenaltyConfigSO",
+   "type_label": "只读配置",
+   "sublabel": "AttackReduction",
+   "fill": "#eff6ff",
+   "stroke": "#2563eb",
+   "flat": true
+  },
+  {
+   "id": "n-penalty-comp",
+   "kind": "double_rect",
+   "x": 1150,
+   "y": 600,
+   "width": 260,
+   "height": 110,
+   "label": "DeploymentPenaltyComponent",
+   "type_label": "MonoBehaviour",
+   "sublabel": "待触发／已消耗 · 减攻量",
    "fill": "#faf5ff",
    "stroke": "#7c3aed",
    "flat": true
@@ -139,7 +167,7 @@
    "height": 110,
    "label": "Card",
    "type_label": "MonoBehaviour · 显示载体",
-   "sublabel": "_definition · 三个组件 · _record（手牌）／_unit（棋盘）",
+   "sublabel": "_definition · 四个组件 · _record／_unit",
    "fill": "#ecfdf5",
    "stroke": "#10b981",
    "flat": true
@@ -153,7 +181,7 @@
    "height": 120,
    "label": "UnitState",
    "type_label": "棋盘战斗单位",
-   "sublabel": "Id · SourceCardId · TypeId · Owner · Position · Hp",
+   "sublabel": "Id · TypeId · Owner · Position · Hp · Attack · Range",
    "fill": "#f0fdfa",
    "stroke": "#0d9488",
    "flat": true
@@ -230,6 +258,18 @@
    "label": "引用"
   },
   {
+   "id": "e-def-penalty",
+   "source": "n-definition",
+   "target": "n-penalty-cfg",
+   "source_port": "right",
+   "target_port": "top",
+   "flow": "control",
+   "label": "引用",
+   "corridor_y": [
+    330
+   ]
+  },
+  {
    "id": "e-combat-comp-cfg",
    "source": "n-combat-comp",
    "target": "n-combat-cfg",
@@ -251,6 +291,15 @@
    "id": "e-teleport-comp-cfg",
    "source": "n-teleport-comp",
    "target": "n-teleport-cfg",
+   "source_port": "top",
+   "target_port": "bottom",
+   "flow": "control",
+   "label": "持有配置"
+  },
+  {
+   "id": "e-penalty-comp-cfg",
+   "source": "n-penalty-comp",
+   "target": "n-penalty-cfg",
    "source_port": "top",
    "target_port": "bottom",
    "flow": "control",
@@ -287,6 +336,15 @@
    "id": "e-card-resource",
    "source": "n-card",
    "target": "n-resource-comp",
+   "source_port": "top",
+   "target_port": "bottom",
+   "flow": "control",
+   "label": "组件引用"
+  },
+  {
+   "id": "e-card-penalty",
+   "source": "n-card",
+   "target": "n-penalty-comp",
    "source_port": "top",
    "target_port": "bottom",
    "flow": "control",

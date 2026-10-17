@@ -180,8 +180,8 @@ namespace Spotlight.Tests
             var first = ConfigCompiler.Compile(path, false);
             Assert.That(first.Success, Is.True, string.Join("\n", first.Issues));
             Assert.That(first.Document, Is.Not.Null);
-            Assert.That(first.Document.cards.Length, Is.EqualTo(8));
-            Assert.That(first.Document.deck.Sum(e => e.count), Is.EqualTo(24));
+            Assert.That(first.Document.cards.Length, Is.EqualTo(9));
+            Assert.That(first.Document.deck.Sum(e => e.count), Is.EqualTo(26));
             Assert.That(first.Document.rules[0].bossBombInterval, Is.EqualTo(10));
             Assert.That(first.Document.rules[0].bossBombDamage, Is.EqualTo(3));
             Assert.That(first.Document.rules[0].bossBombColumn, Is.EqualTo(5));

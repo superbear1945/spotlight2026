@@ -338,6 +338,21 @@ namespace Spotlight
             fields.Add(ConfigFieldBuilder.Number("移动距离", () => card.moveDistance, value => { card.moveDistance = value; Changed(); }, 0));
             box.Add(ConfigFieldBuilder.Grid(fields.ToArray()));
 
+            // 一次性部署减攻：与 Excel 的 deploymentPenaltyComponent / deploymentAttackReduction 一一对应。
+            // 两个字段必须同时生效：启用必须有正整数减攻量，禁用则减攻量归零，否则校验会阻止应用。
+            box.Add(ConfigFieldBuilder.Toggle("在场期间一次：减攻随后上场的一个己方攻击类单位", () => card.deploymentPenaltyComponent, value =>
+            {
+                card.deploymentPenaltyComponent = value;
+                if (!value) card.deploymentAttackReduction = 0;
+                else if (card.deploymentAttackReduction < 1) card.deploymentAttackReduction = 1;
+                ChangedStructure();
+            }));
+            if (card.deploymentPenaltyComponent)
+            {
+                box.Add(ConfigFieldBuilder.Grid(ConfigFieldBuilder.Number("一次性减攻量（默认 2）", () => card.deploymentAttackReduction, value => { card.deploymentAttackReduction = value; Changed(); }, 1)));
+                box.Add(ConfigFieldBuilder.Note("该单位成功上场后拥有一次未消耗效果：随后同阵营攻击类单位成功上场时按部署顺序取最早的来源，攻击力降低该值，最低为 0，持续到目标单位离场。多个来源依次触发，每个目标最多承受一次；来源提前离场则未触发效果消失。"));
+            }
+
             if (card.category == "special")
             {
                 box.Add(ConfigFieldBuilder.Toggle("仅可部署在己方前两列", () => card.deployHomeOnly, value => { card.deployHomeOnly = value; Changed(); }));

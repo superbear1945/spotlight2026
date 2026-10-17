@@ -68,6 +68,8 @@ namespace Spotlight
     /// 值副本（ID/卡种/阵营），不持有 CardRecord 引用，因此场上的单位与抽牌堆、手牌、
     /// 墓地中的卡牌互不影响，卡牌总数不会因单位存活而增加。
     /// 覆盖升级只移除被覆盖的单位，本次部署的新单位 ID 必须与原单位不同。
+    /// 属性职责：攻击/射程/移动距离/生命上限与一次性减攻状态都是**场上属性**，
+    /// 部署时从只读卡种配置初始化，之后只由规则代码修改；不能被卡牌记录、SO 或表现层写回。
     /// </summary>
     public sealed class UnitState
     {
@@ -83,6 +85,18 @@ namespace Spotlight
         public Cell Position { get; internal set; }
         /// <summary>当前生命；在场单位跨回合保留伤势。</summary>
         public int Hp { get; internal set; }
+        /// <summary>生命上限：部署时从卡种配置复制；本次不新增改变上限的玩法。</summary>
+        public int MaxHp { get; internal set; }
+        /// <summary>当前攻击力：部署时从卡种配置复制，一次性部署减攻后持久保存，不在场上读配置。</summary>
+        public int Attack { get; internal set; }
+        /// <summary>当前攻击距离（曼哈顿）：部署时从卡种配置复制，用作一切在场射程判断。</summary>
+        public int Range { get; internal set; }
+        /// <summary>当前移动距离：部署时从卡种配置复制，用作一切在场移动范围判断。</summary>
+        public int MoveDistance { get; internal set; }
+        /// <summary>一次性部署减攻是否尚未触发：具有该能力的单位上场时为 true，触发一次后永久为 false。</summary>
+        public bool DeploymentPenaltyPending { get; internal set; }
+        /// <summary>该单位的一次性减攻量副本：没有该能力时为 0，来自卡种配置而非代码常量。</summary>
+        public int DeploymentAttackReduction { get; internal set; }
         /// <summary>本回合是否已经行动（移动、攻击或互换其一）。</summary>
         public bool Acted { get; internal set; }
         /// <summary>本回合维持费是否已支付；未支付时不能行动。</summary>

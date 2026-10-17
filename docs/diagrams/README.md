@@ -31,7 +31,7 @@ docs/diagrams/
 | 目录 | 主题 | 渲染模式 |
 |---|---|---|
 | [`01-modules`](01-modules/) | 模块架构与程序集依赖（Core → Runtime → Editor，Tests 依赖三者，Plugins 编辑器/运行时分离） | `architecture` |
-| [`02-cards`](02-cards/) | `Card`、三个能力组件、三个组件 SO、`CardDefinitionSO` 与 `UnitState` / `CardRecord` / `HomeState` / `GameSession` 的关系 | `er-diagram` |
+| [`02-cards`](02-cards/) | `Card`、四个能力组件（战斗／资源／传送／一次性部署减攻）、四个组件 SO、`CardDefinitionSO` 与 `UnitState` / `CardRecord` / `HomeState` / `GameSession` 的关系 | `er-diagram` |
 | [`03-dataflow`](03-dataflow/) | Excel 编译 → 生成资产（SO + Prefab）→ 配置加载 → GameSession → 快照 → UI，含调试草稿 / JSON 导入导出 / “应用并重开”分支 | `data-flow` |
 | [`04-turnflow`](04-turnflow/) | 玩家回合（恢复行动 → 资源结算 → 维持费 → 抽牌 → 操作）→ 超限弃牌 → Boss 回合（恢复行动 → 补兵 → 按部署顺序行动 → 自动结束）→ 胜负检查 | `flowchart` |
 | [`05-card-lifecycle`](05-card-lifecycle/) | 玩家卡生命周期：成功部署即入墓地 → 抽牌堆耗尽时洗回 → 同一张卡可反复部署出多个独立单位；阵亡/覆盖只移除单位、不重复回收；Boss 使用独立回收区 | `flowchart` |
