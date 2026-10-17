@@ -1,11 +1,12 @@
-# PR 测试流水线：在 GitHub Action 中运行 Unity EditMode 与 PlayMode 测试。
+# PR 测试流水线 + 夜间打包：在 GitHub Action 中运行 Unity EditMode 与 PlayMode 测试，
+# 测试全绿后再把 Windows 桌面包发布到 Release（见文件末尾的 build-windows job）。
 # 为什么需要：AGENTS.md 要求每个功能都留下可在 PR 上自动执行的测试；
 # 规则内核与配置编译器不依赖场景，用 EditMode 即可覆盖；
 # 而棋盘渲染、点击落点与 DOTween 动效只有在真实帧循环（PlayMode）里才能验证，
 # 因此两种模式都要在流水线上跑，避免“日志说移动了、界面却没动”这类问题再次漏过。
 name: Unity Tests
 
-# 只在 PR 上跑，不在 main 的 push 上重复跑。
+# PR 测试只在 PR 上跑（另有手动兜底与夜间定时打包，见下面 on: 块），不在 main 的 push 上重复跑。
 # 为什么可以这样：分支规则集「main」已同时开启 required_status_checks（strict=true）、
 # pull_request（必须走 PR）、non_fast_forward（禁 force push）、deletion（禁删分支），
 # 且 bypass_actors 为空、current_user_can_bypass=never —— main 上不可能出现绕过 PR 的内容。
@@ -16,14 +17,28 @@ name: Unity Tests
 on:
   pull_request:
   workflow_dispatch:
+  # 夜间打包（跑完测试后由 build-windows 执行）：UTC 18:00 = 北京时间次日 02:00。
+  # 为什么用 schedule 而不是 push：main 被规则集锁死、PR 阶段测的就是合并后的 commit，
+  # 定时运行同样落在 main 的一个明确 commit 上，不需要任何 push 事件触发；
+  # 而 scripts/check-ci-config.sh 明确禁止 push 触发（只会重复消耗 Unity 授权席位）。
+  # 两个 GitHub 硬限制：schedule 只在默认分支（main）上生效；cron 一律按 UTC，
+  # 且公共仓库 60 天无活动会被自动停用定时任务 —— 所以 workflow_dispatch 必须保留兜底。
+  schedule:
+    - cron: '0 18 * * *'
 
-# 同一 ref 只保留一次运行：反复往同一个 PR 推修复时避免多个运行叠在一起（实测同时跑了 3 个），
-# 白白消耗 CI 时间，也让“哪次失败对应哪个 commit”变得难查。
+# 全仓库共用一个组名：Unity 个人版授权是账号级“席位”，同一时刻只能有一个 Unity 进程。
+# 为什么不再按 ref 分组（原来写的是 unity-tests-${{ github.ref }}）：夜间打包（schedule）
+# 跑在 refs/heads/main 上，PR 测试跑在 refs/pull/N/merge 上，两者属于不同的组，会在
+# 同一秒各自执行 --activate-all 抢同一个席位，输的一方拿到 “0 free entitlements” 而整轮假失败。
+# 改成固定组名后，仓库内任意两个 Unity 运行都会自动排队。
+# 代价（必须清楚）：GitHub 的并发组只留 1 个 running + 1 个 pending，新排队的运行会
+# *取消掉更早的那个排队中的运行*——于是某个 PR 可能看到检查直接变成 cancelled，重跑即可。
+# 这与原来“同一 ref 只保留一次运行”的语义一致，只是范围扩到了整个仓库。
 # 刻意不设 cancel-in-progress：个人版授权是“席位”制，中途取消正在运行的 job 可能来不及归还席位
 # （CLI 只在 EXIT trap 能执行完时归还），泄漏的席位会让该账号之后所有运行报 no available seats。
-# 默认行为只会取消“排队中”的旧运行，正在执行的那次不受影响。
 concurrency:
-  group: unity-tests-${{ github.ref }}
+  # 必须是固定名（不含任何变量）：scripts/check-ci-config.sh 会拦住按 ref 分组的写法。
+  group: unity-seat
 
 # 为什么需要显式声明权限：仓库默认的 Workflow permissions 是「只读」，
 # 而 unity-test-runner 会用 githubToken 创建 check run 来汇报测试结果（对应下面的 checkName），
@@ -129,3 +144,117 @@ jobs:
         with:
           name: test-results-${{ matrix.testMode }}
           path: test-results-${{ matrix.testMode }}
+
+  # ---------------------------------------------------------------------------
+  # 夜间打包：把 Windows 桌面版发布到 Release，供他人直接下载。
+  # 为什么和测试放在同一个 workflow，而不是单独开一个文件：
+  #   1) “测试全通过才打包”用 needs + result 判定最可靠：定时运行没有任何关联的 PR
+  #      check 可查（那是 push/PR 语义），只有同一个 run 内串行，才能保证被打包的 commit
+  #      就是刚刚被 EditMode + PlayMode 验过的那个 commit；
+  #   2) scripts/check-ci-config.sh 要求每个 workflow 都带 pull_request 触发
+  #      （缺了等于“PR 阶段不会跑这个文件”），而打包绝不该在 PR 上跑；
+  #   3) 不新增文件就不会碰守卫脚本对 push 的禁令，也不会影响规则集里的三条必需检查名。
+  # 已知代价：本 job 与 PR 测试共用同一个 Unity 个人版席位（账号级“席位”制），
+  # 两者同时启动会在 --activate-all 上抢席位，输的一方报 no available seats 假失败。
+  # 已通过顶层的 concurrency.group: unity-seat 把整个仓库的 Unity 运行串成一列来避免重叠；
+  # 彻底解决（不排队、真并发）仍需浮动授权（unityLicensingServer）或 self-hosted runner。
+  # ---------------------------------------------------------------------------
+  build-windows:
+    # ⚠️ job id 是 scripts/check-ci-config.sh 按字符串校验的对象（它检查 needs 与成功判定），
+    # 改名必须同步改脚本，否则守卫会报“缺少 build-windows job”。
+    # name 刻意不复用测试矩阵的 job 名，避免与规则集里的必需检查名混淆。
+    name: 打包 Windows 夜间版（Unity 2022.3.62f3）
+    needs: unity-tests
+    # 两道门：测试矩阵（EditMode + PlayMode）全部成功，且必须是定时或手动触发。
+    # 不使用 always()：needs 失败时本 job 应直接跳过，而不是拿着红着的代码去发布。
+    # 这一行必须写成单行——守卫脚本按单行片段匹配，写成折叠式会报错（故意的）。
+    if: needs.unity-tests.result == 'success' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    # 只有本 job 需要写权限（创建 Release、上传资产）；workflow 级仍是只读，
+    # 避免把写权限扩散给测试 job。仓库默认 Workflow permissions 是「只读」，
+    # 不声明会得到 403 Resource not accessible by integration。
+    permissions:
+      contents: write
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          # 必须拉真实 LFS 内容：Spotlight.xlsx / SimHei.ttf / SimHei TextCore.asset 都是 LFS 指针，
+          # 而 ConfigBuildProcessor 会比对工作簿 SHA256 与编译清单，拿到指针文件必然报
+          # “配置门禁阻止构建”（看起来像构建脚本坏了，其实是 checkout 少了 LFS）。
+          lfs: true
+          # 完整历史：game-ci 需要 git 信息来定位版本，也便于事后确认“这次打的是哪个提交”。
+          fetch-depth: 0
+
+      - name: 缓存 Library
+        # key 与测试矩阵里的完全一致（矩阵只有一个 unityVersion），因此本 job 能直接复用
+        # 同一提交下测试刚写好的 Library，省掉一次全量导入。
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-2022.3.62f3-${{ hashFiles('Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: |
+            Library-2022.3.62f3-
+
+      - name: 打包 Windows 64 位版本
+        # 与测试固定同一版本，理由见测试步骤上的注释（@v4 会跟随上游改变授权实现）。
+        uses: game-ci/unity-builder@v4.4.0
+        env:
+          # 个人版授权按邮箱+密码在当前机器上认领席位（不打 .ulf），与测试同源。
+          # Windows 目标还会额外校验这两个变量存在，缺失时直接拒绝构建。
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          # 同测试步骤：game-ci CLI 解析版本会请求 GitHub Releases API，
+          # 匿名请求受共享 runner IP 的 60 次/小时限额约束，会被打成 403。
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          unityVersion: '2022.3.62f3'
+          targetPlatform: StandaloneWindows64
+          # 用 builder 内置构建脚本：场景取自 EditorBuildSettings（与 BuildEntry 同一份），
+          # 产物固定落在 build/StandaloneWindows64/。没有写 buildMethod 指向
+          # BuildEntry.BuildWindows，是因为后者的输出目录是工程根下的 Build/，会让 artifact
+          # 路径与 builder 的约定分叉；两条路径都经过同一个 ConfigBuildProcessor 门禁，
+          # 配置校验一步都不会跳过。
+          # 项目是 Mono 后端（ProjectSettings.scriptingBackend 为空），ubuntu runner 可交叉编译
+          # Windows 包；若将来改成 IL2CPP，这里必须换成 Windows 镜像/runner。
+          versioning: None
+          # 关掉自动版本号的原因：仓库没有任何 tag，Semantic 策略只能推出 0.0.<提交数>，
+          # 且会在构建期改写 PlayerSettings.bundleVersion；一旦被 Unity 落盘就会让
+          # builder 判定为 dirty build 而失败。版本信息改由 Release 说明里的 commit 承担。
+
+      - name: 压缩构建产物
+        # Release 资产必须是单个文件：exe 只有和同目录的 _Data、UnityPlayer.dll、
+        # MonoBleedingEdge 放在一起才可运行。
+        run: |
+          ls -la build/StandaloneWindows64
+          cd build/StandaloneWindows64
+          zip -r "$GITHUB_WORKSPACE/spotlight2026-windows-nightly.zip" .
+
+      - name: 上传构建产物
+        # 即使后面发布 Release 失败（例如 token 权限被收紧），也能在 Actions 页面手动取包排查。
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotlight2026-windows-nightly
+          path: spotlight2026-windows-nightly.zip
+
+      - name: 发布到 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "自动打包产物，来自提交 \`${GITHUB_SHA}\`（${{ github.event_name }} 触发）。"
+            echo
+            echo "- 前置条件：本次运行的 EditMode + PlayMode 测试全部通过后才开始打包"
+            echo "- 构建记录：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "- 使用方式：解压 spotlight2026-windows-nightly.zip 后运行 2026spotligt.exe"
+            echo "- 正式包（BuildOptions.None），不含调试配置面板"
+          } > release-notes.md
+          # 固定用同一个 nightly 标签 + --clobber 覆盖资产：外部只需要一个不变的下载链接，
+          # 也避免每天新增一个 tag 把 Release 列表撑爆。--prerelease 保证它不会被标成 latest。
+          if gh release view nightly >/dev/null 2>&1; then
+            gh release upload nightly spotlight2026-windows-nightly.zip --clobber
+            gh release edit nightly --notes-file release-notes.md
+          else
+            gh release create nightly spotlight2026-windows-nightly.zip \
+              --prerelease --title "夜间构建（nightly）" --notes-file release-notes.md
+          fi
