@@ -75,9 +75,9 @@ namespace Spotlight.Tests
             Assert.That(draft.Validate().Any(e => e.Contains("bossSpawnerAttackThreshold")), Is.True);
         }
 
-        /// <summary>默认生成器写出六个中文表头批注与生命批注，不增加数据行，且新工作簿可直接通过正式编译校验。</summary>
+        /// <summary>默认生成器写出全部中文表头批注与生命批注，不增加数据行，且新工作簿可直接通过正式编译校验。</summary>
         [Test]
-        public void DefaultWorkbookHasSevenNativeNotesAndCompiles()
+        public void DefaultWorkbookHasNativeNotesAndCompiles()
         {
             var path = Path.Combine(Path.GetTempPath(), "spotlight-spawner-" + Guid.NewGuid().ToString("N") + ".xlsx");
             try
@@ -101,7 +101,8 @@ namespace Spotlight.Tests
                             count += notes.Length;
                             Assert.That(notes.All(n => n.Value.Contains("默认")), Is.True);
                         }
-                    Assert.That(count, Is.EqualTo(7));
+                    // 6 条 Rules 刷怪卡字段说明 + 2 条 Cards 一次性部署减攻字段说明 + 1 条刷怪卡生命说明。
+                    Assert.That(count, Is.EqualTo(9));
                     Assert.That(zip.GetEntry("xl/worksheets/_rels/sheet3.xml.rels"), Is.Not.Null);
                     Assert.That(zip.GetEntry("xl/drawings/notes3.vml"), Is.Not.Null);
                 }
