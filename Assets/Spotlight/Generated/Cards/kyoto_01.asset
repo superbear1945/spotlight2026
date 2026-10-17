@@ -36,10 +36,17 @@ MonoBehaviour:
   _upgradeFrom: 
   _deployHomeOnly: 0
   _avoidAdjacentSameType: 0
+  _deployCost: 0
+  _deployRequireAdjacentCategory: 
+  _deployRequireAdjacentCount: 0
+  _attacksAlliesAsHeal: 0
   _combat: {fileID: -1204591627541096566}
   _resource: {fileID: 7259732543708987672}
   _teleport: {fileID: 0}
   _deploymentPenalty: {fileID: 1862716182059364987}
+  _markOnEnter: {fileID: 0}
+  _deathGrowth: {fileID: 0}
+  _instant: {fileID: 0}
   _prefab: {fileID: 8625650688822247178, guid: cb2f220942b572f4393440fd8b31e98c, type: 3}
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
   _sourceSheet: Cards

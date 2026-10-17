@@ -31,6 +31,14 @@ namespace Spotlight
         [SerializeField] bool _deployHomeOnly;
         /// <summary>是否禁止部署在任何同类单位的四邻。</summary>
         [SerializeField] bool _avoidAdjacentSameType;
+        /// <summary>成功部署的一次性资源消耗；0 表示免费，资源不足时该卡不可部署。</summary>
+        [SerializeField] int _deployCost;
+        /// <summary>部署时四邻必须存在的单位分类文本（resource/attack/special）；空表示没有邻域要求。</summary>
+        [SerializeField] string _deployRequireAdjacentCategory;
+        /// <summary>四邻中该分类单位的最小数量；0 表示没有邻域要求。</summary>
+        [SerializeField] int _deployRequireAdjacentCount;
+        /// <summary>是否允许攻击友方单位并把结算改为治疗（仅攻击卡可启用）。</summary>
+        [SerializeField] bool _attacksAlliesAsHeal;
         /// <summary>战斗组件配置；为 null 表示该卡种没有战斗组件。</summary>
         [SerializeField] CombatConfigSO _combat;
         /// <summary>资源组件配置；为 null 表示没有资源组件。</summary>
@@ -39,6 +47,12 @@ namespace Spotlight
         [SerializeField] TeleportConfigSO _teleport;
         /// <summary>一次性部署减攻组件配置；为 null 表示该卡种没有这项能力。</summary>
         [SerializeField] DeploymentPenaltyConfigSO _deploymentPenalty;
+        /// <summary>入场标记配置；为 null 表示该卡种没有这项能力。</summary>
+        [SerializeField] MarkOnEnterConfigSO _markOnEnter;
+        /// <summary>死亡加攻配置；为 null 表示该卡种没有这项能力。</summary>
+        [SerializeField] DeathGrowthConfigSO _deathGrowth;
+        /// <summary>即时卡效果配置；为 null 表示该卡部署后留在场上。</summary>
+        [SerializeField] InstantEffectConfigSO _instant;
         /// <summary>卡牌 Prefab，由外观模板生成；手牌与棋盘共用同一模板。</summary>
         [SerializeField] Card _prefab;
         /// <summary>源工作簿文件名，用于 Inspector 提示与校验报告。</summary>
@@ -62,6 +76,14 @@ namespace Spotlight
         public bool DeployHomeOnly => _deployHomeOnly;
         /// <summary>是否禁止四邻部署同卡种。</summary>
         public bool AvoidAdjacentSameType => _avoidAdjacentSameType;
+        /// <summary>成功部署的一次性资源消耗；0 表示免费。</summary>
+        public int DeployCost => _deployCost;
+        /// <summary>部署时四邻必须存在的单位分类文本；空表示无要求。</summary>
+        public string DeployRequireAdjacentCategory => _deployRequireAdjacentCategory;
+        /// <summary>四邻中该分类单位的最小数量；0 表示无要求。</summary>
+        public int DeployRequireAdjacentCount => _deployRequireAdjacentCount;
+        /// <summary>是否允许攻击友方并改为治疗。</summary>
+        public bool AttacksAlliesAsHeal => _attacksAlliesAsHeal;
         /// <summary>战斗配置 SO（可能为 null）。</summary>
         public CombatConfigSO Combat => _combat;
         /// <summary>资源配置 SO（可能为 null）。</summary>
@@ -70,6 +92,12 @@ namespace Spotlight
         public TeleportConfigSO Teleport => _teleport;
         /// <summary>一次性部署减攻配置 SO（可能为 null）。</summary>
         public DeploymentPenaltyConfigSO DeploymentPenalty => _deploymentPenalty;
+        /// <summary>入场标记配置 SO（可能为 null）。</summary>
+        public MarkOnEnterConfigSO MarkOnEnter => _markOnEnter;
+        /// <summary>死亡加攻配置 SO（可能为 null）。</summary>
+        public DeathGrowthConfigSO DeathGrowth => _deathGrowth;
+        /// <summary>即时卡效果配置 SO（可能为 null）。</summary>
+        public InstantEffectConfigSO Instant => _instant;
         /// <summary>卡牌 Prefab，UI 实例化手牌与棋盘单位时使用。</summary>
         public Card Prefab => _prefab;
         /// <inheritdoc />
@@ -105,7 +133,19 @@ namespace Spotlight
                 avoidAdjacentSameType = _avoidAdjacentSameType,
                 requiresUpgrade = _requiresUpgrade,
                 deploymentPenaltyComponent = _deploymentPenalty != null,
-                deploymentAttackReduction = _deploymentPenalty != null ? _deploymentPenalty.AttackReduction : 0
+                deploymentAttackReduction = _deploymentPenalty != null ? _deploymentPenalty.AttackReduction : 0,
+                deployCost = _deployCost,
+                deployRequireAdjacentCategory = _deployRequireAdjacentCategory,
+                deployRequireAdjacentCount = _deployRequireAdjacentCount,
+                markOnEnterComponent = _markOnEnter != null,
+                markOnEnterRadius = _markOnEnter != null ? _markOnEnter.Radius : 0,
+                markRewardResource = _markOnEnter != null ? _markOnEnter.Reward : 0,
+                deathGrowthComponent = _deathGrowth != null,
+                deathGrowthPerKill = _deathGrowth != null ? _deathGrowth.PerKill : 0,
+                deathGrowthLimit = _deathGrowth != null ? _deathGrowth.Limit : 0,
+                leaveAfterDeploy = _instant != null,
+                deployGainResource = _instant != null ? _instant.GainResource : 0,
+                attacksAlliesAsHeal = _attacksAlliesAsHeal
             };
         }
 
@@ -116,7 +156,7 @@ namespace Spotlight
         public CardArchetype ToArchetype()
         {
             var row = ToCardRow();
-            return new CardArchetype(row, _combat, _resource, _teleport, _deploymentPenalty);
+            return new CardArchetype(row, _combat, _resource, _teleport, _deploymentPenalty, _markOnEnter, _deathGrowth, _instant);
         }
 
         /// <summary>
@@ -125,7 +165,7 @@ namespace Spotlight
         /// 说明：只允许编辑器编译器调用；运行时不修改已发布资产。
         /// 一次性减攻配置为 null 时引用被清空，因此 SO 与 Excel 行始终一致（禁用即无能力）。
         /// </summary>
-        public void EditorApply(CardRow row, CombatConfigSO combat, ResourceConfigSO resource, TeleportConfigSO teleport, DeploymentPenaltyConfigSO deploymentPenalty, Card prefab, string sourceWorkbook, string sourceSheet)
+        public void EditorApply(CardRow row, CombatConfigSO combat, ResourceConfigSO resource, TeleportConfigSO teleport, DeploymentPenaltyConfigSO deploymentPenalty, Card prefab, string sourceWorkbook, string sourceSheet, MarkOnEnterConfigSO markOnEnter = null, DeathGrowthConfigSO deathGrowth = null, InstantEffectConfigSO instant = null)
         {
             _id = row.id;
             _name = row.name.Trim();
@@ -135,10 +175,17 @@ namespace Spotlight
             _upgradeFrom = row.upgradeFrom;
             _deployHomeOnly = row.deployHomeOnly;
             _avoidAdjacentSameType = row.avoidAdjacentSameType;
+            _deployCost = row.deployCost;
+            _deployRequireAdjacentCategory = row.deployRequireAdjacentCategory;
+            _deployRequireAdjacentCount = row.deployRequireAdjacentCount;
+            _attacksAlliesAsHeal = row.attacksAlliesAsHeal;
             _combat = combat;
             _resource = resource;
             _teleport = teleport;
             _deploymentPenalty = deploymentPenalty;
+            _markOnEnter = markOnEnter;
+            _deathGrowth = deathGrowth;
+            _instant = instant;
             _prefab = prefab;
             _sourceWorkbook = sourceWorkbook;
             _sourceSheet = sourceSheet;

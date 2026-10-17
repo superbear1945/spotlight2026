@@ -155,6 +155,34 @@ namespace Spotlight.EditorTools
             }
             else RemoveSubAsset(assetPath, penalty);
 
+            // 入场标记是纯规则能力：只生成子资产，不产生 MonoBehaviour 组件，
+            // 视图通过 UnitState.MarkedBy 与卡种定义读取，因此 Prefab 组合不受影响。
+            var mark = EnsureSubAsset<MarkOnEnterConfigSO>(assetPath, definition, row.id + "_MarkOnEnter");
+            if (row.markOnEnterComponent)
+            {
+                mark.EditorApply(row.markOnEnterRadius, row.markRewardResource);
+                EditorUtility.SetDirty(mark);
+            }
+            else RemoveSubAsset(assetPath, mark);
+
+            // 死亡加攻同样只生成子资产（纯规则能力，无 MonoBehaviour 组件）。
+            var growth = EnsureSubAsset<DeathGrowthConfigSO>(assetPath, definition, row.id + "_DeathGrowth");
+            if (row.deathGrowthComponent)
+            {
+                growth.EditorApply(row.deathGrowthPerKill, row.deathGrowthLimit);
+                EditorUtility.SetDirty(growth);
+            }
+            else RemoveSubAsset(assetPath, growth);
+
+            // 即时卡效果同样只生成子资产（纯规则能力，无 MonoBehaviour 组件）。
+            var instant = EnsureSubAsset<InstantEffectConfigSO>(assetPath, definition, row.id + "_Instant");
+            if (row.leaveAfterDeploy)
+            {
+                instant.EditorApply(row.deployGainResource);
+                EditorUtility.SetDirty(instant);
+            }
+            else RemoveSubAsset(assetPath, instant);
+
             var prefabPath = CardPrefabPath(row.id);
             var instance = template != null ? (GameObject)PrefabUtility.InstantiatePrefab(template) : ViewTemplateBuilder.BuildTemplateObject();
             instance.name = row.id;
@@ -188,7 +216,7 @@ namespace Spotlight.EditorTools
                 return null;
             }
 
-            definition.EditorApply(row, combat, row.resourceComponent ? resource : null, row.teleportComponent ? teleport : null, row.deploymentPenaltyComponent ? penalty : null, prefabCard, sourceWorkbook, "Cards");
+            definition.EditorApply(row, combat, row.resourceComponent ? resource : null, row.teleportComponent ? teleport : null, row.deploymentPenaltyComponent ? penalty : null, prefabCard, sourceWorkbook, "Cards", row.markOnEnterComponent ? mark : null, row.deathGrowthComponent ? growth : null, row.leaveAfterDeploy ? instant : null);
             EditorUtility.SetDirty(definition);
             return definition;
         }

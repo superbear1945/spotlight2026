@@ -224,6 +224,8 @@ namespace Spotlight
             var presentation = _config != null ? _config.Presentation : null;
             Highlight(actions.Deploy, "deploy", presentation);
             Highlight(actions.Attack, "attack", presentation);
+            // 治疗格在攻击格之后染色：同格时紫色覆盖红色（比目鱼对友方目标），敌我一眼可分。
+            Highlight(actions.Heal, "heal", presentation);
             Highlight(actions.Swap, "swap", presentation);
             Highlight(actions.Move, "move", presentation);
         }

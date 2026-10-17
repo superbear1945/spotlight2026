@@ -67,6 +67,49 @@ namespace Spotlight
         int AttackReduction { get; }
     }
 
+    /// <summary>
+    /// 入场标记配置（星棹收集系统）。
+    /// 输入：Excel 的 markOnEnterRadius / markRewardResource；输出：规则内核读取的只读半径与奖励。
+    /// 为什么需要独立接口：标记是按配置启用的能力，半径与奖励必须来自配置而不是代码常量；
+    /// 规则内核只依赖接口，因此 SO、行对象与测试夹具都能作为配置来源。
+    /// 契约：只描述“标记范围”和“阵亡奖励”，不保存谁被标记、被谁标记——那些属于场上状态（UnitState）。
+    /// </summary>
+    public interface IMarkOnEnterConfig
+    {
+        /// <summary>标记半径：1 表示以自身为中心的 3×3（不含自己）。</summary>
+        int Radius { get; }
+        /// <summary>被标记单位阵亡时给标记者阵营的资源点数（正整数）。</summary>
+        int Reward { get; }
+    }
+
+    /// <summary>
+    /// 死亡加攻配置（力场-I）。
+    /// 输入：Excel 的 deathGrowthPerKill / deathGrowthLimit；输出：规则内核读取的只读加成与次数上限。
+    /// 为什么需要独立接口：全棋盘任意单位因战斗阵亡时的加成幅度与上限必须来自配置而不是代码常量；
+    /// 规则内核只依赖接口，因此 SO、行对象与测试夹具都能作为配置来源。
+    /// 契约：只描述“每次阵亡加多少”和“最多触发几次”，不保存已触发次数——那是场上状态（UnitState）。
+    /// </summary>
+    public interface IDeathGrowthConfig
+    {
+        /// <summary>全棋盘任一单位因战斗阵亡时，本单位增加的攻击力（正整数）。</summary>
+        int PerKill { get; }
+        /// <summary>本单位最多触发几次该加成（正整数）；达到上限后不再增加。</summary>
+        int Limit { get; }
+    }
+
+    /// <summary>
+    /// 即时卡效果配置（战时储备这类“部署即结算、结算即退场”的功能卡）。
+    /// 输入：Excel 的 deployGainResource；输出：规则内核读取的一次性资源收益。
+    /// 为什么需要独立接口：效果数值必须来自配置而不是代码常量；
+    /// 规则内核只依赖接口，因此 SO、行对象与测试夹具都能作为配置来源。
+    /// 契约：只描述“结算时获得多少资源”，不描述何时退场——退场由 leaveAfterDeploy 开关决定。
+    /// </summary>
+    public interface IInstantEffectConfig
+    {
+        /// <summary>结算时立即获得的资源点数（正整数）。</summary>
+        int GainResource { get; }
+    }
+
     // 注意：以下所有 public 字段名都是 Excel 的正式列名；只读接口属性不参与列映射，
     // 因此新增列时必须同时在本类和编辑器表结构中登记，否则会被“未定义列”校验拦截。
     /// <summary>
@@ -117,6 +160,40 @@ namespace Spotlight
         public bool deploymentPenaltyComponent;
         /// <summary>一次性部署减攻的减攻量；启用组件时必须为正整数，禁用时必须为 0。</summary>
         public int deploymentAttackReduction;
+        /// <summary>成功部署这张卡的一次性资源消耗；0 表示免费，负数非法。</summary>
+        public int deployCost;
+        /// <summary>
+        /// 部署时四邻（上下左右）必须存在的单位分类：resource / attack / special。
+        /// 空表示没有邻域要求；有要求时必须同时给出 deployRequireAdjacentCount。
+        /// </summary>
+        public string deployRequireAdjacentCategory;
+        /// <summary>四邻中该分类单位的最小数量；0 表示没有邻域要求。</summary>
+        public int deployRequireAdjacentCount;
+        /// <summary>是否启用入场标记能力；为 false 时 markOnEnterRadius 与 markRewardResource 必须为 0。</summary>
+        public bool markOnEnterComponent;
+        /// <summary>标记半径（1 表示 3×3 八邻，不含自己）；启用能力时必须为正整数。</summary>
+        public int markOnEnterRadius;
+        /// <summary>被标记单位阵亡时给标记者阵营的资源；启用能力时必须为正整数。</summary>
+        public int markRewardResource;
+        /// <summary>是否启用死亡加攻能力；为 false 时 deathGrowthPerKill 与 deathGrowthLimit 必须为 0。</summary>
+        public bool deathGrowthComponent;
+        /// <summary>每次全棋盘单位阵亡时增加的攻击力；启用能力时必须为正整数。</summary>
+        public int deathGrowthPerKill;
+        /// <summary>死亡加攻最多触发的次数；启用能力时必须为正整数。</summary>
+        public int deathGrowthLimit;
+        /// <summary>
+        /// 是否允许攻击友方单位，并把对友方的攻击结算改为治疗。
+        /// 为什么做成卡牌级布尔而不是能力子资产：它没有任何数值参数，与 deployHomeOnly 同类，
+        /// 放子资产里只会让每张卡多一个空壳配置。
+        /// </summary>
+        public bool attacksAlliesAsHeal;
+        /// <summary>
+        /// 是否“部署即结算、结算即退场”（即时卡）。
+        /// 为 true 时该卡在场时间视为 0：不参与一次性减攻与入场标记，结算完 deployGainResource 后立即离场。
+        /// </summary>
+        public bool leaveAfterDeploy;
+        /// <summary>即时卡结算时立即获得的资源；leaveAfterDeploy 为 false 时必须为 0，为 true 时必须为正整数。</summary>
+        public int deployGainResource;
 
         /// <inheritdoc />
         public int Hp => hp;
@@ -338,13 +415,27 @@ namespace Spotlight
         public bool DeployHomeOnly { get; }
         /// <summary>是否禁止部署在同类单位四邻。</summary>
         public bool AvoidAdjacentSameType { get; }
+        /// <summary>成功部署的一次性资源消耗；0 表示免费。Boss 部署不检查该值。</summary>
+        public int DeployCost { get; }
+        /// <summary>部署时四邻必须存在的单位分类文本；空表示没有邻域要求。</summary>
+        public string DeployRequireAdjacentCategory { get; }
+        /// <summary>四邻中该分类单位的最小数量；0 表示没有邻域要求。</summary>
+        public int DeployRequireAdjacentCount { get; }
+        /// <summary>入场标记能力；为 null 表示没有该能力。</summary>
+        public IMarkOnEnterConfig MarkOnEnter { get; }
+        /// <summary>死亡加攻能力；为 null 表示没有该能力。</summary>
+        public IDeathGrowthConfig DeathGrowth { get; }
+        /// <summary>是否可攻击友方并改为治疗（仅攻击类卡可配置）。</summary>
+        public bool AttacksAlliesAsHeal { get; }
+        /// <summary>即时卡效果；为 null 表示该卡部署后留在场上。</summary>
+        public IInstantEffectConfig Instant { get; }
 
         /// <summary>
         /// 由一行已校验数据构造共享描述。
         /// 输入：row 提供标识与开关，combat/resource/teleport 提供各能力数值（可为 null）；
         /// 输出：供 GameConfiguration 索引的不可变对象。
         /// </summary>
-        public CardArchetype(CardRow row, ICombatConfig combat, IResourceConfig resource, ITeleportConfig teleport, IDeploymentPenaltyConfig deploymentPenalty = null)
+        public CardArchetype(CardRow row, ICombatConfig combat, IResourceConfig resource, ITeleportConfig teleport, IDeploymentPenaltyConfig deploymentPenalty = null, IMarkOnEnterConfig markOnEnter = null, IDeathGrowthConfig deathGrowth = null, IInstantEffectConfig instant = null)
         {
             Id = row.id;
             Name = row.name?.Trim();
@@ -353,10 +444,18 @@ namespace Spotlight
             Resource = resource;
             Teleport = teleport;
             DeploymentPenalty = deploymentPenalty;
+            MarkOnEnter = markOnEnter;
+            DeathGrowth = deathGrowth;
             RequiresUpgrade = row.requiresUpgrade;
             UpgradeFrom = row.upgradeFrom;
             DeployHomeOnly = row.deployHomeOnly;
             AvoidAdjacentSameType = row.avoidAdjacentSameType;
+            DeployCost = row.deployCost;
+            // 邻域分类统一去掉首尾空格，避免 “resource ” 这类工作簿笔误绕过校验。
+            DeployRequireAdjacentCategory = row.deployRequireAdjacentCategory == null ? string.Empty : row.deployRequireAdjacentCategory.Trim();
+            DeployRequireAdjacentCount = row.deployRequireAdjacentCount;
+            AttacksAlliesAsHeal = row.attacksAlliesAsHeal;
+            Instant = instant;
         }
 
         /// <summary>
@@ -372,7 +471,10 @@ namespace Spotlight
                 new CombatValues(row.hp, row.atk, row.range, row.moveDistance),
                 row.resourceComponent ? new ResourceValues(row.produce, row.upkeep) : null,
                 row.teleportComponent ? new TeleportValues(row.permitsAttackDeploy) : null,
-                row.deploymentPenaltyComponent ? new DeploymentPenaltyValues(row.deploymentAttackReduction) : null);
+                row.deploymentPenaltyComponent ? new DeploymentPenaltyValues(row.deploymentAttackReduction) : null,
+                row.markOnEnterComponent ? new MarkOnEnterValues(row.markOnEnterRadius, row.markRewardResource) : null,
+                row.deathGrowthComponent ? new DeathGrowthValues(row.deathGrowthPerKill, row.deathGrowthLimit) : null,
+                row.leaveAfterDeploy ? new InstantEffectValues(row.deployGainResource) : null);
         }
     }
 
@@ -447,6 +549,57 @@ namespace Spotlight
         public DeploymentPenaltyValues(int attackReduction)
         {
             AttackReduction = attackReduction;
+        }
+    }
+
+    /// <summary>
+    /// 入场标记数值的不可变副本。输入：标记半径与阵亡奖励；输出：实现 IMarkOnEnterConfig 的只读对象。
+    /// </summary>
+    sealed class MarkOnEnterValues : IMarkOnEnterConfig
+    {
+        /// <inheritdoc />
+        public int Radius { get; }
+        /// <inheritdoc />
+        public int Reward { get; }
+
+        /// <summary>复制标记配置。输入：半径与奖励；输出：与草稿完全脱钩的只读副本。</summary>
+        public MarkOnEnterValues(int radius, int reward)
+        {
+            Radius = radius;
+            Reward = reward;
+        }
+    }
+
+    /// <summary>
+    /// 死亡加攻数值的不可变副本。输入：每次加成与次数上限；输出：实现 IDeathGrowthConfig 的只读对象。
+    /// </summary>
+    sealed class DeathGrowthValues : IDeathGrowthConfig
+    {
+        /// <inheritdoc />
+        public int PerKill { get; }
+        /// <inheritdoc />
+        public int Limit { get; }
+
+        /// <summary>复制死亡加攻配置。输入：每次加成与次数上限；输出：与草稿完全脱钩的只读副本。</summary>
+        public DeathGrowthValues(int perKill, int limit)
+        {
+            PerKill = perKill;
+            Limit = limit;
+        }
+    }
+
+    /// <summary>
+    /// 即时卡效果的不可变副本。输入：一次性资源收益；输出：实现 IInstantEffectConfig 的只读对象。
+    /// </summary>
+    sealed class InstantEffectValues : IInstantEffectConfig
+    {
+        /// <inheritdoc />
+        public int GainResource { get; }
+
+        /// <summary>复制即时效果。输入：一次性资源收益；输出：与草稿完全脱钩的只读副本。</summary>
+        public InstantEffectValues(int gainResource)
+        {
+            GainResource = gainResource;
         }
     }
 
@@ -695,6 +848,14 @@ namespace Spotlight
             if (list.Any(c => string.IsNullOrWhiteSpace(c.Id) || string.IsNullOrWhiteSpace(c.Name))) errors.Add("卡种 ID 或名称为空");
             if (list.Any(c => c.RequiresUpgrade && (string.IsNullOrEmpty(c.UpgradeFrom) || !ids.Contains(c.UpgradeFrom)))) errors.Add("升级目标缺失");
             if (list.Any(c => c.DeploymentPenalty != null && c.DeploymentPenalty.AttackReduction < 1)) errors.Add("部署减攻配置非法：启用组件时减攻量必须为正整数");
+            if (list.Any(c => c.DeployCost < 0)) errors.Add("部署消耗不得为负");
+            if (list.Any(c => c.DeployRequireAdjacentCount > 0 && string.IsNullOrEmpty(c.DeployRequireAdjacentCategory))) errors.Add("邻域部署要求缺少分类");
+            if (list.Any(c => c.MarkOnEnter != null && (c.MarkOnEnter.Radius < 1 || c.MarkOnEnter.Reward < 1))) errors.Add("入场标记配置非法：启用时半径与奖励必须为正整数");
+            if (list.Any(c => c.DeathGrowth != null && (c.DeathGrowth.PerKill < 1 || c.DeathGrowth.Limit < 1))) errors.Add("死亡加攻配置非法：启用时加成与次数上限必须为正整数");
+            if (list.Any(c => c.Instant != null && c.Instant.GainResource < 1)) errors.Add("即时卡配置非法：结算资源必须为正整数");
+            // 即时卡只在玩家手牌路径生效；Boss 卡种/刷怪卡指向即时卡会让补兵与生成逻辑面对“已移除的单位”。
+            if (list.SingleOrDefault(c => c.Id == rules.BossCardType)?.Instant != null) errors.Add("Boss 卡种不能是即时卡");
+            if (list.SingleOrDefault(c => c.Id == rules.BossSpawnerCardType)?.Instant != null) errors.Add("刷怪卡卡种不能是即时卡");
             if (!ids.Contains(rules.BossCardType)) errors.Add("Boss 卡种未注册");
             else if (!rules.PlayerControlsBoss && list.Single(c => c.Id == rules.BossCardType).Category != CardCategory.Attack) errors.Add("AI 模式 Boss 必须使用攻击卡");
             var deckList = deck.ToArray();
@@ -780,6 +941,32 @@ namespace Spotlight
                 if (c.requiresUpgrade && c.category != "resource") errors.Add(p + "：仅资源卡可覆盖升级");
                 if (!c.requiresUpgrade && !string.IsNullOrEmpty(c.upgradeFrom)) errors.Add(p + "：未启用升级却填写 upgradeFrom");
                 if (string.IsNullOrWhiteSpace(c.viewKey)) errors.Add(p + "：viewKey 不能为空");
+                if (c.deployCost < 0) errors.Add(p + "：deployCost 不得为负");
+                if (c.markOnEnterRadius < 0 || c.markRewardResource < 0) errors.Add(p + "：markOnEnterRadius / markRewardResource 不得为负");
+                if (!c.markOnEnterComponent && (c.markOnEnterRadius != 0 || c.markRewardResource != 0)) errors.Add(p + "：未启用 markOnEnterComponent 时标记半径与奖励必须为 0");
+                if (c.markOnEnterComponent && (c.markOnEnterRadius < 1 || c.markRewardResource < 1)) errors.Add(p + "：启用 markOnEnterComponent 时标记半径与奖励必须为正整数");
+                if (c.deathGrowthPerKill < 0 || c.deathGrowthLimit < 0) errors.Add(p + "：deathGrowthPerKill / deathGrowthLimit 不得为负");
+                if (!c.deathGrowthComponent && (c.deathGrowthPerKill != 0 || c.deathGrowthLimit != 0)) errors.Add(p + "：未启用 deathGrowthComponent 时加成与次数上限必须为 0");
+                if (c.deathGrowthComponent && (c.deathGrowthPerKill < 1 || c.deathGrowthLimit < 1)) errors.Add(p + "：启用 deathGrowthComponent 时加成与次数上限必须为正整数");
+                // 只有攻击卡才能把“对友方的攻击”改成治疗：资源卡/特殊卡本来就按攻击力判定能否攻击，
+                // 允许它们配置该开关会让语义含糊（例如资源卡打友方回血）。
+                if (c.attacksAlliesAsHeal && c.category != "attack") errors.Add(p + "：attacksAlliesAsHeal 仅攻击卡可启用");
+                if (c.deployGainResource < 0) errors.Add(p + "：deployGainResource 不得为负");
+                if (!c.leaveAfterDeploy && c.deployGainResource != 0) errors.Add(p + "：未启用 leaveAfterDeploy 时 deployGainResource 必须为 0");
+                if (c.leaveAfterDeploy && c.deployGainResource < 1) errors.Add(p + "：启用 leaveAfterDeploy 时 deployGainResource 必须为正整数");
+                if (c.deployRequireAdjacentCount < 0) errors.Add(p + "：deployRequireAdjacentCount 不得为负");
+                // 邻域要求与分类必须成对出现：数量大于 0 时分类必须合法，分类非空时数量必须大于 0。
+                // 为什么不允许“填了分类但数量为 0”：那会被当成“无要求”而悄悄通过，属于最危险的一类静默笔误。
+                var adjacency = (c.deployRequireAdjacentCategory ?? string.Empty).Trim();
+                if (c.deployRequireAdjacentCount > 0)
+                {
+                    if (adjacency != "resource" && adjacency != "attack" && adjacency != "special")
+                        errors.Add(p + "：启用邻域部署要求时 deployRequireAdjacentCategory 必须为 resource/attack/special");
+                }
+                else if (adjacency.Length != 0)
+                {
+                    errors.Add(p + "：deployRequireAdjacentCount 为 0 时 deployRequireAdjacentCategory 必须留空");
+                }
             }
             foreach (var c in d.cards.Where(c => c.requiresUpgrade))
             {
@@ -797,6 +984,11 @@ namespace Spotlight
             if (total > int.MaxValue) errors.Add("Deck 总数量溢出");
 
             var r = d.rules[0];
+            // 即时卡只在玩家手牌部署路径生效：Boss 兵位与刷怪卡若指向即时卡，会出现“创建后立刻移除”的异常补兵。
+            var bossCardRow = d.cards.FirstOrDefault(x => x.id == r.bossCardType);
+            if (bossCardRow != null && bossCardRow.leaveAfterDeploy) errors.Add("Rules bossCardType：Boss 卡种不能是即时卡");
+            var spawnerCardRow = d.cards.FirstOrDefault(x => x.id == r.bossSpawnerCardType);
+            if (spawnerCardRow != null && spawnerCardRow.leaveAfterDeploy) errors.Add("Rules bossSpawnerCardType：刷怪卡卡种不能是即时卡");
             if (r.rows < 1 || r.columns < 2 || (long)r.rows * r.columns > int.MaxValue) errors.Add("Rules：棋盘至少 1 行 2 列，格数不能溢出");
             if (r.homeRegionWidth < 1 || r.homeRegionWidth > r.columns) errors.Add("Rules homeRegionWidth：必须在 1 至列数之间");
             if (r.playerPlays < 0 || r.bossPlays < 0 || r.drawCount < 0 || r.handLimit < 0 || r.initialResources < 0 || r.bossRespawnDelay < 1) errors.Add("Rules：次数/资源不可为负，bossRespawnDelay 至少为 1");

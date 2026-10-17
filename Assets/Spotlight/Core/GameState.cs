@@ -97,6 +97,20 @@ namespace Spotlight
         public bool DeploymentPenaltyPending { get; internal set; }
         /// <summary>该单位的一次性减攻量副本：没有该能力时为 0，来自卡种配置而非代码常量。</summary>
         public int DeploymentAttackReduction { get; internal set; }
+        /// <summary>
+        /// 标记来源阵营；null 表示未被标记。
+        /// 为什么要记录来源：标记是永久状态（来源离场也不消失），阵亡时必须按“谁标记的”给对应阵营发资源。
+        /// 多个来源重叠时不叠加：已被标记的单位不会改归属（先到先得）。
+        /// </summary>
+        public Side? MarkedBy { get; internal set; }
+        /// <summary>标记奖励副本：标记时从来源配置复制，阵亡时按此值发放，不随后续配置改动而变化。</summary>
+        public int MarkReward { get; internal set; }
+        /// <summary>死亡加攻：每次全棋盘单位因战斗阵亡时增加的攻击力副本；没有该能力时为 0。</summary>
+        public int DeathGrowthPerKill { get; internal set; }
+        /// <summary>死亡加攻的次数上限副本；没有该能力时为 0。</summary>
+        public int DeathGrowthLimit { get; internal set; }
+        /// <summary>死亡加攻已触发次数；达到上限后不再增加攻击力。</summary>
+        public int DeathGrowthTriggers { get; internal set; }
         /// <summary>本回合是否已经行动（移动、攻击或互换其一）。</summary>
         public bool Acted { get; internal set; }
         /// <summary>本回合维持费是否已支付；未支付时不能行动。</summary>
@@ -275,6 +289,12 @@ namespace Spotlight
         public IReadOnlyList<Cell> Move { get; internal set; } = Array.Empty<Cell>();
         /// <summary>可攻击目标所在格。</summary>
         public IReadOnlyList<Cell> Attack { get; internal set; } = Array.Empty<Cell>();
+        /// <summary>
+        /// 可攻击的**己方**单位所在格（只有“攻击友方即治疗”的卡才有）。
+        /// 为什么单独列出：这些格同时也在 Attack 里（点击链路与敌方目标一致），
+        /// 单列出来只是让视图把它们高亮成治疗色，规则层不会重复判定。
+        /// </summary>
+        public IReadOnlyList<Cell> Heal { get; internal set; } = Array.Empty<Cell>();
         /// <summary>可互换的己方单位所在格。</summary>
         public IReadOnlyList<Cell> Swap { get; internal set; } = Array.Empty<Cell>();
         /// <summary>

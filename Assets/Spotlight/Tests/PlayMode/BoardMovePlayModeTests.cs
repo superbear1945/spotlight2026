@@ -67,8 +67,10 @@ namespace Spotlight.Tests
             // 推进回合直到有己方单位可以移动（覆盖召唤失调与 Boss AI 回合）。
             // 不绑定刚部署的单位：它可能在等待期间被 AI 击杀，因此每轮都补一张带移动距离的牌，
             // 断言只关心“界面上的某个棋子确实跟着规则移动”。
+            // 回合预算 20：卡组由正式数据决定，且 GameBootstrap.Seed=0 时用 TickCount 做种子（每局牌序不同），
+            // 3 张手牌可能连续几轮只有不可移动的卡，原来的 10 轮会偶发失败。
             UnitState live = null;
-            for (var turn = 0; turn < 10 && live == null; turn++)
+            for (var turn = 0; turn < 20 && live == null; turn++)
             {
                 TryDeploy(bootstrap, session, context.Hand, requireMoveDistance: true);
                 yield return WaitSeconds(SettleSeconds);

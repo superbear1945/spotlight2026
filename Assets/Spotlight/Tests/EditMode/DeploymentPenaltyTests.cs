@@ -586,7 +586,7 @@ namespace Spotlight.Tests
                 Assert.That(kyoto.deploymentAttackReduction, Is.EqualTo(2));
                 Assert.That(report.Document.cards.Where(c => c.id != "kyoto_01").All(c => !c.deploymentPenaltyComponent), Is.True, "其余卡不得隐式获得该能力");
                 Assert.That(report.Document.deck.Single(e => e.cardType == "kyoto_01").count, Is.EqualTo(2));
-                Assert.That(report.Document.deck.Sum(e => e.count), Is.EqualTo(26));
+                Assert.That(report.Document.deck.Sum(e => e.count), Is.EqualTo(34));
                 var configuration = new GameConfiguration(report.Document);
                 Assert.That(configuration.Cards["kyoto_01"].DeploymentPenalty.AttackReduction, Is.EqualTo(2));
             }

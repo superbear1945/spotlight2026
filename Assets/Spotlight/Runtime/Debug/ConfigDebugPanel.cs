@@ -338,6 +338,102 @@ namespace Spotlight
             fields.Add(ConfigFieldBuilder.Number("移动距离", () => card.moveDistance, value => { card.moveDistance = value; Changed(); }, 0));
             box.Add(ConfigFieldBuilder.Grid(fields.ToArray()));
 
+            // 部署消耗与邻域部署要求：与 Excel 的 deployCost / deployRequireAdjacent* 一一对应。
+            // 两者都只参与“能不能部署到这格”的判定、不产生任何组件，因此属于卡牌级字段。
+            box.Add(ConfigFieldBuilder.Grid(ConfigFieldBuilder.Number("部署一次性消耗资源（0 = 免费）", () => card.deployCost, value => { card.deployCost = value; Changed(); }, 0)));
+            box.Add(ConfigFieldBuilder.Toggle("部署时要求四邻有指定分类单位", () => card.deployRequireAdjacentCount > 0, value =>
+            {
+                if (value)
+                {
+                    if (card.deployRequireAdjacentCount < 1) card.deployRequireAdjacentCount = 1;
+                    if (string.IsNullOrEmpty(card.deployRequireAdjacentCategory)) card.deployRequireAdjacentCategory = "resource";
+                }
+                else
+                {
+                    card.deployRequireAdjacentCount = 0;
+                    card.deployRequireAdjacentCategory = string.Empty;
+                }
+                Changed();
+            }));
+            if (card.deployRequireAdjacentCount > 0)
+            {
+                box.Add(ConfigFieldBuilder.Grid(
+                    ConfigFieldBuilder.Choice("四邻需要的分类", new[] { ("resource", "资源卡"), ("attack", "攻击卡"), ("special", "特殊卡") },
+                        () => string.IsNullOrEmpty(card.deployRequireAdjacentCategory) ? "resource" : card.deployRequireAdjacentCategory,
+                        value => { card.deployRequireAdjacentCategory = value; Changed(); }),
+                    ConfigFieldBuilder.Number("四邻需要的数量", () => card.deployRequireAdjacentCount, value => { card.deployRequireAdjacentCount = value; Changed(); }, 1)));
+                box.Add(ConfigFieldBuilder.Note("只统计四邻（上下左右）的在场单位，不含家，不区分阵营；数量不足时该格不合法也不会高亮。"));
+            }
+
+            // 入场标记：与 Excel 的 markOnEnterComponent / markOnEnterRadius / markRewardResource 一一对应。
+            // 关闭能力时两个数值必须归零，否则校验会阻止“应用并重开”。
+            box.Add(ConfigFieldBuilder.Toggle("入场标记：上场时标记半径内其它单位", () => card.markOnEnterComponent, value =>
+            {
+                if (value)
+                {
+                    if (card.markOnEnterRadius < 1) card.markOnEnterRadius = 1;
+                    if (card.markRewardResource < 1) card.markRewardResource = 1;
+                }
+                else
+                {
+                    card.markOnEnterRadius = 0;
+                    card.markRewardResource = 0;
+                }
+                Changed();
+            }));
+            if (card.markOnEnterComponent)
+            {
+                box.Add(ConfigFieldBuilder.Grid(
+                    ConfigFieldBuilder.Number("标记半径（1 = 3×3）", () => card.markOnEnterRadius, value => { card.markOnEnterRadius = value; Changed(); }, 1),
+                    ConfigFieldBuilder.Number("阵亡奖励资源", () => card.markRewardResource, value => { card.markRewardResource = value; Changed(); }, 1)));
+                box.Add(ConfigFieldBuilder.Note("标记永久保留、先到先得不叠加；只有因战斗阵亡才发奖励，Boss 侧暂无资源系统。"));
+            }
+
+            // 死亡加攻：与 Excel 的 deathGrowthComponent / deathGrowthPerKill / deathGrowthLimit 一一对应。
+            box.Add(ConfigFieldBuilder.Toggle("死亡加攻：任一单位阵亡时提升攻击力", () => card.deathGrowthComponent, value =>
+            {
+                if (value)
+                {
+                    if (card.deathGrowthPerKill < 1) card.deathGrowthPerKill = 1;
+                    if (card.deathGrowthLimit < 1) card.deathGrowthLimit = 4;
+                }
+                else
+                {
+                    card.deathGrowthPerKill = 0;
+                    card.deathGrowthLimit = 0;
+                }
+                Changed();
+            }));
+            if (card.deathGrowthComponent)
+            {
+                box.Add(ConfigFieldBuilder.Grid(
+                    ConfigFieldBuilder.Number("每次阵亡加攻", () => card.deathGrowthPerKill, value => { card.deathGrowthPerKill = value; Changed(); }, 1),
+                    ConfigFieldBuilder.Number("最多触发次数", () => card.deathGrowthLimit, value => { card.deathGrowthLimit = value; Changed(); }, 1)));
+                box.Add(ConfigFieldBuilder.Note("全棋盘任一单位因战斗阵亡时触发；次数上限不是攻击力上限；非战斗移除不触发。"));
+            }
+
+            // 治疗型攻击：与 Excel 的 attacksAlliesAsHeal 对应，仅攻击卡可启用。
+            if (card.category == "attack")
+            {
+                box.Add(ConfigFieldBuilder.Toggle("可攻击友方，并把友方结算改为治疗", () => card.attacksAlliesAsHeal, value => { card.attacksAlliesAsHeal = value; Changed(); }));
+                box.Add(ConfigFieldBuilder.Note("治疗量 = 当前攻击力，受生命上限限流；满血也允许白打并照常消耗行动；家不可治疗。"));
+            }
+
+            // 即时卡：与 Excel 的 leaveAfterDeploy / deployGainResource 一一对应。
+            // 关闭时收益必须归零，否则校验会阻止“应用并重开”。
+            box.Add(ConfigFieldBuilder.Toggle("即时卡：部署后立即结算并离场", () => card.leaveAfterDeploy, value =>
+            {
+                card.leaveAfterDeploy = value;
+                if (!value) card.deployGainResource = 0;
+                else if (card.deployGainResource < 1) card.deployGainResource = 1;
+                Changed();
+            }));
+            if (card.leaveAfterDeploy)
+            {
+                box.Add(ConfigFieldBuilder.Grid(ConfigFieldBuilder.Number("结算时获得资源", () => card.deployGainResource, value => { card.deployGainResource = value; Changed(); }, 1)));
+                box.Add(ConfigFieldBuilder.Note("在场时间视为 0：不参与一次性减攻与入场标记，退场原因记为“结算后离场”，不触发补兵、死亡加攻或标记奖励。Boss 卡种与刷怪卡卡种不能是即时卡。"));
+            }
+
             // 一次性部署减攻：与 Excel 的 deploymentPenaltyComponent / deploymentAttackReduction 一一对应。
             // 两个字段必须同时生效：启用必须有正整数减攻量，禁用则减攻量归零，否则校验会阻止应用。
             box.Add(ConfigFieldBuilder.Toggle("在场期间一次：减攻随后上场的一个己方攻击类单位", () => card.deploymentPenaltyComponent, value =>

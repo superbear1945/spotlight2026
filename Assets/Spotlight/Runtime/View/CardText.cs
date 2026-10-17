@@ -17,6 +17,14 @@ namespace Spotlight
             category == CardCategory.Resource ? "资源" : category == CardCategory.Attack ? "攻击" : "特殊";
 
         /// <summary>
+        /// 把 Cards 表的分类文本解析成枚举。
+        /// 输入：resource / attack / special 文本；输出：对应枚举（其它值按特殊卡兜底）。
+        /// 为什么需要：邻域部署要求在配置里以文本保存，界面需要把同一文本显示成中文分类名。
+        /// </summary>
+        public static CardCategory ParseCategory(string text) =>
+            text == "resource" ? CardCategory.Resource : text == "attack" ? CardCategory.Attack : CardCategory.Special;
+
+        /// <summary>
         /// 卡种属性简写（手牌与棋盘共用）。
         /// 输入：卡种定义；输出：形如 “生命 4 · 攻 2 · 程 2 · 移 3 · 产 1 · 耗 0” 的单行文本。
         /// 只显示该卡种真实拥有的能力，避免在资源卡上显示无意义的攻击字段。
@@ -66,6 +74,8 @@ namespace Spotlight
             if (attack > 0 || row.atk > 0) sb.Append(" · 攻 ").Append(attack).Append(" · 程 ").Append(range);
             if (moveDistance > 0) sb.Append(" · 移 ").Append(moveDistance);
             if (row.resourceComponent) sb.Append(" · 产 ").Append(row.produce).Append(" · 耗 ").Append(row.upkeep);
+            // 部署消耗只在非 0 时显示，避免免费卡的行被无关信息占满。
+            if (row.deployCost > 0) sb.Append(" · 部署耗 ").Append(row.deployCost);
             if (row.requiresUpgrade && !string.IsNullOrEmpty(row.upgradeFrom)) sb.Append(" · 升级自 ").Append(row.upgradeFrom);
             return sb.ToString();
         }
@@ -98,10 +108,21 @@ namespace Spotlight
             if (arch.Resource != null) sb.Append(" · 产出 ").Append(arch.Resource.Produce).Append(" · 维持 ").Append(arch.Resource.Upkeep);
             if (arch.DeployHomeOnly) sb.AppendLine().Append("部署限制：仅己方区域");
             if (arch.AvoidAdjacentSameType) sb.AppendLine().Append("部署限制：不能与同类单位四邻");
+            if (arch.DeployCost > 0) sb.AppendLine().Append("部署消耗：").Append(arch.DeployCost).Append(" 资源");
+            if (arch.DeployRequireAdjacentCount > 0)
+                sb.AppendLine().Append("部署要求：四邻至少 ").Append(arch.DeployRequireAdjacentCount).Append(" 个").Append(CategoryLabel(ParseCategory(arch.DeployRequireAdjacentCategory))).Append("单位");
             if (arch.RequiresUpgrade) sb.AppendLine().Append("覆盖升级自：").Append(arch.UpgradeFrom);
             if (arch.Teleport != null && arch.Teleport.PermitsAttackDeploy) sb.AppendLine().Append("扩展：允许己方攻击卡部署在四邻");
             if (arch.DeploymentPenalty != null)
                 sb.AppendLine().Append(DeploymentPenaltyLine(arch.DeploymentPenalty.AttackReduction, null));
+            if (arch.MarkOnEnter != null)
+                sb.AppendLine().Append("入场标记：半径 ").Append(arch.MarkOnEnter.Radius).Append(" 内的其它单位被标记，阵亡时给标记者 ").Append(arch.MarkOnEnter.Reward).Append(" 资源");
+            if (arch.DeathGrowth != null)
+                sb.AppendLine().Append("死亡加攻：任一单位阵亡时攻击 +").Append(arch.DeathGrowth.PerKill).Append("，最多触发 ").Append(arch.DeathGrowth.Limit).Append(" 次");
+            if (arch.AttacksAlliesAsHeal)
+                sb.AppendLine().Append("可攻击友方：对友方的攻击改为治疗（生命 + 当前攻击，受生命上限限流）");
+            if (arch.Instant != null)
+                sb.AppendLine().Append("即时卡：部署后立即结算（获得 ").Append(arch.Instant.GainResource).Append(" 资源）并离场");
             return sb.ToString();
         }
 
@@ -129,10 +150,20 @@ namespace Spotlight
             sb.Append(" · 移动 ").Append(combat != null ? combat.MoveDistance : 0);
             if (arch.DeployHomeOnly) sb.AppendLine().Append("部署限制：仅己方区域");
             if (arch.AvoidAdjacentSameType) sb.AppendLine().Append("部署限制：不能与同类单位四邻");
+            if (arch.DeployCost > 0) sb.AppendLine().Append("部署消耗：").Append(arch.DeployCost).Append(" 资源");
+            if (arch.DeployRequireAdjacentCount > 0)
+                sb.AppendLine().Append("部署要求：四邻至少 ").Append(arch.DeployRequireAdjacentCount).Append(" 个").Append(CategoryLabel(ParseCategory(arch.DeployRequireAdjacentCategory))).Append("单位");
             if (arch.RequiresUpgrade) sb.AppendLine().Append("覆盖升级自：").Append(arch.UpgradeFrom);
             if (arch.Teleport != null && arch.Teleport.PermitsAttackDeploy) sb.AppendLine().Append("扩展：允许己方攻击卡部署在四邻");
             if (unit.DeploymentAttackReduction > 0)
                 sb.AppendLine().Append(DeploymentPenaltyLine(unit.DeploymentAttackReduction, unit));
+            if (arch.MarkOnEnter != null)
+                sb.AppendLine().Append("入场标记：半径 ").Append(arch.MarkOnEnter.Radius).Append(" 内的其它单位被标记，阵亡时给标记者 ").Append(arch.MarkOnEnter.Reward).Append(" 资源");
+            // 标记是永久状态：来源离场后依然显示，便于玩家预判剩余收益。
+            if (unit.MarkedBy.HasValue)
+                sb.AppendLine().Append("已被标记：阵亡时给").Append(unit.MarkedBy.Value == Side.Player ? "玩家" : "Boss").Append(" ").Append(unit.MarkReward).Append(" 资源");
+            if (unit.DeathGrowthLimit > 0)
+                sb.AppendLine().Append("死亡加攻：已触发 ").Append(unit.DeathGrowthTriggers).Append('/').Append(unit.DeathGrowthLimit).Append("（每次 +").Append(unit.DeathGrowthPerKill).Append(" 攻击）");
             return sb.ToString();
         }
 
@@ -179,6 +210,8 @@ namespace Spotlight
                 case "deploy": return Parse(presentation.DeployColor, new Color(0.2f, 1f, 0.6f));
                 case "move": return Parse(presentation.MoveColor, new Color(0.2f, 0.67f, 1f));
                 case "attack": return Parse(presentation.AttackTargetColor, new Color(1f, 0.2f, 0.2f));
+                // 治疗复用特殊卡紫色：不新增 Presentation 列，又能与敌方目标红区分“打/奶”。
+                case "heal": return Parse(presentation.SpecialColor, new Color(0.67f, 0.33f, 1f));
                 case "swap": return Parse(presentation.SwapColor, new Color(0.67f, 0.2f, 1f));
                 default: return null;
             }

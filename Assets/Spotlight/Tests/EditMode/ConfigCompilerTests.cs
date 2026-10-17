@@ -180,8 +180,9 @@ namespace Spotlight.Tests
             var first = ConfigCompiler.Compile(path, false);
             Assert.That(first.Success, Is.True, string.Join("\n", first.Issues));
             Assert.That(first.Document, Is.Not.Null);
-            Assert.That(first.Document.cards.Length, Is.EqualTo(9));
-            Assert.That(first.Document.deck.Sum(e => e.count), Is.EqualTo(26));
+            // 默认工作簿：9 个既有卡种 + 开普勒-I/II、星铆-1、后羿、星棹-1、力场-I、比目鱼、战时储备 共 17 行；Deck 仍为 26 张（新卡不进初始卡组）。
+            Assert.That(first.Document.cards.Length, Is.EqualTo(17));
+            Assert.That(first.Document.deck.Sum(e => e.count), Is.EqualTo(34));
             Assert.That(first.Document.rules[0].bossBombInterval, Is.EqualTo(10));
             Assert.That(first.Document.rules[0].bossBombDamage, Is.EqualTo(3));
             Assert.That(first.Document.rules[0].bossBombColumn, Is.EqualTo(5));

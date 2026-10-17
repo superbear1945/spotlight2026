@@ -237,8 +237,13 @@ namespace Spotlight
                     var card = _hand.FirstOrDefault(x => x.Id == c.SubjectId);
                     if (card == null) return "手牌不存在";
                     if (_plays <= 0) return "本回合出牌次数已用完";
-                    var deployError = DeploymentError(_config.Cards[card.TypeId], card.Owner, c.Target);
+                    var deployType = _config.Cards[card.TypeId];
+                    var deployError = DeploymentError(deployType, card.Owner, c.Target);
                     if (deployError != null) return deployError;
+                    // 部署消耗：先校验再扣减，任何失败都不改变资源（失败原子性）。
+                    // 只有玩家手牌路径检查它；Boss 没有资源系统，BossDeploy 不受影响。
+                    if (deployType.DeployCost > _resources) return $"资源不足：部署 {deployType.Name} 需要 {deployType.DeployCost}，当前 {_resources}";
+                    _resources -= deployType.DeployCost;
                     _hand.Remove(card);
                     Place(card, c.Target, false, null);
                     _plays--;
@@ -261,6 +266,8 @@ namespace Spotlight
                     mover.Position = c.Target;
                     mover.Acted = true;
                     Emit("move", $"{Type(mover).Name} 从 {origin} 移动至 {c.Target}", mover.Id);
+                    // 移动会改变“谁在谁的范围内”，因此重算一次入场标记。
+                    RefreshMarking();
                     break;
                 case CommandKind.MoveHome:
                     var home = _homes.FirstOrDefault(h => h.Id == c.SubjectId && h.Owner == _activeSide);
@@ -273,7 +280,24 @@ namespace Spotlight
                     var attacker = _units.FirstOrDefault(u => u.Id == c.SubjectId);
                     if (!Available(attacker)) return "该单位本回合不能攻击";
                     var target = Targets(attacker.Owner).FirstOrDefault(t => t.Id == c.TargetId);
-                    if (target == null || !CanAttack(attacker, attacker.Position, target.Position)) return "目标不在合法攻击范围";
+                    // “攻击友方即治疗”的卡可以把己方单位当作目标：不含自己，家不是单位因此不可治疗。
+                    var allyTarget = target == null && Type(attacker).AttacksAlliesAsHeal
+                        ? _units.FirstOrDefault(u => u.Id == c.TargetId && u.Owner == attacker.Owner && u.Id != attacker.Id)
+                        : null;
+                    if (target == null && allyTarget == null) return "目标不在合法攻击范围";
+                    var targetPosition = target != null ? target.Position : allyTarget.Position;
+                    if (!CanAttack(attacker, attacker.Position, targetPosition)) return "目标不在合法攻击范围";
+                    // 治疗分支：数值 = 当前生命 + 攻击力，受生命上限限流；满血也允许（白打但仍消耗行动）。
+                    // 治疗只改生命，不触发阵亡判定，因此不会因为“攻击”而误杀友方。
+                    if (allyTarget != null)
+                    {
+                        attacker.Acted = true;
+                        var healed = Math.Min(allyTarget.MaxHp, allyTarget.Hp + attacker.Attack);
+                        var beforeHp = allyTarget.Hp;
+                        allyTarget.Hp = healed;
+                        Emit("heal", $"{Type(attacker).Name} 治疗 {Type(allyTarget).Name}，生命 {beforeHp} → {healed}", allyTarget.Id);
+                        break;
+                    }
                     // 只扣目标生命：不存在反击、连锁或动画回调产生的补充伤害。
                     // 伤害读取攻击者的当前攻击力（部署时从配置初始化、可被一次性减攻降低），不重读卡种配置。
                     attacker.Acted = true;
@@ -297,6 +321,8 @@ namespace Spotlight
                     b.Position = old;
                     a.Acted = b.Acted = true;
                     Emit("swap", $"{Type(a).Name} {old} 与 {Type(b).Name} {a.Position} 交换位置", a.Id);
+                    // 互换同样改变相对位置，重算入场标记。
+                    RefreshMarking();
                     break;
                 case CommandKind.Withdraw:
                     var leaving = _units.FirstOrDefault(u => u.Id == c.SubjectId);
@@ -351,7 +377,14 @@ namespace Spotlight
             if (selection.Kind == SelectionKind.Hand && _activeSide == Side.Player && _plays > 0)
             {
                 var card = _hand.FirstOrDefault(c => c.Id == selection.Id);
-                if (card != null) actions.Deploy = Cells().Where(p => DeploymentError(_config.Cards[card.TypeId], _activeSide, p) == null).ToArray();
+                if (card != null)
+                {
+                    var handType = _config.Cards[card.TypeId];
+                    // 资源不足时不下发任何部署目标：高亮必须与“现在真的能部署”一致，
+                    // 否则玩家会看到一片可放格却次次被拒。合法性只由规则层给出，UI 不自行推导。
+                    if (handType.DeployCost <= _resources)
+                        actions.Deploy = Cells().Where(p => DeploymentError(handType, _activeSide, p) == null).ToArray();
+                }
             }
             else if ((selection.Kind == SelectionKind.BossDeployment || selection.Kind == SelectionKind.None) && _activeSide == Side.Boss && _plays > 0)
                 actions.Deploy = Cells().Where(p => DeploymentError(_config.Cards[Rules.BossCardType], Side.Boss, p) == null).ToArray();
@@ -369,7 +402,19 @@ namespace Spotlight
                 if (Available(u))
                 {
                     actions.Move = Paths(u.Position).Where(p => p.Value.Count > 0 && p.Value.Count <= u.MoveDistance).Select(p => p.Key).ToArray();
-                    actions.Attack = Targets(_activeSide).Where(t => CanAttack(u, u.Position, t.Position)).Select(t => t.Position).ToArray();
+                    var attackCells = Targets(_activeSide).Where(t => CanAttack(u, u.Position, t.Position)).Select(t => t.Position).ToList();
+                    // 具备“攻击友方即治疗”的单位，合法目标额外包含己方单位（不含自己）。
+                    // 这些格同时进入 Attack（点击链路与敌方目标一致）与 Heal（视图据此染成治疗色）。
+                    if (Type(u).AttacksAlliesAsHeal)
+                    {
+                        var healTargets = _units
+                            .Where(v => v.Id != u.Id && v.Owner == u.Owner && CanAttack(u, u.Position, v.Position))
+                            .Select(v => v.Position)
+                            .ToArray();
+                        actions.Heal = healTargets;
+                        attackCells.AddRange(healTargets);
+                    }
+                    actions.Attack = attackCells.ToArray();
                     // 资源卡既不发起互换也不作为互换目标，因此它选中时没有互换高亮，
                     // 点击相邻己方卡牌会落到“切换选中对象”这条分支上（与关闭 adjacentSwap 时的行为一致）。
                     if (Rules.AdjacentSwap && Swappable(u)) actions.Swap = _units.Where(v => v != u && Swappable(v) && u.Position.Distance(v.Position) == 1).Select(v => v.Position).ToArray();
@@ -395,8 +440,33 @@ namespace Spotlight
             if (type.DeployHomeOnly && !InHomeRegion(owner, p)) return "必须部署在己方区域";
             if (type.Category == CardCategory.Attack && !InHomeRegion(owner, p) && !_units.Any(u => u.Owner == owner && Type(u).Teleport?.PermitsAttackDeploy == true && u.Position.Distance(p) == 1)) return "攻击卡需要己方区域或己方星门四邻";
             if (type.AvoidAdjacentSameType && _units.Any(u => u.TypeId == type.Id && u.Position.Distance(p) == 1)) return "不能与同卡种单位四邻部署";
+            // 邻域部署要求：统计目标格四邻（上下左右）中指定分类的在场单位数量。
+            // 不区分阵营（敌方同类单位同样计数），家不是单位因此不参与统计。
+            if (type.DeployRequireAdjacentCount > 0)
+            {
+                var required = type.DeployRequireAdjacentCount;
+                var category = CategoryOf(type.DeployRequireAdjacentCategory);
+                var found = Neighbors(p).Count(neighbor => _units.Any(u => u.Position == neighbor && Type(u).Category == category));
+                if (found < required) return $"四邻需要至少 {required} 个{CategoryName(category)}单位（当前 {found}）";
+            }
             return null;
         }
+
+        /// <summary>
+        /// 把 Cards 表的分类文本解析成分类枚举。
+        /// 输入：resource / attack / special 文本；输出：对应枚举。
+        /// 为什么需要：邻域部署要求以配置文本形式给出；非法文本已被 ConfigValidation 拦截，
+        /// 这里按“其它=特殊卡”兜底，保证即使有人绕过校验也不会抛异常中断对局。
+        /// </summary>
+        static CardCategory CategoryOf(string text) =>
+            text == "resource" ? CardCategory.Resource : text == "attack" ? CardCategory.Attack : CardCategory.Special;
+
+        /// <summary>
+        /// 分类中文名，仅用于玩家可读的失败原因与日志。
+        /// 输入：分类枚举；输出：资源卡 / 攻击卡 / 特殊卡。
+        /// </summary>
+        static string CategoryName(CardCategory category) =>
+            category == CardCategory.Resource ? "资源卡" : category == CardCategory.Attack ? "攻击卡" : "特殊卡";
 
         /// <summary>
         /// 在指定格创建新单位。
@@ -416,6 +486,7 @@ namespace Spotlight
             var type = _config.Cards[card.TypeId];
             var combat = type.Combat;
             var penalty = type.DeploymentPenalty;
+            var growth = type.DeathGrowth;
             var u = new UnitState
             {
                 Id = ++_nextUnit,
@@ -430,6 +501,8 @@ namespace Spotlight
                 MoveDistance = combat != null ? combat.MoveDistance : 0,
                 DeploymentPenaltyPending = penalty != null,
                 DeploymentAttackReduction = penalty != null ? penalty.AttackReduction : 0,
+                DeathGrowthPerKill = growth != null ? growth.PerKill : 0,
+                DeathGrowthLimit = growth != null ? growth.Limit : 0,
                 Acted = !firstSpawn && Rules.SummoningSickness,
                 UpkeepPaid = true,
                 DeploymentOrder = ++_order,
@@ -441,8 +514,46 @@ namespace Spotlight
             // 场上单位只保存值副本，与墓地中的这张卡互不影响。
             if (card.Owner == Side.Player) _grave.Add(card);
             Emit("deploy", $"{SideName(card.Owner)}部署 {type.Name} 至 {p}", u.Id);
+            // 即时卡：在场时间视为 0。必须跳过一次性减攻与入场标记，
+            // 否则一张“打完就走”的卡可以白嫖减攻/标记；结算完效果后立即以 Consumed 原因离场，
+            // 这样补兵、死亡加攻、标记奖励（都只认 Death）天然不会被触发。
+            if (type.Instant != null)
+            {
+                _resources += type.Instant.GainResource;
+                Emit("instant", $"{type.Name} 立即结算：获得 {type.Instant.GainResource} 资源", u.Id);
+                Remove(u, Removal.Consumed);
+                return u;
+            }
             ApplyDeploymentPenalty(u);
+            // 新单位可能是标记来源（自己入场时把范围内单位标记），也可能是被标记对象（落入已有来源的范围）。
+            RefreshMarking();
             return u;
+        }
+
+        /// <summary>
+        /// 重新结算入场标记（星棹收集系统）。
+        /// 输入：无（读取当前棋盘）；输出：无。
+        /// 规则：具有该能力的在场单位会把半径内（切比雪夫距离，半径 1 即 3×3 八邻）的其它单位标记为“自己阵营”；
+        /// 只标记尚未被标记的单位——多来源重叠不叠加、先到先得；标记永久保留，来源离场或目标离开范围都不撤销。
+        /// 为什么每次部署/移动/互换后整体重扫：标记只在“进入范围那一刻”生效，重扫等价于逐次判定，
+        /// 又不必维护“上次范围集合”，实现更难出错；棋盘规模（默认 5×10）下开销可忽略。
+        /// </summary>
+        void RefreshMarking()
+        {
+            foreach (var source in _units)
+            {
+                var ability = Type(source).MarkOnEnter;
+                if (ability == null) continue;
+                foreach (var target in _units)
+                {
+                    if (target.Id == source.Id || target.MarkedBy != null) continue;
+                    var distance = Math.Max(Math.Abs(target.Position.Row - source.Position.Row), Math.Abs(target.Position.Col - source.Position.Col));
+                    if (distance > ability.Radius) continue;
+                    target.MarkedBy = source.Owner;
+                    target.MarkReward = ability.Reward;
+                    Emit("mark", $"{Type(source).Name} 标记 {Type(target).Name}（阵亡时给{SideName(source.Owner)} {ability.Reward} 资源）", target.Id);
+                }
+            }
         }
 
         /// <summary>
@@ -485,7 +596,9 @@ namespace Spotlight
             /// <summary>玩家主动离场：不消耗行动、不回收来源卡、不触发补兵。</summary>
             Withdraw,
             /// <summary>刷怪技能直接顶替玩家单位；不造成伤害，不重复回收来源卡。</summary>
-            ReplacedBySpawn
+            ReplacedBySpawn,
+            /// <summary>即时卡结算完成后的自动离场：不是阵亡，不触发补兵、死亡加攻或标记奖励。</summary>
+            Consumed
         }
 
         /// <summary>
@@ -499,6 +612,33 @@ namespace Spotlight
         void Remove(UnitState u, Removal reason)
         {
             _units.Remove(u);
+            // 标记奖励：只在“因战斗阵亡”时结算。覆盖升级、被战机顶替与主动离场都不算死亡，
+            // 因此不会给标记者发资源；标记本身已随单位消失，不需要额外清理。
+            if (reason == Removal.Death && u.MarkedBy.HasValue && u.MarkReward > 0)
+            {
+                if (u.MarkedBy.Value == Side.Player)
+                {
+                    _resources += u.MarkReward;
+                    Emit("mark-reward", $"被标记单位阵亡：玩家获得 {u.MarkReward} 资源", u.Id);
+                }
+                else
+                {
+                    // Boss 目前没有资源系统：不发放资源，只留可追溯日志，便于将来接入。
+                    Emit("mark-reward", $"被标记单位阵亡：Boss 侧没有资源系统，未发放 {u.MarkReward} 资源", u.Id);
+                }
+            }
+            // 死亡加攻：全棋盘任一单位“因战斗阵亡”时，所有在场且未达次数上限的该能力单位增加攻击力。
+            // 与标记奖励共用同一个钩子，所以覆盖升级、被战机顶替与主动离场都不会触发加成。
+            if (reason == Removal.Death)
+            {
+                foreach (var grower in _units)
+                {
+                    if (grower.DeathGrowthLimit <= 0 || grower.DeathGrowthTriggers >= grower.DeathGrowthLimit) continue;
+                    grower.DeathGrowthTriggers++;
+                    grower.Attack += grower.DeathGrowthPerKill;
+                    Emit("death-growth", $"{Type(grower).Name} 因 {Type(u).Name} 阵亡获得 +{grower.DeathGrowthPerKill} 攻击（{grower.DeathGrowthTriggers}/{grower.DeathGrowthLimit}）", grower.Id);
+                }
+            }
             if (u.Owner == Side.Boss) _bossGrave.Add(new CardRecord(u.SourceCardId, u.TypeId, Side.Boss));
             if (u.BossSlotId != null)
             {
@@ -507,8 +647,8 @@ namespace Spotlight
                 slot.DueRound = reason == Removal.Death ? _round + Rules.BossRespawnDelay : long.MaxValue;
                 slot.WaitingForSpace = false;
             }
-            var kind = reason == Removal.Death ? "death" : reason == Removal.Upgrade ? "upgrade" : reason == Removal.ReplacedBySpawn ? "spawn-replace" : "withdraw";
-            var label = reason == Removal.Death ? "阵亡" : reason == Removal.Upgrade ? "被覆盖升级" : reason == Removal.ReplacedBySpawn ? "被 Boss 战机顶替" : "离场";
+            var kind = reason == Removal.Death ? "death" : reason == Removal.Upgrade ? "upgrade" : reason == Removal.ReplacedBySpawn ? "spawn-replace" : reason == Removal.Consumed ? "consume" : "withdraw";
+            var label = reason == Removal.Death ? "阵亡" : reason == Removal.Upgrade ? "被覆盖升级" : reason == Removal.ReplacedBySpawn ? "被 Boss 战机顶替" : reason == Removal.Consumed ? "结算后离场" : "离场";
             Emit(kind, $"{Type(u).Name} {label}，场上单位移除，来源卡不重复回收", u.Id);
         }
 
