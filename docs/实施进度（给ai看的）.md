@@ -54,7 +54,7 @@
 
 | 子项 | 文件 | 状态 |
 |---|---|---|
-| 卡牌视图与三个组件 | `Runtime/Cards/Card.cs`、`CombatComponent.cs`、`ResourceComponent.cs`、`TeleportComponent.cs` | 完成 |
+| 卡牌视图与四个组件 | `Runtime/Cards/Card.cs`、`CombatComponent.cs`、`ResourceComponent.cs`、`TeleportComponent.cs`、`DeploymentPenaltyComponent.cs` | 完成 |
 | 文本与配色工具 | `Runtime/View/CardText.cs`、`CardFactory.cs` | 完成 |
 | 棋盘（UGUI） | `Runtime/UI/BoardView.cs`、`BoardCellView.cs` | 完成 |
 | 手牌（UGUI） | `Runtime/UI/HandView.cs` | 完成 |
@@ -66,6 +66,20 @@
 | 演示场景 | `Assets/Spotlight/Scenes/Spotlight.unity` | 完成 |
 | 界面预览 | `docs/界面预览.png`、`docs/配置面板.png`、`docs/配置面板-下半部分.png` | 完成 |
 
+### 模块 4：京都壹号与场上战斗属性（本轮新增，已在 Unity 2022.3.62f3 验证）
+
+| 子项 | 文件 | 状态 |
+|---|---|---|
+| 能力配置契约与校验 | `Core/Configuration.cs`（`IDeploymentPenaltyConfig`、`CardRow` 新两列、`CardArchetype.FromRow` 值拷贝隔离、校验规则） | 代码完成 |
+| 场上战斗属性 | `Core/GameState.cs`（`UnitState.MaxHp/Attack/Range/MoveDistance/DeploymentPenaltyPending/DeploymentAttackReduction`） | 代码完成 |
+| 统一入场结算与读取迁移 | `Core/GameSession.cs`（`Place` 初始化 + `ApplyDeploymentPenalty`，伤害/射程/移动/AI/刷怪条件改读当前值） | 代码完成 |
+| 能力配置 SO 与视图组件 | `Runtime/Config/DeploymentPenaltyConfigSO.cs`、`Runtime/Cards/DeploymentPenaltyComponent.cs`、`CombatComponent.cs`、`Card.cs` | 代码完成 |
+| 表现与调试 | `Runtime/View/CardText.cs`（`StatLine(def, unit)`、`UnitDetail`、`DeploymentPenaltyLine`）、`Runtime/UI/HudView.cs`、`Runtime/Debug/ConfigDebugPanel.cs` | 代码完成 |
+| 配置管线 | `Editor/Excel/TableSchema.cs`、`DefaultWorkbookWriter.cs`、`ConfigAssetPublisher.cs`、`Editor/View/ViewTemplateBuilder.cs` | 代码完成 |
+| 正式数据 | `Assets/Spotlight/Config/Spotlight.xlsx`（Cards 加两列 + `kyoto_01` 行；Deck 加 2 张） | 已改 |
+| 测试 | `Tests/EditMode/DeploymentPenaltyTests.cs`、`Tests/PlayMode/DeploymentPenaltyPlayModeTests.cs` | EditMode 179/179、PlayMode 26/26 全部通过 |
+| 生成资产 | `Generated/` | 已按管线重编译：新增 `kyoto_01.asset`（含 `_DeploymentPenalty` 子资产）与 `kyoto_01.prefab`，共 20 个资产 |
+
 ### 模块 4：验证与架构图
 
 | 子项 | 状态 |
@@ -74,6 +88,7 @@
 | PlayMode 回归 | `Spotlight.Tests.PlayMode` 新增 3 个用例：移动后卡牌落在目标格且动画不会被中断在旧格、连续 10 个回合中界面始终跟随规则快照、点击棋子的射线命中格子而非卡牌；本地已按 `-testPlatform PlayMode` 跑通 |
 | 运行验证 | 演示场景进入 Play 无错误；棋盘 5×10、双方家、手牌 5 张、中文 HUD 与日志均正常（见 `docs/界面预览.png`） |
 | 配置面板验证 | 在 Play 中打开面板逐段截图核对：字段分组与文案与既有网页版配置界面一致，已删除的反击/斜移开关不再出现（见 `docs/配置面板.png`、`docs/配置面板-下半部分.png`） |
+| 架构图 02-cards | `docs/diagrams/02-cards/` | 已按 JSON 源补入第四个能力组件与其 SO，重新渲染 SVG/PNG/HTML/drawio，`fireworks.py check` 通过 |
 | 四组架构图 | `docs/diagrams/` 下每张图一个子目录（`01-modules/`、`02-cards/`、`03-dataflow/`、`04-turnflow/`），每个目录内含同名图纸 JSON、布局检查报告、**SVG + PNG + 离线 HTML + draw.io 原生文件** |
 | 图纸转 draw.io | `docs/diagrams/spec-to-drawio.py`（按子目录扫描图纸 JSON → `.drawio`，箭头为真实边，可拖动重连）＋ `--check` 结构校验 ＋ `.github/workflows/diagrams-check.yml` |
 | 策划填写说明 | `docs/策划填写说明.md` |
