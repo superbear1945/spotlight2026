@@ -13,6 +13,11 @@
 #      既多花分钟数，又会额外占用一个 Unity 授权席位（个人版席位制，席位不足
 #      会误报 no available seats，表现为与代码无关的红灯）。
 #
+#   3b. unity-tests.yml 必须保留夜间打包的门禁三件套（详见 CheckNightlyReleaseGate）：
+#      `schedule` 触发 + `build-windows` job 的 `needs: unity-tests` + `if:` 里的
+#      `needs.unity-tests.result == 'success'`。缺任何一件都会让“测试全绿才打包”
+#      静默失效——要么永远不打包，要么拿着红着的代码发布到 Release 给人下载。
+#
 #   4. unity-tests.yml 的 unity-tests job 必须设置 strategy.max-parallel: 1，
 #      避免同一矩阵的两个测试模式同时申请 / 归还共用账号的 Personal 授权。
 #      这里只保证矩阵内串行，不保证不同 PR 之间的账号级互斥。
@@ -100,6 +105,60 @@ CheckUnityParallelism() {
 }
 
 # -----------------------------------------------------------------------------
+# CheckNightlyReleaseGate —— 校验夜间打包“测试全绿才发布”的门禁
+# 输入：unity-tests.yml 文件路径；输出：失败时打印原因，返回 0 合规 / 1 违规。
+# 校验项：
+#   1) `on:` 块里有 `schedule:`：否则定时入口被删，“夜间打包”永远不会自动执行。
+#   2) 存在 job id 为 `build-windows` 的 job。
+#   3) 该 job 自身层级（缩进 4 的行）有 `needs:` 且包含 `unity-tests`。
+#   4) 同一层级有单行 `if: ... needs.unity-tests.result == 'success' ...`。
+# 为什么必须是可执行守卫：夜间打包会把产物直接发布给他人下载。删掉 needs 或那条
+# result 判定后，流水线不会报错，只会静默变成“红着也发布”；删掉 schedule 则变成
+# “再也不打包”，同样没有任何提示。这与“把 push 触发加回来”性质相同：当场看不出，
+# 以后只能靠翻 Release 时间线才能发现。因此写成静态检查，宁可报错也不静默放过。
+# 只接受块状写法：`if:` 必须写成单行；写成多行折叠式时本检查会报错，这是故意的。
+# -----------------------------------------------------------------------------
+CheckNightlyReleaseGate() {
+  local _file="$1" _job_body
+
+  if ! grep -q '^[[:space:]]*schedule:' <<<"$(_on_block "$_file")"; then
+    echo "  ❌ $_file：缺少 schedule 触发 —— 夜间打包不会自动执行"
+    return 1
+  fi
+
+  # 只取 build-windows job 自身层级的键（缩进 4）：步骤里的同名键与更深层内容必须排除，
+  # 否则一段无关注释或步骤参数就能骗过检查。输出时去掉前导空格，便于下面按 `^needs:` 匹配。
+  _job_body=$(awk '
+    /^  build-windows:[[:space:]]*$/ { inside = 1; next }
+    inside && /^[[:space:]]*$/ { next }
+    inside {
+      match($0, /^ */)
+      if (RLENGTH <= 2) { inside = 0; next }
+      if (RLENGTH == 4) { sub(/^ +/, ""); print }
+    }
+  ' "$_file")
+
+  if [ -z "$_job_body" ]; then
+    echo "  ❌ $_file：缺少 build-windows job —— 夜间打包没有落点"
+    return 1
+  fi
+
+  if ! grep -Eq '^needs:.*unity-tests' <<<"$_job_body"; then
+    echo "  ❌ $_file：build-windows 缺少 needs: unity-tests —— 打包不再等待测试通过"
+    return 1
+  fi
+
+  if ! grep -Eq "^if:.*needs\.unity-tests\.result == 'success'" <<<"$_job_body"; then
+    echo "  ❌ $_file：build-windows 的 if 缺少 needs.unity-tests.result == 'success' 判定"
+    echo "     ↑ 没有这条判定，测试失败时打包 job 仍可能执行，并把包发布到 Release。"
+    echo "       必须写成缩进 4 的单行（本守卫只认块状单行写法）。"
+    return 1
+  fi
+
+  return 0
+}
+
+# -----------------------------------------------------------------------------
 # _check_file —— 校验单个 workflow 文件的触发策略与 Unity 串行约束
 # 输入：workflow 文件路径
 # 输出：标准输出打印结论；返回 0 表示合规，1 表示存在违规
@@ -126,6 +185,7 @@ _check_file() {
 
   if [ "${_file##*/}" = "unity-tests.yml" ]; then
     CheckUnityParallelism "$_file" || _rc=1
+    CheckNightlyReleaseGate "$_file" || _rc=1
   fi
 
   return "$_rc"
@@ -305,7 +365,8 @@ _check_ruleset() {
 
 # -----------------------------------------------------------------------------
 # _self_test —— 本脚本自身的测试用例
-# 在临时目录构造触发策略、矩阵展开与 Unity 串行约束的独立夹具，断言该拦的拦住。
+# 在临时目录构造触发策略、矩阵展开、Unity 串行约束与夜间打包门禁的独立夹具，
+# 断言该拦的拦住、该放的放行。
 # 输入：无；输出：逐项断言结果，返回 0 表示全部通过，否则返回 1。
 # 为什么这样测：直接对真实仓库断言会让用例随仓库内容漂移，因此用独立 fixture。
 # -----------------------------------------------------------------------------
@@ -314,6 +375,34 @@ _self_test() {
   _tmp=$(mktemp -d)
   # shellcheck disable=SC2064
   trap "rm -rf '$_tmp'" RETURN
+
+  # _write_unity_tests_fixture —— 构造一份 unity-tests.yml 夹具
+  # 输入：输出路径、strategy 下额外追加的行（%b 解释换行）、
+  #       schedule / needs / 成功判定三个开关（yes 或 no）；输出：写入文件，返回 0。
+  # 为什么抽成函数：E–H（串行约束）与 L–O（夜间打包门禁）需要同一份骨架，
+  # 只在一处构造才能保证“某个用例失败”确实因为目标规则，而不是骨架各自漂移。
+  # 三个开关必须能单独关闭，否则测不出“缺了任一件就会被拦”。
+  _write_unity_tests_fixture() {
+    local _path="$1" _strategy="$2" _schedule="$3" _needs="$4" _gate="$5"
+    {
+      printf '%s\n' \
+        'on:' \
+        '  pull_request:' \
+        '  workflow_dispatch:'
+      [ "$_schedule" = "yes" ] && printf '%s\n' '  schedule:' "    - cron: '0 18 * * *'"
+      printf '%s\n' \
+        'jobs:' \
+        '  unity-tests:' \
+        '    strategy:' \
+        '      fail-fast: false'
+      [ -n "$_strategy" ] && printf '%b\n' "$_strategy"
+      printf '%s\n' '  build-windows:' '    name: 夜间打包夹具'
+      [ "$_needs" = "yes" ] && printf '%s\n' '    needs: unity-tests'
+      [ "$_gate" = "yes" ] && printf '%s\n' \
+        "    if: needs.unity-tests.result == 'success' && github.event_name == 'schedule'"
+    } >"$_path"
+    return 0
+  }
 
   # --- 用例 A：只写了 push + pull_request → 缺 workflow_dispatch，且 push 冗余 → 必须报错
   cat >"$_tmp/case-a.yml" <<'YAML'
@@ -371,17 +460,11 @@ YAML
   fi
 
   # --- 用例 E–H：通过脚本公开入口验证串行约束，不能仅凭文件中出现该字符串放行。
+  # 夹具同时带上夜间打包三件套，这样才能把“串行约束”与“夜间打包门禁”隔开：
+  # 否则下面期望放行的 E 会因为缺少 build-windows 而被门禁拦下，用例就测不到目标规则。
   local _case _setting _expected _actual
   while IFS='|' read -r _case _setting _expected; do
-    printf '%s\n' \
-      'on:' \
-      '  pull_request:' \
-      '  workflow_dispatch:' \
-      'jobs:' \
-      '  unity-tests:' \
-      '    strategy:' \
-      '      fail-fast: false' >"$_tmp/unity-tests.yml"
-    printf '%b\n' "$_setting" >>"$_tmp/unity-tests.yml"
+    _write_unity_tests_fixture "$_tmp/unity-tests.yml" "$_setting" yes yes yes
     _actual=0
     bash "$_self_path" "$_tmp/unity-tests.yml" >/dev/null 2>&1 || _actual=$?
     if [ "$_actual" -eq "$_expected" ]; then
@@ -397,8 +480,29 @@ G（并行配置拦截）|      max-parallel: 2|1
 H（其他 job 的串行配置不算）|  other:\n    strategy:\n      max-parallel: 1|1
 CASES
 
-  # --- 用例 I–K：合并门槛只允许“检查全绿 + 分支最新”，不得要求人工审阅。
-  # 为什么必须在自检里覆盖：这条约定平时看不出问题，一旦规则集被改回要求审阅，
+  # --- 用例 L–O：夜间打包门禁（“测试全绿才发布”）。
+  # 为什么必须在自检里覆盖：这三件套一旦被删，流水线不会报错，只会静默变成
+  # “再也不打包”或“红着也发布”，而且发布出去的东西是给他人下载的。
+  local _ncase _nsched _nneeds _nif _nexpected _nactual
+  while IFS='|' read -r _ncase _nsched _nneeds _nif _nexpected; do
+    _write_unity_tests_fixture "$_tmp/unity-tests.yml" '      max-parallel: 1' \
+      "$_nsched" "$_nneeds" "$_nif"
+    _nactual=0
+    bash "$_self_path" "$_tmp/unity-tests.yml" >/dev/null 2>&1 || _nactual=$?
+    if [ "$_nactual" -eq "$_nexpected" ]; then
+      echo "  ✅ 自检 $_ncase 通过"
+    else
+      echo "  ❌ 自检 $_ncase 失败：期望退出码 $_nexpected，实际 $_nactual"
+      _rc=1
+    fi
+  done <<'NIGHTCASES'
+L（三件套齐全 → 放行）|yes|yes|yes|0
+M（缺 schedule → 拦截）|no|yes|yes|1
+N（缺 needs: unity-tests → 拦截）|yes|no|yes|1
+O（缺 result == 'success' 判定 → 拦截）|yes|yes|no|1
+NIGHTCASES
+
+  # --- 用例 I–K：合并门槛只允许“检查全绿 + 分支最新”，不得要求人工审阅。  # 为什么必须在自检里覆盖：这条约定平时看不出问题，一旦规则集被改回要求审阅，
   # 表现只是 PR 卡在等 approval；而校验它的 --check-ruleset 需要 gh 登录才能跑，
   # 因此判定逻辑必须能在离线的自检中被证明有效。
   local _gate _gate_expected _gate_line _gate_actual
@@ -429,7 +533,7 @@ GATES
 if [ "${1:-}" = "--self-test" ]; then
   echo "== check-ci-config.sh 自检 =="
   if _self_test; then
-    echo "自检结果：11/11 通过"
+    echo "自检结果：15/15 通过"
     exit 0
   fi
   echo "自检结果：存在失败用例"
