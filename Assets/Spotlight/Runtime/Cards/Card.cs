@@ -25,6 +25,8 @@ namespace Spotlight
         [SerializeField] ResourceComponent _resource;
         /// <summary>传送组件引用（该卡种未启用时为 null）。</summary>
         [SerializeField] TeleportComponent _teleport;
+        /// <summary>一次性部署减攻组件引用（该卡种未启用时为 null）。</summary>
+        [SerializeField] DeploymentPenaltyComponent _deploymentPenalty;
         /// <summary>卡面底色 Image，用于表示阵营与分类。</summary>
         [SerializeField] Image _body;
         /// <summary>高亮框 Image，用于表示可部署/可移动/可攻击/可互换。</summary>
@@ -69,6 +71,8 @@ namespace Spotlight
         public ResourceComponent Resource => _resource;
         /// <summary>传送组件（可能为 null）。</summary>
         public TeleportComponent Teleport => _teleport;
+        /// <summary>一次性部署减攻组件（可能为 null）。</summary>
+        public DeploymentPenaltyComponent DeploymentPenalty => _deploymentPenalty;
 
         /// <summary>
         /// 解析缺失的组件引用。
@@ -81,6 +85,7 @@ namespace Spotlight
             if (_combat == null) _combat = GetComponent<CombatComponent>();
             if (_resource == null) _resource = GetComponent<ResourceComponent>();
             if (_teleport == null) _teleport = GetComponent<TeleportComponent>();
+            if (_deploymentPenalty == null) _deploymentPenalty = GetComponent<DeploymentPenaltyComponent>();
             if (_body == null) _body = GetComponent<Image>();
         }
 
@@ -96,6 +101,7 @@ namespace Spotlight
             if (_combat != null) _combat.Configure(definition.Combat);
             if (_resource != null) _resource.Configure(definition.Resource);
             if (_teleport != null) _teleport.Configure(definition.Teleport);
+            if (_deploymentPenalty != null) _deploymentPenalty.Configure(definition.DeploymentPenalty);
         }
 
         /// <summary>
@@ -111,6 +117,7 @@ namespace Spotlight
             _unit = null;
             if (_combat != null) _combat.Bind(null);
             if (_resource != null) _resource.Bind(null);
+            if (_deploymentPenalty != null) _deploymentPenalty.Bind(null);
             Refresh();
         }
 
@@ -129,6 +136,7 @@ namespace Spotlight
             _record = null;
             if (_combat != null) _combat.Bind(unit);
             if (_resource != null) _resource.Bind(unit);
+            if (_deploymentPenalty != null) _deploymentPenalty.Bind(unit);
             Refresh();
         }
 
@@ -145,6 +153,7 @@ namespace Spotlight
             _unit = null;
             if (_combat != null) _combat.Bind(null);
             if (_resource != null) _resource.Bind(null);
+            if (_deploymentPenalty != null) _deploymentPenalty.Bind(null);
             if (_nameLabel != null) _nameLabel.text = owner == Side.Player ? "玩家家" : "Boss 家";
             if (_statLabel != null) _statLabel.text = "生命 " + (home != null ? home.Hp : 0);
             if (_hpLabel != null) _hpLabel.text = (home != null ? home.Hp : 0).ToString();
@@ -163,6 +172,7 @@ namespace Spotlight
             _unit = null;
             if (_combat != null) _combat.Bind(null);
             if (_resource != null) _resource.Bind(null);
+            if (_deploymentPenalty != null) _deploymentPenalty.Bind(null);
             SetSelected(false);
             SetHighlightColor(null);
         }
@@ -178,7 +188,8 @@ namespace Spotlight
             if (_definition != null)
             {
                 if (_nameLabel != null) _nameLabel.text = _definition.Name;
-                if (_statLabel != null) _statLabel.text = CardText.StatLine(_definition);
+                // 棋盘单位显示当前攻击/射程/移动，手牌显示卡种基础配置；减攻后的 0 必须能直接看到。
+                if (_statLabel != null) _statLabel.text = _unit != null ? CardText.StatLine(_definition, _unit) : CardText.StatLine(_definition);
                 if (_body != null) _body.color = _highlightColor ?? _baseColor;
             }
             if (_hpLabel != null)
