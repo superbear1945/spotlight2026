@@ -53,6 +53,20 @@ namespace Spotlight
         bool PermitsAttackDeploy { get; }
     }
 
+    /// <summary>
+    /// 一次性部署减攻配置。
+    /// 输入：Excel 的 deploymentAttackReduction；输出：规则内核读取的只读减攻量（正整数）。
+    /// 为什么需要独立接口：能力参数必须来自配置而不是代码常量（不能把“减 2”写死在规则里），
+    /// 且规则内核只依赖接口，因此 SO、Excel 行对象与测试用的普通 C# 对象都能作为配置来源。
+    /// 契约：只描述“每次成功上场后可以使用一次的减攻量”，不保存次数、目标与已消耗状态，
+    /// 这些属于场上状态（UnitState），不属于卡种配置。
+    /// </summary>
+    public interface IDeploymentPenaltyConfig
+    {
+        /// <summary>使随后成功上场的一个同阵营攻击类单位降低的攻击力（正整数）。</summary>
+        int AttackReduction { get; }
+    }
+
     // 注意：以下所有 public 字段名都是 Excel 的正式列名；只读接口属性不参与列映射，
     // 因此新增列时必须同时在本类和编辑器表结构中登记，否则会被“未定义列”校验拦截。
     /// <summary>
@@ -62,7 +76,7 @@ namespace Spotlight
     /// 不建立具体卡种子类，避免继承链膨胀。
     /// </summary>
     [Serializable]
-    public sealed class CardRow : ICombatConfig, IResourceConfig, ITeleportConfig
+    public sealed class CardRow : ICombatConfig, IResourceConfig, ITeleportConfig, IDeploymentPenaltyConfig
     {
         /// <summary>稳定 ID，唯一且字母开头；改名不影响引用与升级关联。</summary>
         public string id;
@@ -99,6 +113,10 @@ namespace Spotlight
         public bool avoidAdjacentSameType;
         /// <summary>是否必须覆盖指定的己方资源单位才能部署。</summary>
         public bool requiresUpgrade;
+        /// <summary>是否启用一次性部署减攻组件；为 false 时 deploymentAttackReduction 必须为 0。</summary>
+        public bool deploymentPenaltyComponent;
+        /// <summary>一次性部署减攻的减攻量；启用组件时必须为正整数，禁用时必须为 0。</summary>
+        public int deploymentAttackReduction;
 
         /// <inheritdoc />
         public int Hp => hp;
@@ -114,6 +132,8 @@ namespace Spotlight
         public int Upkeep => upkeep;
         /// <inheritdoc />
         public bool PermitsAttackDeploy => permitsAttackDeploy;
+        /// <inheritdoc />
+        public int AttackReduction => deploymentAttackReduction;
     }
 
     /// <summary>
@@ -290,7 +310,7 @@ namespace Spotlight
 
     /// <summary>
     /// 单个卡种的共享只读描述。
-    /// 输入：一张已校验的 CardRow 与三个能力接口实现；
+    /// 输入：一张已校验的 CardRow 与四个能力接口实现；
     /// 输出：规则内核查询名称、分类、属性和部署限制的唯一入口。
     /// 为什么不存在子类：所有卡种行为差异都由分类与开关字段表达，规则代码不按卡名分支。
     /// </summary>
@@ -308,6 +328,8 @@ namespace Spotlight
         public IResourceConfig Resource { get; }
         /// <summary>传送属性；为 null 表示没有传送组件。</summary>
         public ITeleportConfig Teleport { get; }
+        /// <summary>一次性部署减攻属性；为 null 表示该卡种没有这项能力。</summary>
+        public IDeploymentPenaltyConfig DeploymentPenalty { get; }
         /// <summary>是否必须覆盖指定资源单位才能部署。</summary>
         public bool RequiresUpgrade { get; }
         /// <summary>覆盖升级来源卡种 ID。</summary>
@@ -322,7 +344,7 @@ namespace Spotlight
         /// 输入：row 提供标识与开关，combat/resource/teleport 提供各能力数值（可为 null）；
         /// 输出：供 GameConfiguration 索引的不可变对象。
         /// </summary>
-        public CardArchetype(CardRow row, ICombatConfig combat, IResourceConfig resource, ITeleportConfig teleport)
+        public CardArchetype(CardRow row, ICombatConfig combat, IResourceConfig resource, ITeleportConfig teleport, IDeploymentPenaltyConfig deploymentPenalty = null)
         {
             Id = row.id;
             Name = row.name?.Trim();
@@ -330,10 +352,101 @@ namespace Spotlight
             Combat = combat;
             Resource = resource;
             Teleport = teleport;
+            DeploymentPenalty = deploymentPenalty;
             RequiresUpgrade = row.requiresUpgrade;
             UpgradeFrom = row.upgradeFrom;
             DeployHomeOnly = row.deployHomeOnly;
             AvoidAdjacentSameType = row.avoidAdjacentSameType;
+        }
+
+        /// <summary>
+        /// 由表行构造共享描述，并把全部数值复制成不可变值。
+        /// 输入：已校验的 CardRow（Excel 映射或调试草稿）；输出：与草稿完全脱钩的 CardArchetype。
+        /// 为什么必须复制：CardRow 是可变的中间态，调试面板会原地改字段；若规则直接引用行对象，
+        /// 进行中的对局与后续部署会偷偷读到改动后的草稿。SO 路径不经过本方法（SO 本身只读）。
+        /// </summary>
+        public static CardArchetype FromRow(CardRow row)
+        {
+            if (row == null) throw new ArgumentNullException(nameof(row));
+            return new CardArchetype(row,
+                new CombatValues(row.hp, row.atk, row.range, row.moveDistance),
+                row.resourceComponent ? new ResourceValues(row.produce, row.upkeep) : null,
+                row.teleportComponent ? new TeleportValues(row.permitsAttackDeploy) : null,
+                row.deploymentPenaltyComponent ? new DeploymentPenaltyValues(row.deploymentAttackReduction) : null);
+        }
+    }
+
+    /// <summary>
+    /// 战斗数值的不可变副本。
+    /// 输入：构造参数；输出：实现 ICombatConfig 的只读对象。
+    /// 为什么需要：把可变表行的数值与对局脱钩，旧快照与后续部署都不会因草稿被改而改变。
+    /// </summary>
+    sealed class CombatValues : ICombatConfig
+    {
+        /// <inheritdoc />
+        public int Hp { get; }
+        /// <inheritdoc />
+        public int Attack { get; }
+        /// <inheritdoc />
+        public int Range { get; }
+        /// <inheritdoc />
+        public int MoveDistance { get; }
+
+        /// <summary>复制战斗数值。输入：生命、攻击、射程与移动距离；输出：只读副本。</summary>
+        public CombatValues(int hp, int attack, int range, int moveDistance)
+        {
+            Hp = hp;
+            Attack = attack;
+            Range = range;
+            MoveDistance = moveDistance;
+        }
+    }
+
+    /// <summary>
+    /// 资源数值的不可变副本。输入：产出与维持费；输出：实现 IResourceConfig 的只读对象。
+    /// </summary>
+    sealed class ResourceValues : IResourceConfig
+    {
+        /// <inheritdoc />
+        public int Produce { get; }
+        /// <inheritdoc />
+        public int Upkeep { get; }
+
+        /// <summary>复制资源数值。输入：产出与维持费；输出：只读副本。</summary>
+        public ResourceValues(int produce, int upkeep)
+        {
+            Produce = produce;
+            Upkeep = upkeep;
+        }
+    }
+
+    /// <summary>
+    /// 传送数值的不可变副本。输入：四邻部署扩展开关；输出：实现 ITeleportConfig 的只读对象。
+    /// </summary>
+    sealed class TeleportValues : ITeleportConfig
+    {
+        /// <inheritdoc />
+        public bool PermitsAttackDeploy { get; }
+
+        /// <summary>复制传送数值。输入：是否允许四邻部署攻击卡；输出：只读副本。</summary>
+        public TeleportValues(bool permitsAttackDeploy)
+        {
+            PermitsAttackDeploy = permitsAttackDeploy;
+        }
+    }
+
+    /// <summary>
+    /// 一次性部署减攻数值的不可变副本。输入：减攻量；输出：实现 IDeploymentPenaltyConfig 的只读对象。
+    /// </summary>
+    sealed class DeploymentPenaltyValues : IDeploymentPenaltyConfig
+    {
+        /// <inheritdoc />
+        public int AttackReduction { get; }
+
+        /// <summary>复制减攻量。输入：每次触发的减攻量；输出：只读副本。</summary>
+        public DeploymentPenaltyValues(int attackReduction)
+        {
+            AttackReduction = attackReduction;
         }
     }
 
@@ -532,7 +645,7 @@ namespace Spotlight
             if (errors.Count != 0) throw new ArgumentException(string.Join("\n", errors));
             Rules = new MatchConfig(d.rules[0]);
             Cards = new System.Collections.ObjectModel.ReadOnlyDictionary<string, CardArchetype>(
-                (cards ?? d.cards.Select(c => new CardArchetype(c, c, c.resourceComponent ? (IResourceConfig)c : null, c.teleportComponent ? (ITeleportConfig)c : null))).ToDictionary(c => c.Id));
+                (cards ?? d.cards.Select(CardArchetype.FromRow)).ToDictionary(c => c.Id));
             Deck = Array.AsReadOnly(d.deck.Select(e => new DeckEntry(e.cardType, e.count)).ToArray());
             BossSlots = Array.AsReadOnly(d.bossSlots.Select(s => new SpawnSlot(s.id, s.rowFraction, s.edgeOffset)).ToArray());
             PlayerHomeHp = d.homes.Single(h => h.owner == "player").hp;
@@ -581,6 +694,7 @@ namespace Spotlight
             if (ids.Count != list.Length) errors.Add("卡种 ID 重复");
             if (list.Any(c => string.IsNullOrWhiteSpace(c.Id) || string.IsNullOrWhiteSpace(c.Name))) errors.Add("卡种 ID 或名称为空");
             if (list.Any(c => c.RequiresUpgrade && (string.IsNullOrEmpty(c.UpgradeFrom) || !ids.Contains(c.UpgradeFrom)))) errors.Add("升级目标缺失");
+            if (list.Any(c => c.DeploymentPenalty != null && c.DeploymentPenalty.AttackReduction < 1)) errors.Add("部署减攻配置非法：启用组件时减攻量必须为正整数");
             if (!ids.Contains(rules.BossCardType)) errors.Add("Boss 卡种未注册");
             else if (!rules.PlayerControlsBoss && list.Single(c => c.Id == rules.BossCardType).Category != CardCategory.Attack) errors.Add("AI 模式 Boss 必须使用攻击卡");
             var deckList = deck.ToArray();
@@ -660,6 +774,9 @@ namespace Spotlight
                 if (c.hp < 1 || c.atk < 0 || c.range < 0 || c.moveDistance < 0 || c.produce < 0 || c.upkeep < 0) errors.Add(p + "：生命必须正数，其他数值不得为负");
                 if (!c.resourceComponent && (c.produce != 0 || c.upkeep != 0)) errors.Add(p + "：资源字段需要 resourceComponent");
                 if (!c.teleportComponent && c.permitsAttackDeploy) errors.Add(p + "：部署扩展需要 teleportComponent");
+                if (c.deploymentAttackReduction < 0) errors.Add(p + "：deploymentAttackReduction 不得为负");
+                if (!c.deploymentPenaltyComponent && c.deploymentAttackReduction != 0) errors.Add(p + "：未启用 deploymentPenaltyComponent 时 deploymentAttackReduction 必须为 0");
+                if (c.deploymentPenaltyComponent && c.deploymentAttackReduction < 1) errors.Add(p + "：启用 deploymentPenaltyComponent 时 deploymentAttackReduction 必须为正整数");
                 if (c.requiresUpgrade && c.category != "resource") errors.Add(p + "：仅资源卡可覆盖升级");
                 if (!c.requiresUpgrade && !string.IsNullOrEmpty(c.upgradeFrom)) errors.Add(p + "：未启用升级却填写 upgradeFrom");
                 if (string.IsNullOrWhiteSpace(c.viewKey)) errors.Add(p + "：viewKey 不能为空");
@@ -688,8 +805,7 @@ namespace Spotlight
             if (r.bossBombInterval < 1 || r.bossBombDamage < 1 || r.bossBombColumn < 1) errors.Add("Rules：bossBombInterval、bossBombDamage、bossBombColumn 必须至少为 1");
             var boss = d.cards.FirstOrDefault(c => c.id == r.bossCardType);
             if (boss == null || (!r.playerControlsBoss && boss.category != "attack")) errors.Add("Rules bossCardType：AI 必须使用攻击卡，手动模式必须使用已注册卡种");
-            ValidateBossSpawner(new MatchConfig(r), d.cards.Select(c => new CardArchetype(c, c,
-                c.resourceComponent ? c : null, c.teleportComponent ? c : null)), errors);
+            ValidateBossSpawner(new MatchConfig(r), d.cards.Select(CardArchetype.FromRow), errors);
 
             if (d.homes.Count(h => h.owner == "player") != 1 || d.homes.Count(h => h.owner == "boss") != 1 || d.homes.Any(h => h.hp < 1 || h.produce < 0 || (h.owner == "boss" && h.produce != 0))) errors.Add("Homes：阵营唯一、生命正数、产出非负且 Boss 产出为零");
             if (d.bossSlots.Select(s => s.id).Distinct().Count() != d.bossSlots.Length || d.bossSlots.Any(s => string.IsNullOrWhiteSpace(s.id) || double.IsNaN(s.rowFraction) || s.rowFraction < 0 || s.rowFraction > 1 || s.edgeOffset < 0 || s.edgeOffset >= r.homeRegionWidth)) errors.Add("BossSlots：ID、行比例或边缘偏移非法");
