@@ -45,6 +45,7 @@ MonoBehaviour:
   _id: ge12
   _name: "GE-12\u5F00\u91C7\u673A"
   _category: resource
+  _tier: basic
   _viewKey: default
   _requiresUpgrade: 1
   _upgradeFrom: ge1

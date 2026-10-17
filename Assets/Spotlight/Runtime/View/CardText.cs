@@ -16,6 +16,19 @@ namespace Spotlight
         public static string CategoryLabel(CardCategory category) =>
             category == CardCategory.Resource ? "资源" : category == CardCategory.Attack ? "攻击" : "特殊";
 
+        /// <summary>阶级中文名。输入：共享阶级；输出：详情文本，集中命名以保持手牌与单位详情一致。</summary>
+        public static string TierLabel(CardTier tier)
+        {
+            switch (tier)
+            {
+                case CardTier.Basic: return "初级";
+                case CardTier.Intermediate: return "中级";
+                case CardTier.Advanced: return "高级";
+                case CardTier.None: return "不适用";
+                default: return "阶级未配置";
+            }
+        }
+
         /// <summary>
         /// 把 Cards 表的分类文本解析成枚举。
         /// 输入：resource / attack / special 文本；输出：对应枚举（其它值按特殊卡兜底）。
@@ -100,7 +113,7 @@ namespace Spotlight
         {
             if (arch == null) return string.Empty;
             var sb = new StringBuilder();
-            sb.AppendLine(arch.Name + "（" + CategoryLabel(arch.Category) + " · " + (owner == Side.Player ? "玩家" : "Boss") + "）");
+            sb.AppendLine(arch.Name + "（" + TierLabel(arch.Tier) + " · " + CategoryLabel(arch.Category) + " · " + (owner == Side.Player ? "玩家" : "Boss") + "）");
             sb.Append("生命 ").Append(arch.Combat != null ? arch.Combat.Hp : 0);
             sb.Append(" · 攻击 ").Append(arch.Combat != null ? arch.Combat.Attack : 0);
             sb.Append(" · 射程 ").Append(arch.Combat != null ? arch.Combat.Range : 0);
@@ -137,7 +150,7 @@ namespace Spotlight
             if (arch == null || unit == null) return string.Empty;
             var combat = arch.Combat;
             var sb = new StringBuilder();
-            sb.AppendLine(arch.Name + "（" + CategoryLabel(arch.Category) + " · " + (unit.Owner == Side.Player ? "玩家" : "Boss") + "）");
+            sb.AppendLine(arch.Name + "（" + TierLabel(arch.Tier) + " · " + CategoryLabel(arch.Category) + " · " + (unit.Owner == Side.Player ? "玩家" : "Boss") + "）");
             sb.Append("当前生命 ").Append(unit.Hp).Append('/').Append(unit.MaxHp);
             sb.Append(" · 当前攻击 ").Append(unit.Attack);
             sb.Append(" · 射程 ").Append(unit.Range);

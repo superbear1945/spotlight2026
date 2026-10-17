@@ -123,5 +123,5 @@ MonoBehaviour:
   - cardType: reserve1
     count: 1
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceHash: ac0cf976257cbedbad069c8ba136a768a2dee09c052edba4849bf4e0b84f3592
-  _compiledAtUtc: 2026-10-17T12:20:43.4417394Z
+  _sourceHash: c15a923c6dbe130dea1653c061db934489513a2646eeb9a27de9ef803a5f84f0
+  _compiledAtUtc: 2026-10-17T16:13:44.5793047Z

@@ -19,12 +19,12 @@ namespace Spotlight.Tests
             {
                 cards = new[]
                 {
-                    new CardRow { id = "miner", name = "矿机", category = "resource", hp = 4, produce = 1, resourceComponent = true, viewKey = "default" },
-                    new CardRow { id = "soldier", name = "士兵", category = "attack", hp = 5, atk = 2, range = 2, moveDistance = 3, viewKey = "default" },
-                    new CardRow { id = "gate", name = "星门", category = "special", hp = 3, moveDistance = 1, upkeep = 4, resourceComponent = true, teleportComponent = true, permitsAttackDeploy = true, deployHomeOnly = true, avoidAdjacentSameType = true, viewKey = "default" },
-                    new CardRow { id = "upgrade", name = "高级矿机", category = "resource", hp = 6, atk = 1, range = 1, requiresUpgrade = true, upgradeFrom = "miner", viewKey = "default" },
-                    new CardRow { id = "boss", name = "敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
-                    new CardRow { id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" }
+                    new CardRow { tier = "basic", id = "miner", name = "矿机", category = "resource", hp = 4, produce = 1, resourceComponent = true, viewKey = "default" },
+                    new CardRow { tier = "basic", id = "soldier", name = "士兵", category = "attack", hp = 5, atk = 2, range = 2, moveDistance = 3, viewKey = "default" },
+                    new CardRow { tier = "advanced", id = "gate", name = "星门", category = "special", hp = 3, moveDistance = 1, upkeep = 4, resourceComponent = true, teleportComponent = true, permitsAttackDeploy = true, deployHomeOnly = true, avoidAdjacentSameType = true, viewKey = "default" },
+                    new CardRow { tier = "intermediate", id = "upgrade", name = "高级矿机", category = "resource", hp = 6, atk = 1, range = 1, requiresUpgrade = true, upgradeFrom = "miner", viewKey = "default" },
+                    new CardRow { tier = "none", id = "boss", name = "敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
+                    new CardRow { tier="none", id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" }
                 },
                 deck = new[] { new DeckRow { cardType = "miner", count = 2 }, new DeckRow { cardType = "soldier", count = 2 } },
                 rules = new[] { new RulesRow { bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossSpawnerSpawnCardType = "boss", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 5, bossPlays = 1, drawCount = 3, handLimit = 5, initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss", playerControlsBoss = false, accumulateResources = true, summoningSickness = true, adjacentSwap = true } },
@@ -126,14 +126,14 @@ namespace Spotlight.Tests
         [Test]
         public void CardStatLineOnlyShowsAbilitiesTheCardActuallyHas()
         {
-            var resource = new CardRow { id = "ge1", name = "GE-1开采机", category = "resource", hp = 1, produce = 1, resourceComponent = true, viewKey = "default" };
+            var resource = new CardRow { tier = "basic", id = "ge1", name = "GE-1开采机", category = "resource", hp = 1, produce = 1, resourceComponent = true, viewKey = "default" };
             var line = CardText.StatLine(resource);
             Assert.That(line, Does.Contain("生命 1"));
             Assert.That(line, Does.Contain("产 1"));
             Assert.That(line, Does.Not.Contain("攻"));
             Assert.That(line, Does.Not.Contain("移"));
 
-            var upgrade = new CardRow { id = "ge12", name = "GE-12开采机", category = "resource", hp = 1, atk = 1, range = 1, produce = 1, resourceComponent = true, requiresUpgrade = true, upgradeFrom = "ge1", viewKey = "default" };
+            var upgrade = new CardRow { tier = "basic", id = "ge12", name = "GE-12开采机", category = "resource", hp = 1, atk = 1, range = 1, produce = 1, resourceComponent = true, requiresUpgrade = true, upgradeFrom = "ge1", viewKey = "default" };
             Assert.That(CardText.StatLine(upgrade), Does.Contain("升级自 ge1"));
         }
 

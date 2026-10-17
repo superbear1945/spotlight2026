@@ -30,18 +30,18 @@ namespace Spotlight.Tests
             {
                 cards = new[]
                 {
-                    new CardRow { id = "mine", name = "矿机", category = "resource", hp = 4, produce = 1, resourceComponent = true, viewKey = "default" },
-                    new CardRow { id = "kyoto", name = "京都测试卡", category = "resource", hp = 1, produce = 3, resourceComponent = true, viewKey = "default", deploymentPenaltyComponent = true, deploymentAttackReduction = 2 },
-                    new CardRow { id = "sourceOne", name = "减攻一", category = "resource", hp = 3, resourceComponent = true, viewKey = "default", deploymentPenaltyComponent = true, deploymentAttackReduction = 1 },
-                    new CardRow { id = "sourceTwo", name = "减攻二", category = "resource", hp = 3, resourceComponent = true, viewKey = "default", deploymentPenaltyComponent = true, deploymentAttackReduction = 2 },
-                    new CardRow { id = "sourceThree", name = "减攻三", category = "resource", hp = 3, resourceComponent = true, viewKey = "default", deploymentPenaltyComponent = true, deploymentAttackReduction = 3 },
-                    new CardRow { id = "soldier", name = "士兵", category = "attack", hp = 5, atk = 2, range = 2, moveDistance = 3, viewKey = "default" },
-                    new CardRow { id = "heavy", name = "重兵", category = "attack", hp = 5, atk = 4, range = 3, moveDistance = 1, viewKey = "default" },
-                    new CardRow { id = "zeroAttack", name = "零攻兵", category = "attack", hp = 2, atk = 0, range = 0, moveDistance = 0, viewKey = "default" },
-                    new CardRow { id = "boss", name = "敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
-                    new CardRow { id = "bossPenalty", name = "减攻敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default", deploymentPenaltyComponent = true, deploymentAttackReduction = 1 },
-                    new CardRow { id = "bossFighter", name = "战机", category = "attack", hp = 3, atk = 2, range = 1, moveDistance = 1, viewKey = "default" },
-                    new CardRow { id = "spawner", name = "刷怪卡", category = "special", hp = 1, viewKey = "default" }
+                    new CardRow { tier = "basic", id = "mine", name = "矿机", category = "resource", hp = 4, produce = 1, resourceComponent = true, viewKey = "default" },
+                    new CardRow { tier = "basic", id = "kyoto", name = "京都测试卡", category = "resource", hp = 1, produce = 3, resourceComponent = true, viewKey = "default", deploymentPenaltyComponent = true, deploymentAttackReduction = 2 },
+                    new CardRow { tier = "basic", id = "sourceOne", name = "减攻一", category = "resource", hp = 3, resourceComponent = true, viewKey = "default", deploymentPenaltyComponent = true, deploymentAttackReduction = 1 },
+                    new CardRow { tier = "basic", id = "sourceTwo", name = "减攻二", category = "resource", hp = 3, resourceComponent = true, viewKey = "default", deploymentPenaltyComponent = true, deploymentAttackReduction = 2 },
+                    new CardRow { tier = "basic", id = "sourceThree", name = "减攻三", category = "resource", hp = 3, resourceComponent = true, viewKey = "default", deploymentPenaltyComponent = true, deploymentAttackReduction = 3 },
+                    new CardRow { tier = "basic", id = "soldier", name = "士兵", category = "attack", hp = 5, atk = 2, range = 2, moveDistance = 3, viewKey = "default" },
+                    new CardRow { tier = "advanced", id = "heavy", name = "重兵", category = "attack", hp = 5, atk = 4, range = 3, moveDistance = 1, viewKey = "default" },
+                    new CardRow { tier = "basic", id = "zeroAttack", name = "零攻兵", category = "attack", hp = 2, atk = 0, range = 0, moveDistance = 0, viewKey = "default" },
+                    new CardRow { tier = "none", id = "boss", name = "敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
+                    new CardRow { tier = "none", id = "bossPenalty", name = "减攻敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default", deploymentPenaltyComponent = true, deploymentAttackReduction = 1 },
+                    new CardRow { tier = "none", id = "bossFighter", name = "战机", category = "attack", hp = 3, atk = 2, range = 1, moveDistance = 1, viewKey = "default" },
+                    new CardRow { tier = "none", id = "spawner", name = "刷怪卡", category = "special", hp = 1, viewKey = "default" }
                 },
                 deck = new[]
                 {
@@ -540,7 +540,7 @@ namespace Spotlight.Tests
                 combat.EditorApply(1, 0, 0, 0);
                 resource.EditorApply(3, 0);
                 penalty.EditorApply(2);
-                var row = new CardRow { id = "kyoto", name = "京都壹号", category = "resource", viewKey = "default", hp = 1, produce = 3, resourceComponent = true, deploymentPenaltyComponent = true, deploymentAttackReduction = 2 };
+                var row = new CardRow { tier = "basic", id = "kyoto", name = "京都壹号", category = "resource", viewKey = "default", hp = 1, produce = 3, resourceComponent = true, deploymentPenaltyComponent = true, deploymentAttackReduction = 2 };
                 definition.EditorApply(row, combat, resource, null, penalty, null, "w.xlsx", "Cards");
 
                 var restored = definition.ToCardRow();

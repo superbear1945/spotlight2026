@@ -15,6 +15,7 @@ MonoBehaviour:
   _id: bossCombat
   _name: "Boss\u654C\u5175"
   _category: attack
+  _tier: none
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 

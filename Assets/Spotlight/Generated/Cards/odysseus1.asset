@@ -31,6 +31,7 @@ MonoBehaviour:
   _id: odysseus1
   _name: "\u5965\u5FB7\u4FEE\u65AF-1"
   _category: attack
+  _tier: basic
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 

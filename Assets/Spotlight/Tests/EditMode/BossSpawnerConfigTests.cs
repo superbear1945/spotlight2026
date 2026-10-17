@@ -99,13 +99,13 @@ namespace Spotlight.Tests
                         {
                             var notes = XDocument.Load(stream).Descendants(ns + "comment").ToArray();
                             count += notes.Length;
-                            Assert.That(notes.All(n => n.Value.Contains("默认")), Is.True);
+                            Assert.That(notes.All(n => n.Value.Contains("默认") || n.Value.Contains("卡牌阶级")), Is.True);
                         }
                     // 6 条 Rules 刷怪卡字段说明 + 2 条 Cards 一次性部署减攻字段说明 + 1 条刷怪卡生命说明
                     // + 3 条 Cards 部署消耗/邻域要求字段说明 + 3 条 Cards 入场标记字段说明
                     // + 3 条 Cards 死亡加攻字段说明 + 1 条 Cards 治疗型攻击字段说明
-                    // + 2 条 Cards 即时卡字段说明。
-                    Assert.That(count, Is.EqualTo(21));
+                    // + 2 条 Cards 即时卡字段说明 + 1 条 Cards 卡牌阶级字段说明。
+                    Assert.That(count, Is.EqualTo(22));
                     Assert.That(zip.GetEntry("xl/worksheets/_rels/sheet3.xml.rels"), Is.Not.Null);
                     Assert.That(zip.GetEntry("xl/drawings/notes3.vml"), Is.Not.Null);
                 }

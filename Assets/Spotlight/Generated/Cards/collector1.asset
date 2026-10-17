@@ -31,6 +31,7 @@ MonoBehaviour:
   _id: collector1
   _name: "\u661F\u68F9-1\u6536\u96C6\u7CFB\u7EDF"
   _category: resource
+  _tier: intermediate
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 

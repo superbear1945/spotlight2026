@@ -29,6 +29,7 @@ MonoBehaviour:
   _id: kepler1
   _name: "\u5F00\u666E\u52D2-I"
   _category: resource
+  _tier: intermediate
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 

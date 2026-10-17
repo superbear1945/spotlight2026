@@ -37,10 +37,10 @@ namespace Spotlight.Tests
 
         /// <summary>
         /// 加载真实场景并替换为测试配置。
-        /// 输入：目标卡（尖刀1）的攻击力，用于控制减攻后的结果；输出：准备好的视图与可交互会话。
+        /// 输入：目标卡（尖刀1）的攻击力与阶级，用于验证减攻与独立阶级展示；输出：准备好的视图与可交互会话。
         /// 配置要点：homeRegionWidth 设为整块棋盘，攻击卡可部署在任意空格，避免测试被部署区域限制干扰。
         /// </summary>
-        IEnumerator Load(int targetAttack = 4)
+        IEnumerator Load(int targetAttack = 4, string targetTier = "basic")
         {
             yield return SceneManager.LoadSceneAsync(ScenePath);
             yield return null;
@@ -54,6 +54,7 @@ namespace Spotlight.Tests
             r.drawCount = 60; r.handLimit = 100; r.bossBombInterval = 1000; r.summoningSickness = true;
             r.bossSpawnerAttackThreshold = 1000;
             d.cards.Single(c => c.id == "blade1").atk = targetAttack;
+            d.cards.Single(c => c.id == "blade1").tier = targetTier;
             d.deck = new[] { new DeckRow { cardType = "kyoto_01", count = 30 }, new DeckRow { cardType = "blade1", count = 30 } };
             d.presentation[0].moveSeconds = 0.02f; d.presentation[0].feedbackSeconds = 0.02f;
             _configuration = new GameConfiguration(d);
@@ -129,6 +130,30 @@ namespace Spotlight.Tests
             Invoke("OnCellClicked", target.Position);
             yield return null;
             Assert.That(_root.Q<Label>("unit-detail").text, Does.Contain("当前攻击 2"), _root.Q<Label>("unit-detail").text);
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        /// <summary>
+        /// 阶级通过本局配置进入真实手牌与单位详情；高级卡首回合可部署，卡面点击仍穿透到棋盘。
+        /// 输入：高级测试卡；输出：经过真实帧循环的两套详情文本和点击契约断言。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AdvancedTierAppearsInHandAndUnitDetailsWithoutDelayingDeployment()
+        {
+            yield return Load(targetTier: "advanced");
+            var record = _bootstrap.Session.GetSnapshot().Hand.First(c => c.TypeId == "blade1");
+            var hand = Object.FindObjectOfType<HandView>().GetCard(record.Id);
+            Invoke("OnCardClicked", hand);
+            yield return null;
+            Assert.That(_root.Q<Label>("detail-left-body").text, Does.Contain("高级 · 攻击"));
+            var id = Put("blade1", new Cell(0, 4));
+            yield return WaitForPresentation();
+            Invoke("OnCellClicked", new Cell(0, 4));
+            yield return null;
+            Assert.That(_bootstrap.Session.GetSnapshot().Round, Is.EqualTo(1));
+            Assert.That(_root.Q<Label>("detail-left-body").text, Does.Contain("高级 · 攻击"));
+            Assert.That(_root.Q<Label>("unit-detail").text, Does.Contain("高级 · 攻击"));
+            Assert.That(_board.GetCard(id).GetComponentsInChildren<Graphic>().All(g => !g.raycastTarget), Is.True);
             LogAssert.NoUnexpectedReceived();
         }
 

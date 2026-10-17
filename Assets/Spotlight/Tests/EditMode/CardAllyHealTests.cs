@@ -31,7 +31,7 @@ namespace Spotlight.Tests
         /// <summary>比目鱼式单位：攻击 1、射程 1，可攻击友方并改为治疗。</summary>
         static CardRow Flounder() => new CardRow
         {
-            id = "flounder", name = "比目鱼", category = "attack", hp = 2, atk = 1, range = 1, moveDistance = 1,
+            tier = "intermediate", id = "flounder", name = "比目鱼", category = "attack", hp = 2, atk = 1, range = 1, moveDistance = 1,
             attacksAlliesAsHeal = true, viewKey = "default"
         };
 
@@ -108,7 +108,7 @@ namespace Spotlight.Tests
             var document = GameSessionTests.Document();
             document.cards = document.cards.Concat(new[]
             {
-                new CardRow { id = "badHeal", name = "错误治疗", category = "resource", hp = 1, attacksAlliesAsHeal = true, viewKey = "default" }
+                new CardRow { tier = "intermediate", id = "badHeal", name = "错误治疗", category = "resource", hp = 1, attacksAlliesAsHeal = true, viewKey = "default" }
             }).ToArray();
 
             var errors = ConfigValidation.Validate(document);
