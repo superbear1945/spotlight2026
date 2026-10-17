@@ -13,19 +13,14 @@
 #      既多花分钟数，又会额外占用一个 Unity 授权席位（个人版席位制，席位不足
 #      会误报 no available seats，表现为与代码无关的红灯）。
 #
-#   3b. unity-tests.yml 必须保留夜间打包的门禁三件套（详见 CheckNightlyReleaseGate）：
-#      `schedule` 触发 + `build-windows` job 的 `needs: unity-tests` + `if:` 里的
-#      `needs.unity-tests.result == 'success'`。缺任何一件都会让“测试全绿才打包”
-#      静默失效——要么永远不打包，要么拿着红着的代码发布到 Release 给人下载。
-#
 #   4. unity-tests.yml 的 unity-tests job 必须设置 strategy.max-parallel: 1，
 #      避免同一矩阵的两个测试模式同时申请 / 归还共用账号的 Personal 授权。
-#      它只保证矩阵内串行，跨运行（夜间打包 vs PR 测试）的账号级互斥靠下一条。
+#      它只保证矩阵内串行，跨运行（不同 PR 各自一个 run）的账号级互斥靠下一条。
 #
 #   5. unity-tests.yml 顶层的 concurrency 必须是仓库级固定组名（详见 CheckUnityConcurrency）：
-#      Personal 授权是账号级“席位”，同一时刻只能有一个 Unity 进程。夜间打包跑在
-#      refs/heads/main，PR 测试跑在 refs/pull/N/merge，按 ref 分组会让两者落在不同组里
-#      同时 --activate-all，输的一方拿到 “0 free entitlements” 而整轮假失败。
+#      Personal 授权是账号级“席位”，同一时刻只能有一个 Unity 进程。不同 PR 跑在各自的
+#      refs/pull/N/merge 上，按 ref 分组会让两个 run 落在不同组里同时 --activate-all，
+#      输的一方拿到 “0 free entitlements” 而整轮假失败。
 #      同时不得设置 cancel-in-progress: true（中途杀掉 Unity 会泄漏席位）。
 #
 # 【输入】
@@ -111,60 +106,6 @@ CheckUnityParallelism() {
 }
 
 # -----------------------------------------------------------------------------
-# CheckNightlyReleaseGate —— 校验夜间打包“测试全绿才发布”的门禁
-# 输入：unity-tests.yml 文件路径；输出：失败时打印原因，返回 0 合规 / 1 违规。
-# 校验项：
-#   1) `on:` 块里有 `schedule:`：否则定时入口被删，“夜间打包”永远不会自动执行。
-#   2) 存在 job id 为 `build-windows` 的 job。
-#   3) 该 job 自身层级（缩进 4 的行）有 `needs:` 且包含 `unity-tests`。
-#   4) 同一层级有单行 `if: ... needs.unity-tests.result == 'success' ...`。
-# 为什么必须是可执行守卫：夜间打包会把产物直接发布给他人下载。删掉 needs 或那条
-# result 判定后，流水线不会报错，只会静默变成“红着也发布”；删掉 schedule 则变成
-# “再也不打包”，同样没有任何提示。这与“把 push 触发加回来”性质相同：当场看不出，
-# 以后只能靠翻 Release 时间线才能发现。因此写成静态检查，宁可报错也不静默放过。
-# 只接受块状写法：`if:` 必须写成单行；写成多行折叠式时本检查会报错，这是故意的。
-# -----------------------------------------------------------------------------
-CheckNightlyReleaseGate() {
-  local _file="$1" _job_body
-
-  if ! grep -q '^[[:space:]]*schedule:' <<<"$(_on_block "$_file")"; then
-    echo "  ❌ $_file：缺少 schedule 触发 —— 夜间打包不会自动执行"
-    return 1
-  fi
-
-  # 只取 build-windows job 自身层级的键（缩进 4）：步骤里的同名键与更深层内容必须排除，
-  # 否则一段无关注释或步骤参数就能骗过检查。输出时去掉前导空格，便于下面按 `^needs:` 匹配。
-  _job_body=$(awk '
-    /^  build-windows:[[:space:]]*$/ { inside = 1; next }
-    inside && /^[[:space:]]*$/ { next }
-    inside {
-      match($0, /^ */)
-      if (RLENGTH <= 2) { inside = 0; next }
-      if (RLENGTH == 4) { sub(/^ +/, ""); print }
-    }
-  ' "$_file")
-
-  if [ -z "$_job_body" ]; then
-    echo "  ❌ $_file：缺少 build-windows job —— 夜间打包没有落点"
-    return 1
-  fi
-
-  if ! grep -Eq '^needs:.*unity-tests' <<<"$_job_body"; then
-    echo "  ❌ $_file：build-windows 缺少 needs: unity-tests —— 打包不再等待测试通过"
-    return 1
-  fi
-
-  if ! grep -Eq "^if:.*needs\.unity-tests\.result == 'success'" <<<"$_job_body"; then
-    echo "  ❌ $_file：build-windows 的 if 缺少 needs.unity-tests.result == 'success' 判定"
-    echo "     ↑ 没有这条判定，测试失败时打包 job 仍可能执行，并把包发布到 Release。"
-    echo "       必须写成缩进 4 的单行（本守卫只认块状单行写法）。"
-    return 1
-  fi
-
-  return 0
-}
-
-# -----------------------------------------------------------------------------
 # CheckUnityConcurrency —— 校验顶层 concurrency 是“仓库级单组”且不中途取消
 # 输入：unity-tests.yml 文件路径；输出：失败时打印原因，返回 0 合规 / 1 违规。
 # 校验项：
@@ -172,9 +113,9 @@ CheckNightlyReleaseGate() {
 #   2) `group:` 的值是固定名称（不含 ${{ }} 变量），不能按 github.ref / github.head_ref 分组。
 #   3) 不得出现 `cancel-in-progress: true`。
 # 为什么需要：Personal 授权是账号级的“席位”，同一时刻只能跑一个 Unity 进程；
-# 夜间打包（refs/heads/main）与 PR 测试（refs/pull/N/merge）天然是不同 ref，
-# 按 ref 分组等于放弃互斥。而“把组名改回按 ref、让 PR 跑得更快”是一个很自然、
-# 看起来无害的改动，只会表现为夜里偶尔一轮假失败，根本不像是回归——所以做成守卫。
+# 不同 PR 天然是不同 ref（refs/pull/N/merge），按 ref 分组等于放弃互斥。
+# 而“把组名改回按 ref、让每个 PR 各跑各的”是一个很自然、看起来无害的改动，
+# 只会表现为偶发一轮 0 free entitlements 假失败，根本不像是回归——所以做成守卫。
 # 只接受块状写法（顶层 `concurrency:` + 缩进 2 的键），与脚本其余部分保持一致。
 # -----------------------------------------------------------------------------
 CheckUnityConcurrency() {
@@ -193,7 +134,7 @@ CheckUnityConcurrency() {
 
   if grep -Eq '^group:.*\$\{\{' <<<"$_block"; then
     echo "  ❌ $_file：concurrency.group 含模板变量 —— 必须是不含变量的仓库级固定组名"
-    echo "     ↑ 按 ref 分组会让夜间打包与 PR 测试同时启动，各自 --activate-all 抢席位。"
+    echo "     ↑ 按 ref 分组会让两个 PR 同时启动，各自 --activate-all 抢席位。"
     return 1
   fi
 
@@ -238,7 +179,6 @@ _check_file() {
 
   if [ "${_file##*/}" = "unity-tests.yml" ]; then
     CheckUnityParallelism "$_file" || _rc=1
-    CheckNightlyReleaseGate "$_file" || _rc=1
     CheckUnityConcurrency "$_file" || _rc=1
   fi
 
@@ -419,7 +359,7 @@ _check_ruleset() {
 
 # -----------------------------------------------------------------------------
 # _self_test —— 本脚本自身的测试用例
-# 在临时目录构造触发策略、矩阵展开、Unity 串行约束与夜间打包门禁的独立夹具，
+# 在临时目录构造触发策略、矩阵展开、Unity 串行约束与席位并发约束的独立夹具，
 # 断言该拦的拦住、该放的放行。
 # 输入：无；输出：逐项断言结果，返回 0 表示全部通过，否则返回 1。
 # 为什么这样测：直接对真实仓库断言会让用例随仓库内容漂移，因此用独立 fixture。
@@ -432,19 +372,17 @@ _self_test() {
 
   # _write_unity_tests_fixture —— 构造一份 unity-tests.yml 夹具
   # 输入：输出路径、strategy 下额外追加的行（%b 解释换行）、
-  #       schedule / needs / 成功判定三个开关（yes 或 no）、
   #       concurrency 变体（global 默认 / ref / cancel / missing）；输出：写入文件，返回 0。
-  # 为什么抽成函数：E–H（串行约束）、L–S（夜间打包门禁与席位并发）需要同一份骨架，
+  # 为什么抽成函数：E–H（矩阵串行约束）与 P–S（席位并发约束）需要同一份骨架，
   # 只在一处构造才能保证“某个用例失败”确实因为目标规则，而不是骨架各自漂移。
-  # 各开关必须能单独关闭，否则测不出“缺了任一件就会被拦”。
+  # concurrency 变体必须能逐项关闭，否则测不出“缺了哪一件会被拦”。
   _write_unity_tests_fixture() {
-    local _path="$1" _strategy="$2" _schedule="$3" _needs="$4" _gate="$5" _conc="${6:-global}"
+    local _path="$1" _strategy="$2" _conc="${3:-global}"
     {
       printf '%s\n' \
         'on:' \
         '  pull_request:' \
         '  workflow_dispatch:'
-      [ "$_schedule" = "yes" ] && printf '%s\n' '  schedule:' "    - cron: '0 18 * * *'"
       case "$_conc" in
         global) printf '%s\n' 'concurrency:' '  group: unity-seat' ;;
         ref) printf '%s\n' 'concurrency:' '  group: unity-tests-${{ github.ref }}' ;;
@@ -457,10 +395,6 @@ _self_test() {
         '    strategy:' \
         '      fail-fast: false'
       [ -n "$_strategy" ] && printf '%b\n' "$_strategy"
-      printf '%s\n' '  build-windows:' '    name: 夜间打包夹具'
-      [ "$_needs" = "yes" ] && printf '%s\n' '    needs: unity-tests'
-      [ "$_gate" = "yes" ] && printf '%s\n' \
-        "    if: needs.unity-tests.result == 'success' && github.event_name == 'schedule'"
     } >"$_path"
     return 0
   }
@@ -520,12 +454,10 @@ YAML
     _rc=1
   fi
 
-  # --- 用例 E–H：通过脚本公开入口验证串行约束，不能仅凭文件中出现该字符串放行。
-  # 夹具同时带上夜间打包三件套，这样才能把“串行约束”与“夜间打包门禁”隔开：
-  # 否则下面期望放行的 E 会因为缺少 build-windows 而被门禁拦下，用例就测不到目标规则。
+  # --- 用例 E–H：通过脚本公开入口验证矩阵串行约束，不能仅凭文件中出现该字符串放行。
   local _case _setting _expected _actual
   while IFS='|' read -r _case _setting _expected; do
-    _write_unity_tests_fixture "$_tmp/unity-tests.yml" "$_setting" yes yes yes
+    _write_unity_tests_fixture "$_tmp/unity-tests.yml" "$_setting"
     _actual=0
     bash "$_self_path" "$_tmp/unity-tests.yml" >/dev/null 2>&1 || _actual=$?
     if [ "$_actual" -eq "$_expected" ]; then
@@ -541,35 +473,12 @@ G（并行配置拦截）|      max-parallel: 2|1
 H（其他 job 的串行配置不算）|  other:\n    strategy:\n      max-parallel: 1|1
 CASES
 
-  # --- 用例 L–O：夜间打包门禁（“测试全绿才发布”）。
-  # 为什么必须在自检里覆盖：这三件套一旦被删，流水线不会报错，只会静默变成
-  # “再也不打包”或“红着也发布”，而且发布出去的东西是给他人下载的。
-  local _ncase _nsched _nneeds _nif _nexpected _nactual
-  while IFS='|' read -r _ncase _nsched _nneeds _nif _nexpected; do
-    _write_unity_tests_fixture "$_tmp/unity-tests.yml" '      max-parallel: 1' \
-      "$_nsched" "$_nneeds" "$_nif"
-    _nactual=0
-    bash "$_self_path" "$_tmp/unity-tests.yml" >/dev/null 2>&1 || _nactual=$?
-    if [ "$_nactual" -eq "$_nexpected" ]; then
-      echo "  ✅ 自检 $_ncase 通过"
-    else
-      echo "  ❌ 自检 $_ncase 失败：期望退出码 $_nexpected，实际 $_nactual"
-      _rc=1
-    fi
-  done <<'NIGHTCASES'
-L（三件套齐全 → 放行）|yes|yes|yes|0
-M（缺 schedule → 拦截）|no|yes|yes|1
-N（缺 needs: unity-tests → 拦截）|yes|no|yes|1
-O（缺 result == 'success' 判定 → 拦截）|yes|yes|no|1
-NIGHTCASES
-
   # --- 用例 P–S：席位并发约束（顶层 concurrency 必须是仓库级单组，且不得中途取消）。
   # 为什么必须覆盖：把组名改回按 ref 分组是“看起来能让 PR 跑得更快”的自然改动，
-  # 它只在夜里打包与 PR 撞车时表现为 0 free entitlements，日志里根本看不出是配置回归。
+  # 它只在两个 PR 同时启动时表现为 0 free entitlements，日志里根本看不出是配置回归。
   local _ccase _cconc _cexpected _cactual
   while IFS='|' read -r _ccase _cconc _cexpected; do
-    _write_unity_tests_fixture "$_tmp/unity-tests.yml" '      max-parallel: 1' \
-      yes yes yes "$_cconc"
+    _write_unity_tests_fixture "$_tmp/unity-tests.yml" '      max-parallel: 1' "$_cconc"
     _cactual=0
     bash "$_self_path" "$_tmp/unity-tests.yml" >/dev/null 2>&1 || _cactual=$?
     if [ "$_cactual" -eq "$_cexpected" ]; then
@@ -617,7 +526,7 @@ GATES
 if [ "${1:-}" = "--self-test" ]; then
   echo "== check-ci-config.sh 自检 =="
   if _self_test; then
-    echo "自检结果：19/19 通过"
+    echo "自检结果：15/15 通过"
     exit 0
   fi
   echo "自检结果：存在失败用例"
@@ -677,7 +586,7 @@ if [ "$_fail" -ne 0 ]; then
   echo "  需要时用 workflow_dispatch 手动触发。"
   echo "  Unity 测试矩阵还必须设置 max-parallel: 1，避免矩阵内并行授权竞争；"
   echo "  unity-tests.yml 顶层的 concurrency 必须是仓库级固定组名（unity-seat）且不得中途取消，"
-  echo "  否则夜间打包与 PR 测试会同时抢同一个 Unity 个人席位。"
+  echo "  否则两个 PR 会同时抢同一个 Unity 个人席位。"
   exit 1
 fi
 

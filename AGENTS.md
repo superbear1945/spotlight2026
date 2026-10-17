@@ -166,10 +166,10 @@ Excel 配置编译（菜单 `Tools/Spotlight/*`，按顺序）：
 - EditMode 测试放 `Assets/Spotlight/Tests/EditMode/`，用于规则内核、配置编译器、视图契约；PlayMode 测试放 `Assets/Spotlight/Tests/PlayMode/`，用于真实帧循环下的渲染、点击命中与 DOTween 动画。
 - 测试通过公开命令（`Execute` / `GetLegalActions` / `GetSnapshot`）推进对局，**不得直接篡改 `GameSession` 私有状态**；测试内数值属于独立夹具，不是正式默认值。
 - 洗牌类逻辑使用 `SeededRandom` 固定种子，保证测试可复现。
-- GitHub Actions（**PR 测试只在 PR 上跑**，不在 main 的 `push` 上重复跑，理由见下一条；夜间打包走 `schedule`）：
+- GitHub Actions（**PR 测试只在 PR 上跑**，不在 main 的 `push` 上重复跑，理由见下一条）：
   - `.github/workflows/unity-tests.yml`：`game-ci/unity-test-runner`，EditMode + PlayMode 矩阵。
-  - `.github/workflows/unity-tests.yml` 的 `build-windows` job：夜间打包。触发为 `schedule`（UTC 18:00）+ `workflow_dispatch`，与测试在同一个 run 内串行且必须 `needs: unity-tests` + `if: needs.unity-tests.result == 'success'`（测试全绿才打包），用 `game-ci/unity-builder` 打 Windows 包（Mono 后端，ubuntu runner 交叉编译），并以固定 `nightly` 标签以 `--prerelease` + `--clobber` 发布到 Release。这条门禁由 `scripts/check-ci-config.sh` 静态校验：缺 `schedule` / `needs` / 成功判定都会在 `repo-hygiene` 里报错。
-  - **Unity 席位互斥：** `unity-tests.yml` 的 `concurrency.group` 固定为仓库级 `unity-seat`（不按 ref 分组），因此夜间打包与 PR 测试不会同时启动去抢同一个个人版授权席位；也不得设 `cancel-in-progress: true`（中途杀 Unity 会泄漏席位）。代价是仓库内同一时刻只留 1 个 running + 1 个 pending 运行，排队中的旧运行会被新的顶掉（PR 检查可能显示 cancelled，重跑即可）。这项同样由 `scripts/check-ci-config.sh` 校验——`max-parallel: 1` 只管矩阵内串行，跨运行的互斥靠这一条；彻底不排队需浮动授权（`unityLicensingServer`）或 self-hosted runner。
+  - **Unity 席位互斥：** `unity-tests.yml` 的 `concurrency.group` 固定为仓库级 `unity-seat`（不按 ref 分组），因此两个 PR 的测试不会同时启动去抢同一个个人版授权席位；也不得设 `cancel-in-progress: true`（中途杀 Unity 会泄漏席位）。代价是仓库内同一时刻只留 1 个 running + 1 个 pending 运行，排队中的旧运行会被新的顶掉（PR 检查可能显示 cancelled，重跑即可）。这项由 `scripts/check-ci-config.sh` 校验——`max-parallel: 1` 只管矩阵内串行，跨 run 的互斥靠这一条；彻底不排队需浮动授权（`unityLicensingServer`）或 self-hosted runner。
+  - **CI 自动打包：未接入。** 曾经尝试用 `game-ci/unity-builder` + `schedule` 夜间发 Release，已在 PR #29 整体移除：builder 的前置校验只认 `UNITY_LICENSE`(.ulf) 或 `UNITY_SERIAL`，不接受个人版的邮箱+密码激活（两次实测均在步骤启动后 0.3 秒报 `Missing Unity License File and no Serial was found`），而 .ulf 对 Personal 机器绑定、serial 需付费订阅。恢复时需先换成带 `cliVersion` 的 builder（v5.0.1 / v6.0.0）并验证，再重新引入触发与发布步骤；目前发版靠手动流程（见 `docs/使用说明.md` 8.2）。
   - `.github/workflows/repo-hygiene.yml`：大文件与 Git-LFS 一致性检查（`scripts/check-repo-hygiene.sh`）与 CI 触发配置守卫（`scripts/check-ci-config.sh`），大二进制必须以 LFS 指针入库。
   - `.github/workflows/diagrams-check.yml`：校验 `docs/diagrams` 图源 JSON 仍能生成结构完整的 drawio。
 - `main` 由分支规则集「main」保护，**只能通过 PR 新增提交**：`pull_request` 规则要求所有变更都关联一个 PR，直推（含普通快进推送）会被拒；`non_fast_forward` 另行禁掉 force push；`deletion` 禁删分支；`bypass_actors` 为空且 `current_user_can_bypass` 为 `never`，连仓库所有者也不能绕过。
