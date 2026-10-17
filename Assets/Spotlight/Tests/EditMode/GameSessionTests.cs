@@ -15,12 +15,12 @@ namespace Spotlight.Tests
             return new ConfigDocument
             {
                 cards = new[] {
-                    new CardRow { id="miner", name="矿机", category="resource", hp=4, moveDistance=0, resourceComponent=true, produce=1, viewKey="default" },
-                    new CardRow { id="soldier", name="士兵", category="attack", hp=5, atk=2, range=2, moveDistance=3, viewKey="default" },
-                    new CardRow { id="gate", name="星门", category="special", hp=3, moveDistance=1, resourceComponent=true, upkeep=4, teleportComponent=true, permitsAttackDeploy=true, deployHomeOnly=true, avoidAdjacentSameType=true, viewKey="default" },
-                    new CardRow { id="upgrade", name="高级矿机", category="resource", hp=6, atk=1, range=1, requiresUpgrade=true, upgradeFrom="miner", viewKey="default" },
-                    new CardRow { id="boss", name="敌兵", category="attack", hp=3, atk=1, range=1, moveDistance=1, viewKey="default" },
-                    new CardRow { id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" }
+                    new CardRow { tier="basic", id="miner", name="矿机", category="resource", hp=4, moveDistance=0, resourceComponent=true, produce=1, viewKey="default" },
+                    new CardRow { tier="basic", id="soldier", name="士兵", category="attack", hp=5, atk=2, range=2, moveDistance=3, viewKey="default" },
+                    new CardRow { tier="advanced", id="gate", name="星门", category="special", hp=3, moveDistance=1, resourceComponent=true, upkeep=4, teleportComponent=true, permitsAttackDeploy=true, deployHomeOnly=true, avoidAdjacentSameType=true, viewKey="default" },
+                    new CardRow { tier="intermediate", id="upgrade", name="高级矿机", category="resource", hp=6, atk=1, range=1, requiresUpgrade=true, upgradeFrom="miner", viewKey="default" },
+                    new CardRow { tier="none", id="boss", name="敌兵", category="attack", hp=3, atk=1, range=1, moveDistance=1, viewKey="default" },
+                    new CardRow { tier="none", id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" }
                 },
                 deck = new[] { new DeckRow {cardType="miner",count=4},new DeckRow {cardType="soldier",count=4},new DeckRow {cardType="gate",count=4},new DeckRow {cardType="upgrade",count=4} },
                 rules = new[] { new RulesRow { bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossSpawnerSpawnCardType = "boss", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows=5,columns=10,homeRegionWidth=2,playerPlays=20,bossPlays=3,drawCount=16,handLimit=30,initialResources=0,bossRespawnDelay=2,playerSide="left",firstSide="player",bossCardType="boss",playerControlsBoss=true,accumulateResources=true,adjacentSwap=true } },

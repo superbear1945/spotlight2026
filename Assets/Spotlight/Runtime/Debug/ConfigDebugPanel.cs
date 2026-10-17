@@ -325,7 +325,8 @@ namespace Spotlight
                     title.text = string.IsNullOrWhiteSpace(value) ? "未命名卡牌" : value.Trim();
                     Changed();
                 }),
-                ConfigFieldBuilder.Number("卡组数量", () => _draft.GetDeckCount(card.id), value => { _draft.SetDeckCountValue(card.id, value); Changed(); }, 0, 999)
+                ConfigFieldBuilder.Number("卡组数量", () => _draft.GetDeckCount(card.id), value => { _draft.SetDeckCountValue(card.id, value); Changed(); }, 0, 999),
+                ConfigFieldBuilder.Choice("卡牌阶级", TierOptions(card.tier), () => card.tier, value => { card.tier = value; Changed(); })
             };
             if (card.category == "resource")
             {
@@ -546,6 +547,21 @@ namespace Spotlight
             return options;
         }
 
+        /// <summary>
+        /// 生成独立阶级选项。输入：当前配置文本；输出：三种玩家阶级与 Boss 专用不适用状态。
+        /// 缺失或非法旧值保留为显式错误选项，防止界面显示初级却仍存储空值，便于修复旧 JSON。
+        /// </summary>
+        static List<(string Value, string Label)> TierOptions(string current)
+        {
+            var options = new List<(string Value, string Label)>
+            {
+                ("basic", "初级"), ("intermediate", "中级"), ("advanced", "高级"), ("none", "不适用（Boss 专用）")
+            };
+            if (!options.Exists(option => option.Value == current))
+                options.Insert(0, (current ?? string.Empty, $"请补齐阶级（{current}）"));
+            return options;
+        }
+
         /// <summary>构建“回合规则”分区。输入：草稿文档；输出：无。</summary>
         void BuildTurn(ConfigDocument document)
         {
@@ -588,8 +604,13 @@ namespace Spotlight
         {
             if (_draft == null) return;
             var summary = _draft.GetDeckSummary();
+            var tiers = _draft.GetDeckTierSummary();
             if (_deckSummary != null)
-                _deckSummary.text = $"共 {summary.Total} 张 → 资源卡 {summary.Resource} 张 / 战斗卡 {summary.Combat} 张 / 特殊卡 {summary.Special} 张";
+            {
+                _deckSummary.text = $"共 {summary.Total} 张 → 资源卡 {summary.Resource} 张 / 战斗卡 {summary.Combat} 张 / 特殊卡 {summary.Special} 张"
+                    + $"\n初级 {tiers.Basic} 张 / 中级 {tiers.Intermediate} 张 / 高级 {tiers.Advanced} 张";
+                if (tiers.Unclassified > 0) _deckSummary.text += $" / 阶级待修正 {tiers.Unclassified} 张";
+            }
             var errors = _draft.Validate();
             if (_errorLabel != null)
             {

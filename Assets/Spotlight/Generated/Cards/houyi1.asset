@@ -29,6 +29,7 @@ MonoBehaviour:
   _id: houyi1
   _name: "\u540E\u7FBF\u7EFC\u5408\u8230"
   _category: attack
+  _tier: intermediate
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 

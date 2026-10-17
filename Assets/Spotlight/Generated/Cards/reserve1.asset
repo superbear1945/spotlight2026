@@ -31,6 +31,7 @@ MonoBehaviour:
   _id: reserve1
   _name: "\u6218\u65F6\u50A8\u5907"
   _category: special
+  _tier: intermediate
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 

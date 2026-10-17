@@ -32,7 +32,7 @@ namespace Spotlight.Tests
         /// <summary>星棹式标记来源：资源卡，半径 1、奖励 1。</summary>
         static CardRow Collector() => new CardRow
         {
-            id = "collector", name = "收集系统", category = "resource", hp = 1, produce = 1, resourceComponent = true,
+            tier = "intermediate", id = "collector", name = "收集系统", category = "resource", hp = 1, produce = 1, resourceComponent = true,
             markOnEnterComponent = true, markOnEnterRadius = 1, markRewardResource = 1, viewKey = "default"
         };
 
@@ -118,8 +118,8 @@ namespace Spotlight.Tests
             var document = GameSessionTests.Document();
             document.cards = document.cards.Concat(new[]
             {
-                new CardRow { id = "badMark1", name = "缺数值", category = "resource", hp = 1, markOnEnterComponent = true, viewKey = "default" },
-                new CardRow { id = "badMark2", name = "多数值", category = "resource", hp = 1, markOnEnterRadius = 1, markRewardResource = 1, viewKey = "default" }
+                new CardRow { tier = "intermediate", id = "badMark1", name = "缺数值", category = "resource", hp = 1, markOnEnterComponent = true, viewKey = "default" },
+                new CardRow { tier = "intermediate", id = "badMark2", name = "多数值", category = "resource", hp = 1, markOnEnterRadius = 1, markRewardResource = 1, viewKey = "default" }
             }).ToArray();
 
             var errors = ConfigValidation.Validate(document);

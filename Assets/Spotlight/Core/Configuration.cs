@@ -15,6 +15,30 @@ namespace Spotlight
     public enum CardCategory { Resource, Attack, Special }
 
     /// <summary>
+    /// 卡牌阶级，独立于资源/攻击/特殊分类，用于卡组张数统计与后续携带限制。
+    /// 输入：Cards.tier；输出：只读卡种属性。None 仅表示不适用，不能加入玩家卡组，Invalid 用于报告缺失或非法配置。
+    /// 阶级不改变战斗属性、部署时机或覆盖升级规则。
+    /// </summary>
+    public enum CardTier { Invalid, None, Basic, Intermediate, Advanced }
+
+    /// <summary>阶级配置的严格转换入口。输入：Excel/JSON 文本；输出：枚举，非法值保留为 Invalid 供统一校验报告。</summary>
+    public static class CardTiers
+    {
+        /// <summary>解析阶级，不为旧配置猜测默认值。输入：basic/intermediate/advanced/none；输出：对应阶级或 Invalid。</summary>
+        public static CardTier Parse(string value)
+        {
+            switch (value)
+            {
+                case "basic": return CardTier.Basic;
+                case "intermediate": return CardTier.Intermediate;
+                case "advanced": return CardTier.Advanced;
+                case "none": return CardTier.None;
+                default: return CardTier.Invalid;
+            }
+        }
+    }
+
+    /// <summary>
     /// 战斗基础属性配置。
     /// 为什么需要：规则内核只依赖接口，因此 SO、Excel 行对象和测试用的普通 C# 对象都能作为配置来源。
     /// 契约：Hp 是初始值/上限，不保存当前生命；Range 是曼哈顿射程；MoveDistance 为 0 表示不能移动。
@@ -127,6 +151,8 @@ namespace Spotlight
         public string name;
         /// <summary>分类文本，只允许 resource / attack / special。</summary>
         public string category;
+        /// <summary>卡牌阶级：basic / intermediate / advanced；Boss 专用卡填 none。缺失值不自动补齐。</summary>
+        public string tier;
         /// <summary>覆盖升级来源卡种 ID；为空表示普通卡。</summary>
         public string upgradeFrom;
         /// <summary>外观模板键，运行时映射到 Prefab 外观，改动数值不会重编译外观。</summary>
@@ -399,6 +425,8 @@ namespace Spotlight
         public string Name { get; }
         /// <summary>分类，决定部署范围与 AI 优先级。</summary>
         public CardCategory Category { get; }
+        /// <summary>独立于分类的共享阶级；不参与战斗结算。</summary>
+        public CardTier Tier { get; }
         /// <summary>战斗属性；为 null 表示该卡种没有战斗组件。</summary>
         public ICombatConfig Combat { get; }
         /// <summary>资源属性；为 null 表示没有资源组件。</summary>
@@ -440,6 +468,7 @@ namespace Spotlight
             Id = row.id;
             Name = row.name?.Trim();
             Category = row.category == "resource" ? CardCategory.Resource : row.category == "attack" ? CardCategory.Attack : CardCategory.Special;
+            Tier = CardTiers.Parse(row.tier);
             Combat = combat;
             Resource = resource;
             Teleport = teleport;
@@ -846,6 +875,7 @@ namespace Spotlight
             var ids = new HashSet<string>(list.Select(c => c.Id), StringComparer.Ordinal);
             if (ids.Count != list.Length) errors.Add("卡种 ID 重复");
             if (list.Any(c => string.IsNullOrWhiteSpace(c.Id) || string.IsNullOrWhiteSpace(c.Name))) errors.Add("卡种 ID 或名称为空");
+            if (list.Any(c => c.Tier == CardTier.Invalid)) errors.Add("卡种 tier 缺失或非法，请补齐阶级");
             if (list.Any(c => c.RequiresUpgrade && (string.IsNullOrEmpty(c.UpgradeFrom) || !ids.Contains(c.UpgradeFrom)))) errors.Add("升级目标缺失");
             if (list.Any(c => c.DeploymentPenalty != null && c.DeploymentPenalty.AttackReduction < 1)) errors.Add("部署减攻配置非法：启用组件时减攻量必须为正整数");
             if (list.Any(c => c.DeployCost < 0)) errors.Add("部署消耗不得为负");
@@ -860,6 +890,8 @@ namespace Spotlight
             else if (!rules.PlayerControlsBoss && list.Single(c => c.Id == rules.BossCardType).Category != CardCategory.Attack) errors.Add("AI 模式 Boss 必须使用攻击卡");
             var deckList = deck.ToArray();
             if (deckList.Any(e => e == null || e.Count < 0 || !ids.Contains(e.TypeId))) errors.Add("卡组引用非法");
+            if (deckList.Any(e => e != null && e.Count > 0 && list.Any(c => c.Id == e.TypeId && c.Tier == CardTier.None)))
+                errors.Add("Deck：tier=none（不适用）的卡种不能加入玩家卡组");
             var slotList = bossSlots.ToArray();
             if (slotList.Length != 3) errors.Add("必须恰好三个兵位");
             if (slotList.Any(s => s == null || string.IsNullOrWhiteSpace(s.Id) || s.RowFraction < 0 || s.RowFraction > 1) || slotList.Select(s => s.Id).Distinct().Count() != slotList.Length) errors.Add("兵位定义非法");
@@ -932,6 +964,7 @@ namespace Spotlight
                 if (string.IsNullOrWhiteSpace(c.id) || !System.Text.RegularExpressions.Regex.IsMatch(c.id, @"^[A-Za-z][A-Za-z0-9_-]*$") || !ids.Add(c.id)) errors.Add(p + "：id 须唯一且为字母开头的字母/数字/_/-");
                 if (string.IsNullOrWhiteSpace(c.name) || !names.Add(c.name.Trim())) errors.Add(p + "：名称为空或重复");
                 if (c.category != "resource" && c.category != "attack" && c.category != "special") errors.Add(p + "：category 非法");
+                if (CardTiers.Parse(c.tier) == CardTier.Invalid) errors.Add(p + "：tier 缺失或非法，请填写 basic（初级）/intermediate（中级）/advanced（高级）/none（不适用）");
                 if (c.hp < 1 || c.atk < 0 || c.range < 0 || c.moveDistance < 0 || c.produce < 0 || c.upkeep < 0) errors.Add(p + "：生命必须正数，其他数值不得为负");
                 if (!c.resourceComponent && (c.produce != 0 || c.upkeep != 0)) errors.Add(p + "：资源字段需要 resourceComponent");
                 if (!c.teleportComponent && c.permitsAttackDeploy) errors.Add(p + "：部署扩展需要 teleportComponent");
@@ -979,6 +1012,8 @@ namespace Spotlight
             foreach (var e in d.deck)
             {
                 if (e.count < 0 || !ids.Contains(e.cardType) || !deckIds.Add(e.cardType)) errors.Add($"Deck ({e.cardType})：数量、卡种或重复条目非法");
+                if (e.count > 0 && d.cards.Any(c => c.id == e.cardType && c.tier == "none"))
+                    errors.Add($"Deck ({e.cardType})：tier=none（不适用）的卡种不能加入玩家卡组");
                 total += e.count;
             }
             if (total > int.MaxValue) errors.Add("Deck 总数量溢出");

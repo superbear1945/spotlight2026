@@ -31,6 +31,7 @@ MonoBehaviour:
   _id: rabbit2
   _name: "\u7075\u51542"
   _category: attack
+  _tier: basic
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 

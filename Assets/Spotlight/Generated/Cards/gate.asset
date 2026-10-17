@@ -31,6 +31,7 @@ MonoBehaviour:
   _id: gate
   _name: "\u661F\u95E8"
   _category: special
+  _tier: advanced
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 
