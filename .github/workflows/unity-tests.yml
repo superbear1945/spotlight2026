@@ -26,13 +26,19 @@ on:
   schedule:
     - cron: '0 18 * * *'
 
-# 同一 ref 只保留一次运行：反复往同一个 PR 推修复时避免多个运行叠在一起（实测同时跑了 3 个），
-# 白白消耗 CI 时间，也让“哪次失败对应哪个 commit”变得难查。
+# 全仓库共用一个组名：Unity 个人版授权是账号级“席位”，同一时刻只能有一个 Unity 进程。
+# 为什么不再按 ref 分组（原来写的是 unity-tests-${{ github.ref }}）：夜间打包（schedule）
+# 跑在 refs/heads/main 上，PR 测试跑在 refs/pull/N/merge 上，两者属于不同的组，会在
+# 同一秒各自执行 --activate-all 抢同一个席位，输的一方拿到 “0 free entitlements” 而整轮假失败。
+# 改成固定组名后，仓库内任意两个 Unity 运行都会自动排队。
+# 代价（必须清楚）：GitHub 的并发组只留 1 个 running + 1 个 pending，新排队的运行会
+# *取消掉更早的那个排队中的运行*——于是某个 PR 可能看到检查直接变成 cancelled，重跑即可。
+# 这与原来“同一 ref 只保留一次运行”的语义一致，只是范围扩到了整个仓库。
 # 刻意不设 cancel-in-progress：个人版授权是“席位”制，中途取消正在运行的 job 可能来不及归还席位
 # （CLI 只在 EXIT trap 能执行完时归还），泄漏的席位会让该账号之后所有运行报 no available seats。
-# 默认行为只会取消“排队中”的旧运行，正在执行的那次不受影响。
 concurrency:
-  group: unity-tests-${{ github.ref }}
+  # 必须是固定名（不含任何变量）：scripts/check-ci-config.sh 会拦住按 ref 分组的写法。
+  group: unity-seat
 
 # 为什么需要显式声明权限：仓库默认的 Workflow permissions 是「只读」，
 # 而 unity-test-runner 会用 githubToken 创建 check run 来汇报测试结果（对应下面的 checkName），
@@ -149,8 +155,9 @@ jobs:
   #      （缺了等于“PR 阶段不会跑这个文件”），而打包绝不该在 PR 上跑；
   #   3) 不新增文件就不会碰守卫脚本对 push 的禁令，也不会影响规则集里的三条必需检查名。
   # 已知代价：本 job 与 PR 测试共用同一个 Unity 个人版席位（账号级“席位”制），
-  # 两者同时启动会在 --activate-all 上抢席位，输的一方报 no available seats 假失败；
-  # 定时跑在深夜只是把概率压低，不是消除。需要彻底解决要上浮动授权（unityLicensingServer）。
+  # 两者同时启动会在 --activate-all 上抢席位，输的一方报 no available seats 假失败。
+  # 已通过顶层的 concurrency.group: unity-seat 把整个仓库的 Unity 运行串成一列来避免重叠；
+  # 彻底解决（不排队、真并发）仍需浮动授权（unityLicensingServer）或 self-hosted runner。
   # ---------------------------------------------------------------------------
   build-windows:
     # ⚠️ job id 是 scripts/check-ci-config.sh 按字符串校验的对象（它检查 needs 与成功判定），
