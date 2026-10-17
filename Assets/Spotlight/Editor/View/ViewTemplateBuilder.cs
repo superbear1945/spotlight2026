@@ -11,7 +11,7 @@ namespace Spotlight.EditorTools
     /// <summary>
     /// 卡牌外观模板（`Assets/Spotlight/Runtime/View/CardTemplate.prefab`）的构建工具。
     /// 输入：无；输出：可被生成器克隆的模板 Prefab，或未保存的临时模板对象。
-    /// 模板包含 `Card` 与三个能力组件，并已接好文本/图片引用。
+    /// 模板包含 `Card` 与四个能力组件，并已接好文本/图片引用。
     /// </summary>
     public static class ViewTemplateBuilder
     {
@@ -41,12 +41,14 @@ namespace Spotlight.EditorTools
 
         /// <summary>
         /// 构建一个未保存的模板对象。
-        /// 输入：无；输出：包含 Card 与三个能力组件、以及高亮/名称/属性/生命子节点的 GameObject。
+        /// 输入：无；输出：包含 Card 与四个能力组件、以及高亮/名称/属性/生命子节点的 GameObject。
         /// 生成器在模板缺失时也会调用它，保证即使没有手工模板也能产出可运行的占位外观。
+        /// 为什么模板带全部能力组件：发布器会在克隆后按配置保留或移除它们（SyncComponent），
+        /// 因此模板只需提供最多的一组能力入口，未启用的能力会在每个卡种 Prefab 上被剔除。
         /// </summary>
         public static GameObject BuildTemplateObject()
         {
-            var root = new GameObject("CardTemplate", typeof(RectTransform), typeof(Image), typeof(Button), typeof(Card), typeof(CombatComponent), typeof(ResourceComponent), typeof(TeleportComponent));
+            var root = new GameObject("CardTemplate", typeof(RectTransform), typeof(Image), typeof(Button), typeof(Card), typeof(CombatComponent), typeof(ResourceComponent), typeof(TeleportComponent), typeof(DeploymentPenaltyComponent));
             var rect = (RectTransform)root.transform;
             rect.sizeDelta = new Vector2(120f, 160f);
 
@@ -69,6 +71,7 @@ namespace Spotlight.EditorTools
             AssignReference(serialized, "_combat", root.GetComponent<CombatComponent>());
             AssignReference(serialized, "_resource", root.GetComponent<ResourceComponent>());
             AssignReference(serialized, "_teleport", root.GetComponent<TeleportComponent>());
+            AssignReference(serialized, "_deploymentPenalty", root.GetComponent<DeploymentPenaltyComponent>());
             serialized.ApplyModifiedPropertiesWithoutUndo();
             return root;
         }

@@ -60,7 +60,7 @@ Assets/Spotlight/
 
 生成产物（只读，禁止手工编辑；需要修改请改 Excel 后重新编译）：
 
-- `Generated/Cards/<id>.asset`：卡种定义 SO，三个组件配置作为子资产保存（`<id>_Combat` / `_Resource` / `_Teleport`）。
+- `Generated/Cards/<id>.asset`：卡种定义 SO，能力组件配置作为子资产保存（`<id>_Combat` / `_Resource` / `_Teleport` / `_DeploymentPenalty`，未启用的能力不生成子资产）。
 - `Generated/Cards/<id>.prefab`：卡种 Prefab，只保存组件组合与 SO 引用，不重复存储数值。
 - `Generated/Resources/SpotlightConfig.asset`：主配置资产，运行时通过 `Resources/SpotlightConfig` 加载。
 - `Generated/ConfigManifest.asset`：编译清单，记录源工作簿路径、SHA256 摘要、编译时间与全部产出路径。
@@ -87,6 +87,7 @@ Assets/Spotlight/
 - `Cell`：整数坐标值类型（第 0 行在底部），仅做曼哈顿距离；不用 `Vector2Int`。
 - 三套身份：`CardRecord`（抽牌堆/手牌/墓地中的卡牌记录）、`UnitState`（在场的可变单位）、`HomeState`（独立的家）。**三者身份不可混用**；家 ID 为负数（玩家 -1、Boss -2），单位 ID 为正数。
 - `UnitState` 只保存来源卡牌的值副本（`SourceCardId` / `TypeId` / `Owner`），**不引用 `CardRecord`**。玩家卡在成功部署时进入墓地，单位阵亡或被覆盖升级不再重复回收，因此“抽牌堆 + 手牌 + 墓地”的卡牌总数恒定，同一张卡可以反复部署出多个互相独立的单位。
+- 场上战斗属性（当前生命 `Hp`、生命上限 `MaxHp`、当前攻击 `Attack`、射程 `Range`、移动距离 `MoveDistance` 与一次性部署减攻状态 `DeploymentPenaltyPending` / `DeploymentAttackReduction`）只存在于 `UnitState`：部署时从只读卡种配置初始化，之后由规则代码修改；伤害、合法动作、AI 与刷怪条件一律读当前值，不得回读卡种配置。
 - 名词与机制的完整定义见 `docs/游戏内名词.md`。
 - `GameCommand`：不可变操作请求，含 `CommandKind`（Deploy / BossDeploy / Move / MoveHome / Attack / Swap / Withdraw / Discard / EndTurn）、`Actor`、`SubjectId`、`Target`、`TargetId`、`SkipDeployment`。**Target 视为不可信输入，执行时必须复验**。
 - `Selection` / `SelectionKind`：界面选择上下文，显式区分手牌与单位身份。
@@ -105,7 +106,7 @@ Assets/Spotlight/
 
 ### 4.2 运行层（`Spotlight.Runtime`）
 
-- 卡牌视图：`Card : MonoBehaviour`，配合 `CombatComponent` / `ResourceComponent` / `TeleportComponent` 三个能力组件；**同一个 `Card` 承载所有卡种，不为卡种建子类**。
+- 卡牌视图：`Card : MonoBehaviour`，配合 `CombatComponent` / `ResourceComponent` / `TeleportComponent` / `DeploymentPenaltyComponent` 四个能力组件；**同一个 `Card` 承载所有卡种，不为卡种建子类**。
 - 配置资产：`CardDefinitionSO` / `CombatConfigSO` / `ResourceConfigSO` / `TeleportConfigSO` / `SpotlightConfigAsset` / `ConfigManifest`，均实现只读接口；`GeneratedConfigAttribute` 标记生成产物。
 - 加载入口：`ConfigLoader`（`DefaultResourcePath = "SpotlightConfig"`，`TryCreateConfiguration(...)` 失败返回错误文本，不抛异常）。
 - 视图：`BoardView` / `BoardCellView`（UGUI 棋盘）、`HandView`（UGUI 手牌）、`HudView`（UI Toolkit / UXML）、`CardFactory` / `CardText`。
@@ -142,6 +143,7 @@ Assets/Spotlight/
 | 星门 | 特殊卡，`deployHomeOnly` + `avoidAdjacentSameType`，为相邻格提供战斗卡部署扩展 |
 | 兵位 / 补兵 | `BossSlotRow` / `BossReplacement`，Boss 三个固定兵位独立计时，阵亡后按 `bossRespawnDelay` 补回 |
 | 弃牌阶段 | `MatchPhase.Discard`，手牌超过上限时必须弃至上限才能进入对方回合 |
+| 一次性部署减攻 | `deploymentPenaltyComponent` + `deploymentAttackReduction`；来源单位在场期间一次，使随后同阵营攻击类单位攻击力降低配置值（下限 0），多来源按部署顺序依次触发 |
 | 快照 `GameSnapshot` | 规则状态的只读副本，UI/日志/调试统一数据源 |
 | 生成资产 | `Generated/` 下的只读 SO 与 Prefab，禁止手工修改 |
 

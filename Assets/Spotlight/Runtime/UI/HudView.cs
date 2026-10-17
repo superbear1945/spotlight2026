@@ -296,8 +296,9 @@ namespace Spotlight
                 var unit = snapshot.Units.FirstOrDefault(u => u.Id == selection.Id);
                 if (unit == null) return string.Empty;
                 if (unit.IsBossSpawner) return $"{configuration.Cards[unit.TypeId].Name} · 当前生命 {unit.Hp}\n固定据点，不能攻击、移动或互换。下个 Boss 回合起，每回合在周围八格生成一架战机；满格时随机顶替玩家单位，无可用位置则暂停。";
-                var text = configuration.Cards.TryGetValue(unit.TypeId, out var arch) ? CardText.DetailLine(arch, unit.Owner) : string.Empty;
-                return text + Environment.NewLine + $"当前生命 {unit.Hp} · 行动机会 {(unit.CanAct ? "可用" : unit.Acted ? "已用完" : "维持费不足")}";
+                // 单位详情必须用单位快照（当前攻击/射程/移动与一次性减攻状态），不能用卡种基础配置。
+                var text = configuration.Cards.TryGetValue(unit.TypeId, out var arch) ? CardText.UnitDetail(arch, unit) : string.Empty;
+                return text + Environment.NewLine + $"行动机会 {(unit.CanAct ? "可用" : unit.Acted ? "已用完" : "维持费不足")}";
             }
             if (selection.Kind == SelectionKind.Home)
             {
@@ -385,8 +386,8 @@ namespace Spotlight
                     if (unit != null && configuration.Cards.TryGetValue(unit.TypeId, out var unitArch))
                     {
                         var title = CardText.CategoryLabel(unitArch.Category) + (unit.Owner == Side.Player ? " · 玩家" : " · Boss");
-                        var body = CardText.DetailLine(unitArch, unit.Owner) + Environment.NewLine
-                            + $"当前生命 {unit.Hp} · 行动机会 {(unit.CanAct ? "可用" : unit.Acted ? "已用完" : "维持费不足")}";
+                        var body = CardText.UnitDetail(unitArch, unit) + Environment.NewLine
+                            + $"行动机会 {(unit.CanAct ? "可用" : unit.Acted ? "已用完" : "维持费不足")}";
                         if (unit.Owner == Side.Player) { leftTitle = title; leftBody = body; }
                         else { rightTitle = title; rightBody = body; }
                     }
