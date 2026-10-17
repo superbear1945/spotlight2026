@@ -17,6 +17,10 @@
 #      `schedule` 触发 + `build-windows` job 的 `needs: unity-tests` + `if:` 里的
 #      `needs.unity-tests.result == 'success'`。缺任何一件都会让“测试全绿才打包”
 #      静默失效——要么永远不打包，要么拿着红着的代码发布到 Release 给人下载。
+#      例外：主动暂停定时打包是允许的，但文件顶层必须留一行
+#      `# nightly-suspended: <原因>` 标记（守卫放行并打印提示），否则一律按违规处理。
+#      为什么要求标记：直接删 `schedule` 与“忘了加回来”在 diff 里长得一模一样，
+#      没有标记时“为什么今天没打包”只能靠翻 commit 历史回答。
 #
 #   4. unity-tests.yml 的 unity-tests job 必须设置 strategy.max-parallel: 1，
 #      避免同一矩阵的两个测试模式同时申请 / 归还共用账号的 Personal 授权。
@@ -128,8 +132,17 @@ CheckNightlyReleaseGate() {
   local _file="$1" _job_body
 
   if ! grep -q '^[[:space:]]*schedule:' <<<"$(_on_block "$_file")"; then
-    echo "  ❌ $_file：缺少 schedule 触发 —— 夜间打包不会自动执行"
-    return 1
+    # 主动暂停允许，但必须留下可 grep 的标记与原因（顶层 `# nightly-suspended: ...`）。
+    # 为什么不用“缺 schedule 就一律报错”：修复期间需要一个“关掉定时”的合法出口，
+    # 否则大家只能用注释/临时改 cron 等更难追的写法；而一旦没有标记，删除就当违规。
+    if grep -Eq '^#[[:space:]]*nightly-suspended:[[:space:]]*\S' "$_file"; then
+      echo "  ⚠️  $_file：夜间定时打包处于暂停状态（nightly-suspended 标记）—— 恢复时请删除该标记"
+    else
+      echo "  ❌ $_file：缺少 schedule 触发 —— 夜间打包不会自动执行"
+      echo "     ↑ 如果是主动暂停，请在文件顶层写一行 # nightly-suspended: <原因>，"
+      echo "       守卫会放行并打印提示；没有标记的删除一律按违规处理。"
+      return 1
+    fi
   fi
 
   # 只取 build-windows job 自身层级的键（缩进 4）：步骤里的同名键与更深层内容必须排除，
@@ -585,6 +598,21 @@ R（cancel-in-progress: true → 拦截）|cancel|1
 S（缺 concurrency 块 → 拦截）|missing|1
 CONCCASES
 
+  # --- 用例 T：主动暂停夜间打包（缺 schedule，但有 nightly-suspended 标记）→ 应放行。
+  # 为什么必须覆盖：这是修复期间唯一合法的“关掉定时”出口（当前仓库就处于这个状态）。
+  # 若哪天这个出口被改坏了，表现是 PR 直接被 repo-hygiene 拦住，而原因看不出。
+  # 反例已经由用例 M 覆盖（缺 schedule 且无标记 → 拦截）。
+  local _tactual=0
+  _write_unity_tests_fixture "$_tmp/unity-tests.yml" '      max-parallel: 1' no yes yes
+  printf '%s\n' '# nightly-suspended: 2026-10-17 授权失败待修' >>"$_tmp/unity-tests.yml"
+  bash "$_self_path" "$_tmp/unity-tests.yml" >/dev/null 2>&1 || _tactual=$?
+  if [ "$_tactual" -eq 0 ]; then
+    echo "  ✅ 自检 T 通过：nightly-suspended 标记 → 暂停定时被放行"
+  else
+    echo "  ❌ 自检 T 失败：带标记的暂停被误报为违规（退出码 $_tactual）"
+    _rc=1
+  fi
+
   # --- 用例 I–K：合并门槛只允许“检查全绿 + 分支最新”，不得要求人工审阅。
   # 为什么必须在自检里覆盖：这条约定平时看不出问题，一旦规则集被改回要求审阅，
   # 表现只是 PR 卡在等 approval；而校验它的 --check-ruleset 需要 gh 登录才能跑，
@@ -617,7 +645,7 @@ GATES
 if [ "${1:-}" = "--self-test" ]; then
   echo "== check-ci-config.sh 自检 =="
   if _self_test; then
-    echo "自检结果：19/19 通过"
+    echo "自检结果：20/20 通过"
     exit 0
   fi
   echo "自检结果：存在失败用例"

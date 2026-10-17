@@ -6,7 +6,7 @@
 # 因此两种模式都要在流水线上跑，避免“日志说移动了、界面却没动”这类问题再次漏过。
 name: Unity Tests
 
-# PR 测试只在 PR 上跑（另有手动兜底与夜间定时打包，见下面 on: 块），不在 main 的 push 上重复跑。
+# PR 测试只在 PR 上跑（另有手动兜底；夜间定时打包当前已暂停，见下面 on: 块），不在 main 的 push 上重复跑。
 # 为什么可以这样：分支规则集「main」已同时开启 required_status_checks（strict=true）、
 # pull_request（必须走 PR）、non_fast_forward（禁 force push）、deletion（禁删分支），
 # 且 bypass_actors 为空、current_user_can_bypass=never —— main 上不可能出现绕过 PR 的内容。
@@ -17,14 +17,19 @@ name: Unity Tests
 on:
   pull_request:
   workflow_dispatch:
-  # 夜间打包（跑完测试后由 build-windows 执行）：UTC 18:00 = 北京时间次日 02:00。
-  # 为什么用 schedule 而不是 push：main 被规则集锁死、PR 阶段测的就是合并后的 commit，
-  # 定时运行同样落在 main 的一个明确 commit 上，不需要任何 push 事件触发；
-  # 而 scripts/check-ci-config.sh 明确禁止 push 触发（只会重复消耗 Unity 授权席位）。
-  # 两个 GitHub 硬限制：schedule 只在默认分支（main）上生效；cron 一律按 UTC，
-  # 且公共仓库 60 天无活动会被自动停用定时任务 —— 所以 workflow_dispatch 必须保留兜底。
-  schedule:
-    - cron: '0 18 * * *'
+  # ❗ 夜间定时打包自 2026-10-17 起暂停。
+  # 原因：`build-windows` 用的 `game-ci/unity-builder@v4.4.0` 自带前置校验，只认
+  # `UNITY_LICENSE`（.ulf）或 `UNITY_SERIAL`，不接受 Personal 的“邮箱+密码认领席位”。
+  # 实测两次 run（08:12 与 16:11）均在步骤启动后 0.3 秒内报
+  # “Missing Unity License File and no Serial was found”，根本没下载 CLI、没起容器。
+  # 恢复条件：把 builder 换到带 `cliVersion` 输入的版本（v5.0.1 / v6.0.0），
+  # 钉 `cliVersion: v0.1.72` 以复用测试步骤已验证的 personal 激活；验证通过后
+  # 把下面的 `schedule` 加回来，并删掉 `nightly-suspended` 标记行。
+  # 暂停期间仍然可以手动验证：Actions → Run workflow（`workflow_dispatch`）。
+  # 原来的定时：UTC 18:00 = 北京时间次日 02:00（schedule 只在默认分支生效，cron 按 UTC）。
+# nightly-suspended: 2026-10-17 unity-builder 授权失败，待升级 builder 版本后恢复定时
+# （上面这行刻意写在行首：scripts/check-ci-config.sh 用它作为“主动暂停”的唯一凭证，
+#   恢复定时时把 schedule 加回来并删掉这一行。）
 
 # 全仓库共用一个组名：Unity 个人版授权是账号级“席位”，同一时刻只能有一个 Unity 进程。
 # 为什么不再按 ref 分组（原来写的是 unity-tests-${{ github.ref }}）：夜间打包（schedule）
