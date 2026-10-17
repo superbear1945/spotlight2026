@@ -16,10 +16,10 @@ MonoBehaviour:
     rows: 5
     columns: 10
     homeRegionWidth: 2
-    playerPlays: 5
+    playerPlays: 20
     bossPlays: 1
-    drawCount: 5
-    handLimit: 5
+    drawCount: 3
+    handLimit: 3
     initialResources: 0
     bossRespawnDelay: 5
     playerSide: left
@@ -96,5 +96,5 @@ MonoBehaviour:
   - cardType: gate
     count: 2
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceHash: 5b54e18e729d47c67fb417f6220bdd04f1c845f2431738bdbe1ead37c8d36164
-  _compiledAtUtc: 2026-10-16T14:50:46.3607736Z
+  _sourceHash: 8624bf620c4d91be441e872e88c2fb31963912ba517e8fc647127643f10a62af
+  _compiledAtUtc: 2026-10-17T05:33:22.6226725Z
