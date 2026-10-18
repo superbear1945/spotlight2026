@@ -262,6 +262,9 @@ namespace Spotlight
                     if (!Available(mover)) return "该单位本回合不能行动";
                     var path = Paths(mover.Position);
                     if (c.Target == mover.Position || !path.TryGetValue(c.Target, out var movePath) || movePath.Count > mover.MoveDistance) return "不在合法移动范围";
+                    // 空格限制只检查起点与原布局、落点与最终布局；路径中间格不检查。
+                    var moveError = MovementError(mover, c.Target);
+                    if (moveError != null) return moveError;
                     var origin = mover.Position;
                     mover.Position = c.Target;
                     mover.Acted = true;
@@ -321,12 +324,22 @@ namespace Spotlight
                         target.Unit.AddDamageMark(markConfig.DamagePerStack);
                         Emit("damage-mark", $"{Type(attacker).Name} 使 {target.Name} 获得 1 层伤害标记（当前 {target.Unit.DamageMarkLayers} 层，每层追加 {markConfig.DamagePerStack}）", target.Unit.Id);
                     }
+                    // 击杀恢复行动：只认本次攻击（包括标记追加）造成的击杀，而不是“本次命令发生过死亡”；
+                    // 炸弹与其它单位的击杀不经过本分支，因此不会误恢复。
+                    if (applied.Killed && target.Unit != null && Type(attacker).KillAction != null && _units.Contains(attacker))
+                    {
+                        attacker.Acted = false;
+                        Emit("action-restored", $"{Type(attacker).Name} 击杀 {target.Name}，恢复一次行动（仅本回合有效）", attacker.Id);
+                    }
                     CheckVictory();
                     break;
                 case CommandKind.Swap:
                     var a = _units.FirstOrDefault(u => u.Id == c.SubjectId);
                     var b = _units.FirstOrDefault(u => u.Id == c.TargetId);
                     if (!Rules.AdjacentSwap || !Swappable(a) || !Swappable(b) || a == b || a.Position.Distance(b.Position) != 1) return "双方必须为相邻且可行动的己方非资源单位";
+                    // 互换需要检查“交换前”与“交换后”两份布局，且双方中所有具有该能力的单位都要满足。
+                    var swapError = SwapError(a, b);
+                    if (swapError != null) return swapError;
                     // 互换独立于移动距离：零移动的非资源单位也能参加，双方同时消耗行动机会。
                     var old = a.Position;
                     a.Position = b.Position;
@@ -413,7 +426,7 @@ namespace Spotlight
                 actions.CanWithdraw = _activeSide == Side.Player && u != null && u.Owner == Side.Player;
                 if (Available(u))
                 {
-                    actions.Move = Paths(u.Position).Where(p => p.Value.Count > 0 && p.Value.Count <= u.MoveDistance).Select(p => p.Key).ToArray();
+                    actions.Move = Paths(u.Position).Where(p => p.Value.Count > 0 && p.Value.Count <= u.MoveDistance && MovementError(u, p.Key) == null).Select(p => p.Key).ToArray();
                     var attackCells = Targets(_activeSide).Where(t => CanAttack(u, u.Position, t.Position)).Select(t => t.Position).ToList();
                     // 具备“攻击友方即治疗”的单位，合法目标额外包含己方单位（不含自己）。
                     // 这些格同时进入 Attack（点击链路与敌方目标一致）与 Heal（视图据此染成治疗色）。
@@ -429,7 +442,7 @@ namespace Spotlight
                     actions.Attack = attackCells.ToArray();
                     // 资源卡既不发起互换也不作为互换目标，因此它选中时没有互换高亮，
                     // 点击相邻己方卡牌会落到“切换选中对象”这条分支上（与关闭 adjacentSwap 时的行为一致）。
-                    if (Rules.AdjacentSwap && Swappable(u)) actions.Swap = _units.Where(v => v != u && Swappable(v) && u.Position.Distance(v.Position) == 1).Select(v => v.Position).ToArray();
+                    if (Rules.AdjacentSwap && Swappable(u)) actions.Swap = _units.Where(v => v != u && Swappable(v) && u.Position.Distance(v.Position) == 1 && SwapError(u, v) == null).Select(v => v.Position).ToArray();
                 }
             }
             return actions;
@@ -452,6 +465,10 @@ namespace Spotlight
             if (type.DeployHomeOnly && !InHomeRegion(owner, p)) return "必须部署在己方区域";
             if (type.Category == CardCategory.Attack && !InHomeRegion(owner, p) && !_units.Any(u => u.Owner == owner && Type(u).Teleport?.PermitsAttackDeploy == true && u.Position.Distance(p) == 1)) return "攻击卡需要己方区域或己方星门四邻";
             if (type.AvoidAdjacentSameType && _units.Any(u => u.TypeId == type.Id && u.Position.Distance(p) == 1)) return "不能与同卡种单位四邻部署";
+            // 四邻空格限制：部署按“新单位已经占用目标格”的最终布局计算，
+            // 棋盘外四个方向直接计为空，斜角不计，炸弹不占格。
+            var clearance = ClearanceError(type, p, cell => cell == p || Occupied(cell));
+            if (clearance != null) return clearance;
             // 邻域部署要求：统计目标格四邻（上下左右）中指定分类的在场单位数量。
             // 不区分阵营（敌方同类单位同样计数），家不是单位因此不参与统计。
             if (type.DeployRequireAdjacentCount > 0)
@@ -972,9 +989,13 @@ namespace Spotlight
         /// 输入：行动单位与候选目标；输出：越小越优先。
         /// 规则：可一击摧毁的玩家家 → 可一击击杀的普通单位 → 玩家家 → 攻击卡 → 资源卡 → 特殊卡。
         /// 已确认“特殊卡在非致死优先级中排在资源卡之后”。当前攻击力取单位快照值，
-        /// 因此被一次性减攻降为 0 的单位不会再把目标判定为“可一击击杀”。
+        /// 可击杀预测包含目标既有的伤害标记追加（与真实结算一致），但不会挂新层或扣血。
         /// </summary>
-        int AttackPriority(UnitState u, Target t) => t.Hp <= u.Attack ? (t.Home != null ? 0 : 1) : 2 + TargetKind(t);
+        int AttackPriority(UnitState u, Target t)
+        {
+            var predicted = (long)u.Attack + (t.Unit != null ? t.Unit.DamageMarkBonus : 0);
+            return t.Hp <= predicted ? (t.Home != null ? 0 : 1) : 2 + TargetKind(t);
+        }
 
         /// <summary>
         /// 执行一个完整的 Boss 回合。
@@ -982,7 +1003,8 @@ namespace Spotlight
         /// 前置：BeginTurn 已恢复 Boss 行动并补兵；炸弹统一在玩家回合开始时处理。
         /// 顺序：按部署顺序逐个行动 → 自动结束回合；每个单位基于爆炸后的最新棋盘决策。
         /// 每次行动只做一件事：能攻击就攻击，否则沿最短可通行路径移动到最近合法攻击位置；
-        /// 抵达射程也不追加攻击（移动消耗整次行动）。胜负确定后立即停止后续行动。
+        /// 只有“击杀恢复行动”清空 Acted 后才会重新决策，其余情况（未击杀、移动、待机）都结束该单位本回合循环。
+        /// 胜负确定后立即停止后续行动。
         /// </summary>
         void RunBoss()
         {
@@ -990,26 +1012,45 @@ namespace Spotlight
             foreach (var u in _units.Where(u => u.Owner == Side.Boss).OrderBy(u => u.DeploymentOrder).ToArray())
             {
                 if (_phase == MatchPhase.Finished) return;
-                if (!u.CanAct) continue;
-                var target = Targets(Side.Boss)
-                    .Where(t => CanAttack(u, u.Position, t.Position))
-                    .OrderBy(t => AttackPriority(u, t))
-                    .ThenBy(t => t.Hp)
-                    .ThenBy(t => t.Position.Row)
-                    .ThenBy(t => t.Position.Col)
-                    .FirstOrDefault();
-                if (target != null) { ExecuteCommand(new GameCommand(CommandKind.Attack, Side.Boss, u.Id, targetId: target.Id), true); continue; }
-                if (u.Attack <= 0 || u.Range <= 0 || u.MoveDistance <= 0) { Emit("wait", $"{Type(u).Name} 待机", u.Id); continue; }
-                var paths = Paths(u.Position);
-                var best = Targets(Side.Boss)
-                    .SelectMany(t => paths.Where(p => p.Value.Count > 0 && CanAttack(u, p.Key, t.Position)).Select(p => new { Target = t, Path = p.Value }))
-                    .OrderBy(x => x.Path.Count)
-                    .ThenBy(x => TargetKind(x.Target))
-                    .ThenBy(x => x.Target.Position.Row)
-                    .ThenBy(x => x.Target.Position.Col)
-                    .FirstOrDefault();
-                if (best != null) ExecuteCommand(new GameCommand(CommandKind.Move, Side.Boss, u.Id, best.Path[Math.Min(u.MoveDistance, best.Path.Count) - 1]), true);
-                else Emit("wait", $"{Type(u).Name} 无可通行路径，待机", u.Id);
+                // 击杀恢复行动会让单位重新可行动，因此必须在最新状态上循环决策；
+                // 每轮都重新查询目标、占位与路径，不缓存上一次结果。
+                while (u.CanAct && _units.Contains(u))
+                {
+                    if (_phase == MatchPhase.Finished) return;
+                    var target = Targets(Side.Boss)
+                        .Where(t => CanAttack(u, u.Position, t.Position))
+                        .OrderBy(t => AttackPriority(u, t))
+                        .ThenBy(t => t.Hp)
+                        .ThenBy(t => t.Position.Row)
+                        .ThenBy(t => t.Position.Col)
+                        .FirstOrDefault();
+                    if (target != null)
+                    {
+                        // 命令失败必须退出循环，避免在异常配置下反复尝试同一失败命令而卡死。
+                        if (ExecuteCommand(new GameCommand(CommandKind.Attack, Side.Boss, u.Id, targetId: target.Id), true) != null) break;
+                        continue;
+                    }
+                    if (u.Attack <= 0 || u.Range <= 0 || u.MoveDistance <= 0) { Emit("wait", $"{Type(u).Name} 待机", u.Id); break; }
+                    var paths = Paths(u.Position);
+                    var best = Targets(Side.Boss)
+                        .SelectMany(t => paths.Where(p => p.Value.Count > 0 && CanAttack(u, p.Key, t.Position)).Select(p => new { Target = t, Path = p.Value }))
+                        .OrderBy(x => x.Path.Count)
+                        .ThenBy(x => TargetKind(x.Target))
+                        .ThenBy(x => x.Target.Position.Row)
+                        .ThenBy(x => x.Target.Position.Col)
+                        .FirstOrDefault();
+                    if (best != null)
+                    {
+                        // 最远可达落点不一定合法（四邻空格限制）：从最远处向回退，找到第一个合法落点。
+                        // 远处攻击位置合法并不代表本回合实际走到的中间落点合法。
+                        var steps = Math.Min(u.MoveDistance, best.Path.Count);
+                        while (steps > 0 && MovementError(u, best.Path[steps - 1]) != null) steps--;
+                        if (steps > 0) ExecuteCommand(new GameCommand(CommandKind.Move, Side.Boss, u.Id, best.Path[steps - 1]), true);
+                        else Emit("wait", $"{Type(u).Name} 没有满足空格限制的落点，待机", u.Id);
+                    }
+                    else Emit("wait", $"{Type(u).Name} 无可通行路径，待机", u.Id);
+                    break;
+                }
             }
             CapturePresentationFrame();
             if (_phase != MatchPhase.Finished) AdvanceTurn();
@@ -1168,6 +1209,69 @@ namespace Spotlight
 
         /// <summary>判断坐标是否被家或单位占用。输入：坐标；输出：是否占用。</summary>
         bool Occupied(Cell p) => _homes.Any(h => h.Position == p) || _units.Any(u => u.Position == p);
+
+        /// <summary>
+        /// 统计中心格四邻（上下左右）中为空的格数。
+        /// 输入：中心格与占位查询；输出：0～4 的空格数量。
+        /// 规则：四个方向必须完整枚举；棋盘外直接计为空（因此边缘贡献 1、角落贡献 2）；斜角不计。
+        /// 为什么抽成查询委托：部署、移动、互换需要不同的“最终布局”，又不允许真的修改状态去试算。
+        /// </summary>
+        int CountEmptyOrthogonalNeighbors(Cell center, Func<Cell, bool> occupied)
+        {
+            var empty = 0;
+            foreach (var direction in _directions)
+            {
+                var neighbor = new Cell(center.Row + direction.Row, center.Col + direction.Col);
+                if (!Inside(neighbor)) { empty++; continue; }
+                if (!occupied(neighbor)) empty++;
+            }
+            return empty;
+        }
+
+        /// <summary>
+        /// 检查一个位置是否满足卡种的四邻空格限制。
+        /// 输入：卡种、位置与占位查询；输出：null 表示无能力或满足，否则为玩家可读原因。
+        /// 无该能力时直接返回 null，因此普通卡仍走原有规则（调用方无需分支）。
+        /// </summary>
+        string ClearanceError(CardArchetype type, Cell center, Func<Cell, bool> occupied)
+        {
+            var ability = type?.AdjacentClearance;
+            if (ability == null) return null;
+            var empty = CountEmptyOrthogonalNeighbors(center, occupied);
+            return empty >= ability.MinEmptyNeighbors ? null : $"四邻至少需要 {ability.MinEmptyNeighbors} 格为空（当前 {empty}）";
+        }
+
+        /// <summary>
+        /// 移动的空格限制校验。
+        /// 输入：移动单位与目标格；输出：null 表示合法，否则为失败原因。
+        /// 起点按原布局检查；落点按“旧格已腾空、新格已被移动者占用”的最终布局检查；路径中间格不参与。
+        /// 不采用“先改坐标、失败再改回”的试算，避免失败命令污染位置、行动或事件。
+        /// </summary>
+        string MovementError(UnitState mover, Cell target)
+        {
+            var type = Type(mover);
+            if (type.AdjacentClearance == null) return null;
+            var origin = ClearanceError(type, mover.Position, Occupied);
+            if (origin != null) return "当前位置不满足四邻空格限制：" + origin;
+            var destination = ClearanceError(type, target, cell => cell == mover.Position ? false : cell == target || Occupied(cell));
+            return destination == null ? null : "落点不满足四邻空格限制：" + destination;
+        }
+
+        /// <summary>
+        /// 互换的空格限制校验。
+        /// 输入：互换双方；输出：null 表示合法，否则为失败原因。
+        /// 互换前后两个格始终各有一个单位（只是人换了位置），因此最终布局不能把两个原位置都当空；
+        /// 双方中所有具有该能力的单位都必须在交换前、交换后的位置上分别满足要求。
+        /// </summary>
+        string SwapError(UnitState a, UnitState b)
+        {
+            var before = ClearanceError(Type(a), a.Position, Occupied) ?? ClearanceError(Type(b), b.Position, Occupied);
+            if (before != null) return "互换前布局不满足四邻空格限制：" + before;
+            // 交换只改变“谁在哪个格”，占位模式不变：两个位置都仍然被占用。
+            bool FinalOccupied(Cell cell) => cell == a.Position || cell == b.Position || Occupied(cell);
+            var after = ClearanceError(Type(a), b.Position, FinalOccupied) ?? ClearanceError(Type(b), a.Position, FinalOccupied);
+            return after == null ? null : "互换后布局不满足四邻空格限制：" + after;
+        }
 
         /// <summary>按内部行列顺序枚举全部格，用于部署高亮与补兵候选。</summary>
         IEnumerable<Cell> Cells() { for (var r = 0; r < Rules.Rows; r++) for (var c = 0; c < Rules.Columns; c++) yield return new Cell(r, c); }
