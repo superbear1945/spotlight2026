@@ -1,6 +1,6 @@
 # 架构图与流程图（模块 4 交付）
 
-本目录的图由 `fireworks-tech-graph` 技能（本地技能目录中的 `SKILL.md`）生成：**JSON 是源，SVG 是规范产物，PNG / HTML / drawio 是导出结果**。
+本目录的早期图由 `fireworks-tech-graph` 生成；当前图 02、04 使用仓库内 `render-diagrams.py`。**JSON 是源，SVG 是规范产物，PNG / HTML / drawio 是导出结果**。
 修改内容时请改 `.json` 后重新渲染，不要直接手改 `.svg`，否则 `check` 的下一次结果会与源不一致。
 
 ## 1. 目录结构
@@ -31,12 +31,23 @@ docs/diagrams/
 | 目录 | 主题 | 渲染模式 |
 |---|---|---|
 | [`01-modules`](01-modules/) | 模块架构与程序集依赖（Core → Runtime → Editor，Tests 依赖三者，Plugins 编辑器/运行时分离） | `architecture` |
-| [`02-cards`](02-cards/) | `Card`、四个能力组件（战斗／资源／传送／一次性部署减攻）、四个组件 SO、`CardDefinitionSO` 与 `UnitState` / `CardRecord` / `HomeState` / `GameSession` 的关系 | `er-diagram` |
+| [`02-cards`](02-cards/) | `Card`、五个能力组件（战斗／资源／传送／一次性部署减攻／刷怪）及 SO、状态机、SpawnResolver 与独立状态的关系 | `er-diagram` |
 | [`03-dataflow`](03-dataflow/) | Excel 编译 → 生成资产（SO + Prefab）→ 配置加载 → GameSession → 快照 → UI，含调试草稿 / JSON 导入导出 / “应用并重开”分支 | `data-flow` |
-| [`04-turnflow`](04-turnflow/) | 玩家回合（恢复行动 → 资源结算 → 维持费 → 抽牌 → 操作）→ 超限弃牌 → Boss 回合（恢复行动 → 补兵 → 按部署顺序行动 → 自动结束）→ 胜负检查 | `flowchart` |
+| [`04-turnflow`](04-turnflow/) | 双方公共回合、通用刷怪、Boss 一/二/三阶段技能调度、阈值截断与双舰死亡解锁 | `flowchart` |
 | [`05-card-lifecycle`](05-card-lifecycle/) | 玩家卡生命周期：携带选择生成抽牌堆 → 成功部署即入墓地 → 抽牌堆耗尽时洗回 → 同一张卡可反复部署出多个独立单位；阵亡/覆盖只移除单位、不重复回收；Boss 使用独立回收区 | `flowchart` |
 
 ## 3. 生成与检查命令
+
+### 当前图 02、04（无需浏览器或外部技能）
+
+```bash
+python docs/diagrams/render-diagrams.py docs/diagrams/02-cards/02-cards.json docs/diagrams/04-turnflow/04-turnflow.json
+python docs/diagrams/spec-to-drawio.py docs/diagrams --check
+```
+
+脚本使用 Pillow 和仓库内 `Assets/Spotlight/Fonts/SimHei.ttf`，从同一份测量后的文字与几何信息生成 SVG、2 倍 PNG、可缩放 HTML、drawio 和布局报告。检查节点越界、节点重叠与文字溢出；连线仍须人工查看导出图，不宣称自动验证交叉线。PNG 已含完整字形，SVG/HTML 使用本机中文字体。缺少 Pillow 或字体时明确失败，不下载依赖或替换网络通道。
+
+### 早期图 01、03、05 的原工具链
 
 ```bash
 # 技能目录（按本机安装位置替换）
@@ -44,9 +55,7 @@ SKILL="{SKILL_ROOT}"
 
 # 1) 渲染 SVG，并输出布局报告
 python "$SKILL/scripts/fireworks.py" render architecture docs/diagrams/01-modules/01-modules.json  docs/diagrams/01-modules/01-modules.svg  --report docs/diagrams/01-modules/01-modules.layout.json
-python "$SKILL/scripts/fireworks.py" render er-diagram  docs/diagrams/02-cards/02-cards.json      docs/diagrams/02-cards/02-cards.svg      --report docs/diagrams/02-cards/02-cards.layout.json
 python "$SKILL/scripts/fireworks.py" render data-flow   docs/diagrams/03-dataflow/03-dataflow.json  docs/diagrams/03-dataflow/03-dataflow.svg  --report docs/diagrams/03-dataflow/03-dataflow.layout.json
-python "$SKILL/scripts/fireworks.py" render flowchart   docs/diagrams/04-turnflow/04-turnflow.json  docs/diagrams/04-turnflow/04-turnflow.svg  --report docs/diagrams/04-turnflow/04-turnflow.layout.json
 
 # 05-card-lifecycle 与 04 一样是 flowchart，用同一条 fireworks.py render 命令生成（会一并产出 layout.json）：
 python "$SKILL/scripts/fireworks.py" render flowchart docs/diagrams/05-card-lifecycle/05-card-lifecycle.json docs/diagrams/05-card-lifecycle/05-card-lifecycle.svg --report docs/diagrams/05-card-lifecycle/05-card-lifecycle.layout.json
@@ -120,4 +129,4 @@ python docs/diagrams/spec-to-drawio.py docs/diagrams --check   # 只校验：XML
 
 脚本会自动扫描 `docs/diagrams/<name>/<name>.json`（并兼容早期平铺在根目录的 JSON）。
 修改图纸时请改 `*.json`（唯一来源），然后重新生成本节列出的全部产物；
-也可以直接在 draw.io 里改 `.drawio`，但要注意此时 JSON 与 draw.io 会各有一份，需自行保持同步。
+draw.io 可用于查看或试排版；正式内容必须回写 JSON 后重新生成，不能直接提交与图源不一致的导出文件。

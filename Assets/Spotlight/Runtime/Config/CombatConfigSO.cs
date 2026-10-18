@@ -21,6 +21,10 @@ namespace Spotlight
         [SerializeField] int _range;
         /// <summary>单次移动最大格数，0 表示不能移动。</summary>
         [SerializeField] int _moveDistance;
+        /// <summary>是否允许直接攻击资源类单位。</summary>
+        [SerializeField] bool _canAttackResources = true;
+        /// <summary>是否允许参与互换。</summary>
+        [SerializeField] bool _canSwap = true;
 
         /// <inheritdoc />
         public int Hp => _hp;
@@ -30,18 +34,24 @@ namespace Spotlight
         public int Range => _range;
         /// <inheritdoc />
         public int MoveDistance => _moveDistance;
+        /// <inheritdoc />
+        public bool CanAttackResources => _canAttackResources;
+        /// <inheritdoc />
+        public bool CanSwap => _canSwap;
 
         /// <summary>
         /// 编译期写入数值。
         /// 输入：已通过校验的四个数值；输出：无（原地更新本资产）。
         /// 为什么保留写入口：编译产物必须可被“全部重新编译”覆盖，而运行时不得调用。
         /// </summary>
-        public void EditorApply(int hp, int attack, int range, int moveDistance)
+        public void EditorApply(int hp, int attack, int range, int moveDistance, bool canAttackResources = true, bool canSwap = true)
         {
             _hp = hp;
             _attack = attack;
             _range = range;
             _moveDistance = moveDistance;
+            _canAttackResources = canAttackResources;
+            _canSwap = canSwap;
         }
     }
 }

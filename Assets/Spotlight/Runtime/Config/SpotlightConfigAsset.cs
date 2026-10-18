@@ -67,12 +67,13 @@ namespace Spotlight
 
         /// <summary>
         /// 还原为可校验文档。
-        /// 输入：无；输出：ConfigDocument。
+        /// 输入：无；输出：所有可变表行均与源资产独立的 ConfigDocument。
         /// 用途：复用 ConfigValidation 做运行前复核，也用于调试面板的 JSON 导出起点。
+        /// 必须深拷贝：仅复制数组仍会共享 Rules/Homes 等行，测试或调试草稿修改会污染正式资产。
         /// </summary>
         public ConfigDocument ToDocument()
         {
-            return new ConfigDocument
+            var document = new ConfigDocument
             {
                 schemaVersion = 2,
                 cards = (_cards ?? System.Array.Empty<CardDefinitionSO>()).Where(c => c != null).Select(c => c.ToCardRow()).ToArray(),
@@ -81,6 +82,9 @@ namespace Spotlight
                 bossSlots = (_bossSlots ?? System.Array.Empty<BossSlotRow>()).ToArray(),
                 presentation = new[] { _presentation }
             };
+            // 配置文档只包含可序列化的表行，不含 Unity 对象引用；整体复制同时覆盖以后新增的字段。
+            // 此入口仅在配置加载/导出时调用，不在每帧或每次规则结算中调用。
+            return JsonUtility.FromJson<ConfigDocument>(JsonUtility.ToJson(document));
         }
 
         /// <summary>

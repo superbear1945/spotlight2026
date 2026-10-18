@@ -62,7 +62,7 @@ Assets/Spotlight/
 
 生成产物（只读，禁止手工编辑；需要修改请改 Excel 后重新编译）：
 
-- `Generated/Cards/<id>.asset`：卡种定义 SO，能力组件配置作为子资产保存（`<id>_Combat` / `_Resource` / `_Teleport` / `_DeploymentPenalty` / `_MarkOnEnter` / `_DeathGrowth` / `_Instant` / `_AdjacentClearance` / `_KillAction` / `_DamageMark`，未启用的能力不生成子资产）。
+- `Generated/Cards/<id>.asset`：卡种定义 SO，能力组件配置作为子资产保存（`<id>_Combat` / `_Resource` / `_Teleport` / `_DeploymentPenalty` / `_MarkOnEnter` / `_DeathGrowth` / `_Instant` / `_Spawn` / `_AdjacentClearance` / `_KillAction` / `_DamageMark`，未启用的能力不生成子资产）。
 - `Generated/Cards/<id>.prefab`：卡种 Prefab，只保存组件组合与 SO 引用，不重复存储数值。
 - `Generated/Resources/SpotlightConfig.asset`：主配置资产，运行时通过 `Resources/SpotlightConfig` 加载。
 - `Generated/ConfigManifest.asset`：编译清单，记录源工作簿路径、SHA256 摘要、编译时间与全部产出路径。
@@ -80,9 +80,9 @@ Assets/Spotlight/
 
 - `Side`：`Player` / `Boss`；`CardCategory`：`Resource` / `Attack` / `Special`。
 - `CardTier`：独立卡牌阶级 `Basic`（初级）/ `Intermediate`（中级）/ `Advanced`（高级）；`None` 为 Boss 专用不适用状态，`Invalid` 仅用于报告缺失或非法配置。`Cards.tier` 必填，通过 `CardTiers.Parse` 严格转换；`none` 卡种不出现在携带选择里，因此也不能进入抽牌堆。阶级按张数统计（3 张同种初级卡计作 3 张初级卡）；每局能携带几个**卡种**由 `Rules` 的 `maxTypes*` 控制，不引入卡组包分类，也不按阶级限制部署回合。
-- 只读配置接口：`ICombatConfig` / `IResourceConfig` / `ITeleportConfig` / `IDeploymentPenaltyConfig` / `IMarkOnEnterConfig` / `IDeathGrowthConfig` / `IInstantEffectConfig` / `IAdjacentClearanceConfig` / `IKillActionConfig` / `IDamageMarkConfig` —— **规则内核依赖接口，不依赖 ScriptableObject**。后三者分别是“四邻空格限制”“击杀恢复行动”（空标记接口，非空即启用）与“伤害标记”。
+- 只读配置接口：`ICombatConfig` / `IResourceConfig` / `ITeleportConfig` / `IDeploymentPenaltyConfig` / `IMarkOnEnterConfig` / `IDeathGrowthConfig` / `IInstantEffectConfig` / `ISpawnConfig` / `IAdjacentClearanceConfig` / `IKillActionConfig` / `IDamageMarkConfig` —— **规则内核依赖接口，不依赖 ScriptableObject**。后三者分别是“四邻空格限制”“击杀恢复行动”（空标记接口，非空即启用）与“伤害标记”。
 - 表行类型：`CardRow` / `RulesRow` / `HomeRow` / `BossSlotRow` / `PresentationRow`（`DeckRow` 与 `Deck` 工作表已废除）。
-- `RulesRow` 在 `bossSpawnerSpawnCardType` 之后追加抽牌堆规则的 7 列：`drawPileSize`（抽牌堆总张数，默认 24，≥ 3）、`tierRatioBasic` / `tierRatioIntermediate` / `tierRatioAdvanced`（三阶级比例，默认 70 / 20 / 10，各自 ≥ 1 且合计必须为 100，不支持 0%）、`maxTypesBasic` / `maxTypesIntermediate` / `maxTypesAdvanced`（每局最多携带的三阶级**卡种数量**，默认 5 / 3 / 2，各自 ≥ 1）。
+- `RulesRow` 包含抽牌堆规则的 7 列：`drawPileSize`（抽牌堆总张数，默认 24，≥ 3）、`tierRatioBasic` / `tierRatioIntermediate` / `tierRatioAdvanced`（三阶级比例，默认 70 / 20 / 10，各自 ≥ 1 且合计必须为 100，不支持 0%）、`maxTypesBasic` / `maxTypesIntermediate` / `maxTypesAdvanced`（每局最多携带的三阶级**卡种数量**，默认 5 / 3 / 2，各自 ≥ 1）。
 - 配置聚合：`ConfigDocument`（Excel 中间态，`schemaVersion = 2`）→ `GameConfiguration`（运行态，含 `MatchConfig` / `DeckConfig` / `PresentationConfig` / `CardArchetype` / `CardOrder`（按 `Cards` 表顺序的卡种清单）/ `Deck`（由选卡结果生成的最终抽牌堆清单，元素为 `DeckEntry`）/ `SpawnSlot`）。
 - `CardArchetype` 新增只读属性 `AdjacentClearance` / `KillAction` / `DamageMark`（未启用为 null）；Excel、SO 与调试 JSON 三条路径都必须往返一致。
 - 抽牌堆构成（`Core/DeckSelection.cs`，纯 C#，可 EditMode 直测）：
@@ -117,8 +117,8 @@ Assets/Spotlight/
 
 ### 4.2 运行层（`Spotlight.Runtime`）
 
-- 卡牌视图：`Card : MonoBehaviour`，配合 `CombatComponent` / `ResourceComponent` / `TeleportComponent` / `DeploymentPenaltyComponent` 四个能力组件；**同一个 `Card` 承载所有卡种，不为卡种建子类**。四邻空格限制、击杀恢复行动与伤害标记是纯规则能力，只有 SO 子资产、没有 MonoBehaviour，视图读取快照与卡种定义显示。
-- 配置资产：`CardDefinitionSO` / `CombatConfigSO` / `ResourceConfigSO` / `TeleportConfigSO` / `SpotlightConfigAsset` / `ConfigManifest`，均实现只读接口；`GeneratedConfigAttribute` 标记生成产物。
+- 卡牌视图：`Card : MonoBehaviour`，配合 `CombatComponent` / `ResourceComponent` / `TeleportComponent` / `DeploymentPenaltyComponent` / `SpawnComponent` 五个能力组件；**同一个 `Card` 承载所有卡种，不为卡种建子类**。四邻空格限制、击杀恢复行动与伤害标记是纯规则能力，只有 SO 子资产、没有 MonoBehaviour，视图读取快照与卡种定义显示。
+- 配置资产：`CardDefinitionSO` / `CombatConfigSO` / `ResourceConfigSO` / `TeleportConfigSO` / `SpawnConfigSO` / `AdjacentClearanceConfigSO` / `KillActionConfigSO` / `DamageMarkConfigSO` / `SpotlightConfigAsset` / `ConfigManifest`，均实现只读接口；`GeneratedConfigAttribute` 标记生成产物。
 - 加载入口：`ConfigLoader`（`DefaultResourcePath = "SpotlightConfig"`，`TryCreateConfiguration(...)` 失败返回错误文本，不抛异常）。
 - 视图：`BoardView` / `BoardCellView`（UGUI 棋盘）、`HandView`（UGUI 手牌）、`HudView`（UI Toolkit / UXML）、`DeckSelectionPanel`（UI Toolkit 携带选择面板）、`CardFactory` / `CardText`。
 - 引导与支持：`GameBootstrap`（加载配置 → 创建对局 → 绑定视图）、`DebugSupport.IsDebugAvailable`（调试能力唯一判定点）、`CardFeedback`（DOTween 表现）。
@@ -191,6 +191,7 @@ Excel 配置编译（菜单 `Tools/Spotlight/*`，按顺序）：
 - EditMode 测试放 `Assets/Spotlight/Tests/EditMode/`，用于规则内核、配置编译器、视图契约；PlayMode 测试放 `Assets/Spotlight/Tests/PlayMode/`，用于真实帧循环下的渲染、点击命中与 DOTween 动画。
 - 测试通过公开命令（`Execute` / `GetLegalActions` / `GetSnapshot`）推进对局，**不得直接篡改 `GameSession` 私有状态**；测试内数值属于独立夹具，不是正式默认值。
 - 洗牌类逻辑使用 `SeededRandom` 固定种子，保证测试可复现。
+- 测试与调试面板只修改独立配置文档，不得修改加载中的正式 SO 或它暴露的表行引用。`SpotlightConfigAsset.ToDocument()` 必须深拷贝全部可变表行；使用正式资产的 PlayMode 夹具需核对测试前后配置一致，避免测试参数泄漏到后续对局。
 - GitHub Actions（**PR 测试只在 PR 上跑**，不在 main 的 `push` 上重复跑，理由见下一条）：
   - `.github/workflows/unity-tests.yml`：`game-ci/unity-test-runner`，EditMode + PlayMode 矩阵。
   - **Unity 席位互斥：** `unity-tests.yml` 的 `concurrency.group` 固定为仓库级 `unity-seat`（不按 ref 分组），因此两个 PR 的测试不会同时启动去抢同一个个人版授权席位；也不得设 `cancel-in-progress: true`（中途杀 Unity 会泄漏席位）。代价是仓库内同一时刻只留 1 个 running + 1 个 pending 运行，排队中的旧运行会被新的顶掉（PR 检查可能显示 cancelled，重跑即可）。这项由 `scripts/check-ci-config.sh` 校验——`max-parallel: 1` 只管矩阵内串行，跨 run 的互斥靠这一条；彻底不排队需浮动授权（`unityLicensingServer`）或 self-hosted runner。
@@ -229,3 +230,15 @@ Excel 配置编译（菜单 `Tools/Spotlight/*`，按顺序）：
 2. 一次把三件事情说清楚：**跑了什么命令**、**报什么错**（原文，带域名/端口/退出码）、**涉及哪个服务**（如 `github.com:443`、`hub.docker.com`）。
 3. 由用户决定下一步。若用户明确要求走代理，只在**当次命令**里带临时参数，不写进任何持久配置。
 4. 如果确实动了本地配置（无论多小），当次就说清楚“改了什么、怎么撤销”，并在用户确认后撤销。
+
+## 10. Boss 阶段与通用刷怪定位
+
+- `Core/BossPhaseStateMachine.cs`：`BossPhase` 与 `MatchPhase` 独立；`IBossPhaseState` 提供 Enter/Exit、双方回合开始、结算后检查。仅允许一 → 二 → 三，不持有第二套单位/生命数据。三阶段技能在 `BossPhaseThreeState` 的注释扩展点实现。
+- `Core/GameSession.BossPhases.cs`：两艘指定战舰记录、三等分坐标、占位回退与目标过滤；`GameSession` 始终是唯一状态所有者。默认 Boss 30 血，阈值 20；跨阈值伤害截断，阶段切换先于胜负判定。
+- 二阶段锁血且不可被攻击，战舰自动部署（包括手动模式），不扣普通放牌次数；满盘等待，下次 Boss 回合重试。只统计两个指定单位 ID 的阵亡，不补回。两舰阵亡进入三阶段并解除锁血。
+- 二、三阶段停止新炸弹、新普通刷怪笼及固定兵位补兵；已有炸弹、已有单位及刷怪能力继续结算。手动普通放牌继续使用原卡种和次数。
+- `Core/SpawnResolver.cs` 选格，`GameSession.ProduceSpawnUnits` 结算；`SpawnComponent` 只绑定配置/快照。按所属阵营回合序号 `DeployedOwnerTurn` 判断资格，按部署顺序生成，行动恢复之后执行，保留新单位召唤失调。
+- `IsBossSpawner` 仅标记一阶段技能部署身份及唯一性限制，不代表刷怪能力。能力由 `CardArchetype.Spawn` 决定；不可按卡名或卡种 ID 判断行动权限。
+- Cards：`spawnComponent` / `spawnCardType`；战斗开关 `canAttackResources` / `canSwap`。Rules：`bossPhaseTwoHp` / `bossWarshipColumn` / `bossWarshipCardType`。旧全局 `bossSpawnerSpawnCardType` 必须迁移，详见 `docs/使用说明.md`。
+- 快照提供阶段、锁血和两条战舰记录的独立副本。新增回归入口：`BossPhaseTests`、`BossPhaseConfigTests`、`BossPhasePlayModeTests`；保持既有 PR CI 门禁。
+- 与其他能力组合时，敌方攻击统一经过 `CanTarget`，友方治疗保留独立分支；战舰阵亡与标记奖励、死亡加攻共用 `Remove` 结算，不可互相覆盖。阶段战舰不能配置成即时卡，否则自动退场会使二阶段无法完成。默认共 18 个卡种，三个 Boss 专用卡的阶级为 `none`。

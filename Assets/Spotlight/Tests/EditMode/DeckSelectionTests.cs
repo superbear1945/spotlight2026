@@ -48,7 +48,12 @@ namespace Spotlight.Tests
         {
             var list = (cards ?? Pool()).ToList();
             list.Add(Card("bossCombat", "attack", "none", 3, 1, 1, 1, 0, 0, false));
-            list.Add(Card("bossSpawner", "special", "none", 1, 0, 0, 0, 0, 0, false));
+            var spawner = Card("bossSpawner", "special", "none", 1, 0, 0, 0, 0, 0, false);
+            spawner.spawnComponent = true; spawner.spawnCardType = "bossCombat"; spawner.canSwap = false;
+            list.Add(spawner);
+            var ship = Card("warship", "attack", "none", 15, 2, 1, 1, 0, 0, false);
+            ship.spawnComponent = true; ship.spawnCardType = "bossCombat"; ship.canAttackResources = false;
+            list.Add(ship);
             return new ConfigDocument
             {
                 schemaVersion = 2,
@@ -64,8 +69,7 @@ namespace Spotlight.Tests
                         adjacentSwap = true, lineBlocking = false, bossBombInterval = 10, bossBombDamage = 3,
                         bossBombColumn = 5, bossSpawnerAttackThreshold = 12, bossSpawnerCountFromColumn = 4,
                         bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5,
-                        bossSpawnerCardType = "bossSpawner", bossSpawnerSpawnCardType = "bossCombat",
-                        drawPileSize = size, tierRatioBasic = ratioBasic, tierRatioIntermediate = ratioIntermediate,
+                        bossSpawnerCardType = "bossSpawner", bossPhaseTwoHp = 1, bossWarshipColumn = 1, bossWarshipCardType = "warship", drawPileSize = size, tierRatioBasic = ratioBasic, tierRatioIntermediate = ratioIntermediate,
                         tierRatioAdvanced = ratioAdvanced, maxTypesBasic = maxBasic,
                         maxTypesIntermediate = maxIntermediate, maxTypesAdvanced = maxAdvanced
                     }
@@ -319,7 +323,7 @@ namespace Spotlight.Tests
             var configuration = new GameConfiguration(report.Document);
             var advanced = configuration.CardOrder.Where(c => c.Tier == CardTier.Advanced).Select(c => c.Id).ToArray();
             Assert.That(advanced, Is.EqualTo(new[] { "gate", "houyi2", "texasRanger", "viking2056", "snpEu", "napoleon1769" }));
-            Assert.That(configuration.CardOrder.Count, Is.EqualTo(22), "正式卡种总数应为 22");
+            Assert.That(configuration.CardOrder.Count, Is.EqualTo(23), "正式卡种总数应为 23（含阶段战舰）");
             Assert.That(configuration.DeckConfig.EffectiveMaxTypes(CardTier.Advanced, advanced.Length), Is.EqualTo(2),
                 "正式高级上限仍为 2，卡池扩大后有效上限从 1 变为 2");
 

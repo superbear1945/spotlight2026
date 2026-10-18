@@ -16,6 +16,8 @@ MonoBehaviour:
   _attack: 1
   _range: 1
   _moveDistance: 1
+  _canAttackResources: 1
+  _canSwap: 1
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -48,6 +50,7 @@ MonoBehaviour:
   _markOnEnter: {fileID: 0}
   _deathGrowth: {fileID: 0}
   _instant: {fileID: 0}
+  _spawn: {fileID: 0}
   _adjacentClearance: {fileID: 0}
   _killAction: {fileID: 0}
   _damageMark: {fileID: 0}

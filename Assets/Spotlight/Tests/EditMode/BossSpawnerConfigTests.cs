@@ -45,10 +45,10 @@ namespace Spotlight.Tests
         public void ReferencesAndSpawnerCapabilitiesAreValidated()
         {
             var d = BossSpawnerTests.Document();
-            d.rules[0].bossSpawnerCardType = "missing"; d.rules[0].bossSpawnerSpawnCardType = "miner";
+            d.rules[0].bossSpawnerCardType = "missing"; d.cards.Single(c => c.id == "spawner").spawnCardType = "miner";
             var errors = ConfigValidation.Validate(d);
             Assert.That(errors.Any(e => e.Contains("bossSpawnerCardType")), Is.True);
-            Assert.That(errors.Any(e => e.Contains("bossSpawnerSpawnCardType")), Is.True);
+            Assert.That(errors.Any(e => e.Contains("spawnCardType")), Is.True);
             foreach (var field in new[] { "hp", "atk", "range", "moveDistance", "category", "resourceComponent", "teleportComponent" })
             {
                 d = BossSpawnerTests.Document(); var card = d.cards.Single(c => c.id == "spawner");
@@ -87,7 +87,7 @@ namespace Spotlight.Tests
                 Assert.That(report.Issues, Is.Empty, string.Join("\n", report.Issues));
                 var r = report.Document.rules[0];
                 Assert.That(new[] { r.bossSpawnerAttackThreshold, r.bossSpawnerCountFromColumn, r.bossSpawnerUnitThreshold, r.bossSpawnerDeployFromColumn }, Is.EqualTo(new[] { 12,4,2,5 }));
-                Assert.That(r.bossSpawnerSpawnCardType, Is.EqualTo("bossCombat"));
+                Assert.That(report.Document.cards.Single(c => c.id == r.bossSpawnerCardType).spawnCardType, Is.EqualTo("bossCombat"));
                 Assert.That(report.Document.cards.Single(c => c.id == r.bossSpawnerCardType).hp, Is.EqualTo(1));
                 Assert.That(report.Document.cards.Single(c => c.id == r.bossSpawnerCardType).tier, Is.EqualTo("none"),
                     "刷怪卡为不适用阶级，不可能被选进玩家抽牌堆");
@@ -102,13 +102,14 @@ namespace Spotlight.Tests
                             count += notes.Length;
                             Assert.That(notes.All(n => n.Value.Contains("默认") || n.Value.Contains("卡牌阶级")), Is.True);
                         }
-                    // 6 条 Rules 刷怪卡字段说明 + 7 条 Rules 抽牌堆字段说明（张数/三比例/三上限）
+                    // 35 条说明覆盖刷怪、阶段、抽牌堆与既有卡牌能力；移除旧全局生成卡种说明。
                     // + 2 条 Cards 一次性部署减攻字段说明 + 1 条刷怪卡生命说明
                     // + 3 条 Cards 部署消耗/邻域要求字段说明 + 3 条 Cards 入场标记字段说明
                     // + 3 条 Cards 死亡加攻字段说明 + 1 条 Cards 治疗型攻击字段说明
                     // + 2 条 Cards 即时卡字段说明 + 1 条 Cards 卡牌阶级字段说明
+                    // + 4 条 Cards 攻击/互换/刷怪字段说明 + 3 条 Rules Boss 阶段字段说明
                     // + 5 条 Cards 高级卡新能力字段说明（四邻空格限制 2 条、击杀恢复 1 条、伤害标记 2 条）。
-                    Assert.That(count, Is.EqualTo(34));
+                    Assert.That(count, Is.EqualTo(40));
                     // Deck 表已废除，工作表顺序为 Cards、Rules、Homes、BossSlots、Presentation，
                     // 因此带批注的 Rules 是第 2 张表。
                     Assert.That(zip.GetEntry("xl/worksheets/_rels/sheet2.xml.rels"), Is.Not.Null);

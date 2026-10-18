@@ -27,6 +27,8 @@ namespace Spotlight
         [SerializeField] TeleportComponent _teleport;
         /// <summary>一次性部署减攻组件引用（该卡种未启用时为 null）。</summary>
         [SerializeField] DeploymentPenaltyComponent _deploymentPenalty;
+        /// <summary>按卡种组合的刷怪能力，不影响战斗组件的移动和攻击。</summary>
+        [SerializeField] SpawnComponent _spawn;
         /// <summary>卡面底色 Image，用于表示阵营与分类。</summary>
         [SerializeField] Image _body;
         /// <summary>高亮框 Image，用于表示可部署/可移动/可攻击/可互换。</summary>
@@ -73,6 +75,8 @@ namespace Spotlight
         public TeleportComponent Teleport => _teleport;
         /// <summary>一次性部署减攻组件（可能为 null）。</summary>
         public DeploymentPenaltyComponent DeploymentPenalty => _deploymentPenalty;
+        /// <summary>当前刷怪能力桥接组件。</summary>
+        public SpawnComponent Spawn => _spawn;
 
         /// <summary>
         /// 解析缺失的组件引用。
@@ -86,6 +90,7 @@ namespace Spotlight
             if (_resource == null) _resource = GetComponent<ResourceComponent>();
             if (_teleport == null) _teleport = GetComponent<TeleportComponent>();
             if (_deploymentPenalty == null) _deploymentPenalty = GetComponent<DeploymentPenaltyComponent>();
+            if (_spawn == null) _spawn = GetComponent<SpawnComponent>();
             if (_body == null) _body = GetComponent<Image>();
         }
 
@@ -102,6 +107,7 @@ namespace Spotlight
             if (_resource != null) _resource.Configure(definition.Resource);
             if (_teleport != null) _teleport.Configure(definition.Teleport);
             if (_deploymentPenalty != null) _deploymentPenalty.Configure(definition.DeploymentPenalty);
+            if (_spawn != null) _spawn.Configure(definition.Spawn);
         }
 
         /// <summary>
@@ -118,6 +124,7 @@ namespace Spotlight
             if (_combat != null) _combat.Bind(null);
             if (_resource != null) _resource.Bind(null);
             if (_deploymentPenalty != null) _deploymentPenalty.Bind(null);
+            if (_spawn != null) _spawn.Bind(null);
             Refresh();
         }
 
@@ -137,6 +144,7 @@ namespace Spotlight
             if (_combat != null) _combat.Bind(unit);
             if (_resource != null) _resource.Bind(unit);
             if (_deploymentPenalty != null) _deploymentPenalty.Bind(unit);
+            if (_spawn != null) _spawn.Bind(unit);
             Refresh();
         }
 
@@ -154,6 +162,7 @@ namespace Spotlight
             if (_combat != null) _combat.Bind(null);
             if (_resource != null) _resource.Bind(null);
             if (_deploymentPenalty != null) _deploymentPenalty.Bind(null);
+            if (_spawn != null) _spawn.Bind(null);
             if (_nameLabel != null) _nameLabel.text = owner == Side.Player ? "玩家家" : "Boss 家";
             if (_statLabel != null) _statLabel.text = "生命 " + (home != null ? home.Hp : 0);
             if (_hpLabel != null) _hpLabel.text = (home != null ? home.Hp : 0).ToString();
@@ -173,6 +182,7 @@ namespace Spotlight
             if (_combat != null) _combat.Bind(null);
             if (_resource != null) _resource.Bind(null);
             if (_deploymentPenalty != null) _deploymentPenalty.Bind(null);
+            if (_spawn != null) _spawn.Bind(null);
             SetSelected(false);
             SetHighlightColor(null);
         }

@@ -225,9 +225,13 @@ namespace Spotlight.Tests
             var d = Document(10); var g = Start(d); End(g);
             Assert.That(g.Execute(new GameCommand(CommandKind.DeployBossBomb, Side.Boss, target: new Cell(0, 4))).Success, Is.False);
             Assert.That(Start(d).GetSnapshot().BossBombs, Is.Empty);
-            var lethal = Document(); var miner = lethal.cards.Single(c => c.id == "miner"); miner.atk = 10; miner.range = 10;
+            var lethal = Document(); var miner = lethal.cards.Single(c => c.id == "miner"); miner.atk = 100; miner.range = 30; lethal.rules[0].homeRegionWidth = 10;
             var match = Start(lethal); var id = Put(match, new Cell(0, 8));
             Do(match, new GameCommand(CommandKind.Attack, Side.Player, id, targetId: -2));
+            var ships = match.GetSnapshot().BossWarships.ToArray();
+            for (var i = 0; i < 2; i++)
+                Do(match, new GameCommand(CommandKind.Attack, Side.Player, Put(match, new Cell(0, i + 3)), targetId: ships[i].UnitId.Value));
+            Do(match, new GameCommand(CommandKind.Attack, Side.Player, Put(match, new Cell(0, 5)), targetId: -2));
             Assert.That(match.Execute(new GameCommand(CommandKind.EndTurn, Side.Player)).Success, Is.False);
             Assert.That(match.GetSnapshot().BossBombs, Is.Empty);
         }

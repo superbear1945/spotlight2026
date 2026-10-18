@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: ConfigManifest
   m_EditorClassIdentifier: 
   _sourceWorkbookPath: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceHash: ebbac566c6404071bcb2561ee99ace9dccbae29c86042475866ebb88e5d7ae1d
-  _compiledAtUtc: 2026-10-18T14:12:18.7270061Z
+  _sourceHash: 97e816292fae43ec8b625eac4cbaf606eaeb102924a3e44db8ba17b171f03fb0
+  _compiledAtUtc: 2026-10-18T15:21:24.0563572Z
   _generatedPaths:
   - Assets/Spotlight/Generated/Cards/ge1.asset
   - Assets/Spotlight/Generated/Cards/ge1.prefab
@@ -50,6 +50,8 @@ MonoBehaviour:
   - Assets/Spotlight/Generated/Cards/flounder1.prefab
   - Assets/Spotlight/Generated/Cards/reserve1.asset
   - Assets/Spotlight/Generated/Cards/reserve1.prefab
+  - Assets/Spotlight/Generated/Cards/bossWarship.asset
+  - Assets/Spotlight/Generated/Cards/bossWarship.prefab
   - Assets/Spotlight/Generated/Cards/houyi2.asset
   - Assets/Spotlight/Generated/Cards/houyi2.prefab
   - Assets/Spotlight/Generated/Cards/texasRanger.asset

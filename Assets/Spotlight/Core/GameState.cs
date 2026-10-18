@@ -119,10 +119,16 @@ namespace Spotlight
         public long DeploymentOrder { get; internal set; }
         /// <summary>AI 兵位 ID；非 AI 兵位单位该值为 null，因此不会触发补兵计时。</summary>
         public string BossSlotId { get; internal set; }
-        /// <summary>是否由 Boss 刷怪技能部署的固定据点；身份不依赖卡名，不允许移动、攻击或互换。</summary>
+        /// <summary>是否由 Boss 刷怪技能部署的固定据点；仅用于一阶段部署数量限制；行动权限由配置决定。</summary>
         public bool IsBossSpawner { get; internal set; }
-        /// <summary>部署时的完整回合号；刷怪卡在之后的 Boss 回合才开始生成战机。</summary>
+        /// <summary>部署时的完整回合号，保留供日志追踪；首次刷怪使用 DeployedOwnerTurn。</summary>
         public long DeployedRound { get; internal set; }
+        /// <summary>部署时所属阵营已经开始的回合序号；刷怪资格不依赖完整回合号。</summary>
+        public long DeployedOwnerTurn { get; internal set; }
+        /// <summary>部署时从战斗配置复制的资源目标权限。</summary>
+        public bool CanAttackResources { get; internal set; }
+        /// <summary>部署时从战斗配置复制的互换权限。</summary>
+        public bool CanSwap { get; internal set; }
 
         /// <summary>
         /// 永久伤害标记的层集合（与“入场标记 MarkedBy”是两种不同机制）。
@@ -159,8 +165,8 @@ namespace Spotlight
         /// </summary>
         internal void AddDamageMark(int damage) => _damageMarks.Add(new DamageMarkLayer(damage));
 
-        /// <summary>是否本回合仍可行动：不是固定刷怪卡、未行动且维持费已付。</summary>
-        public bool CanAct => !IsBossSpawner && !Acted && UpkeepPaid;
+        /// <summary>是否本回合仍可行动：未行动且维持费已付；能力和目标限制在具体命令中校验。</summary>
+        public bool CanAct => !Acted && UpkeepPaid;
 
         /// <summary>
         /// 深拷贝，供 GetSnapshot 输出与真实对局解耦。
@@ -441,6 +447,12 @@ namespace Spotlight
     /// </summary>
     public sealed class GameSnapshot
     {
+        /// <summary>Boss 技能阶段，与玩家行动/弃牌阶段独立。</summary>
+        public BossPhase BossPhase { get; internal set; }
+        /// <summary>Boss 当前是否锁血且不可被攻击。</summary>
+        public bool BossInvulnerable { get; internal set; }
+        /// <summary>二阶段指定战舰的独立只读记录。</summary>
+        public IReadOnlyList<BossWarshipState> BossWarships { get; internal set; } = Array.Empty<BossWarshipState>();
         /// <summary>当前完整回合号，从 1 开始。</summary>
         public long Round { get; internal set; }
         /// <summary>当前行动方。</summary>

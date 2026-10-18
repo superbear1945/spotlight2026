@@ -61,13 +61,14 @@ namespace Spotlight.Tests
                     new CardRow { tier = "intermediate", id = "soldier", name = "士兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, upkeep = 1, resourceComponent = true, viewKey = "default" },
                     new CardRow { tier = "advanced", id = "gate", name = "星门", category = "special", hp = 2, moveDistance = 1, upkeep = 4, resourceComponent = true, teleportComponent = true, permitsAttackDeploy = true, deployHomeOnly = true, avoidAdjacentSameType = true, viewKey = "default" },
                     new CardRow { tier = "none", id = "boss", name = "Boss敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
-                    new CardRow { tier="none", id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" },
+                    new CardRow { tier = "none", id = "spawner", name="刷怪卡", category="special", hp=1, viewKey="default" , canSwap = false, spawnComponent = true, spawnCardType = "boss" },
+                    new CardRow { tier = "none", id = "warship", name="战舰", category="attack", hp=15, atk=2, range=1, moveDistance=1, canAttackResources=false, spawnComponent=true, spawnCardType="boss", viewKey="default" },
                     // 仅用于满足“初级至少一种可携带卡种”的校验，不参与任何断言。
                     new CardRow { tier = "basic", id = "miner2", name = "备用矿机", category = "resource", hp = 1, produce = 0, resourceComponent = true, viewKey = "default" }
                 },
                 rules = new[]
                 {
-                    new RulesRow { drawPileSize = 24, tierRatioBasic = 70, tierRatioIntermediate = 20, tierRatioAdvanced = 10, maxTypesBasic = 5, maxTypesIntermediate = 3, maxTypesAdvanced = 2, bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossSpawnerSpawnCardType = "boss", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 5, bossPlays = 1, drawCount = 5, handLimit = 5, initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss", playerControlsBoss = false, accumulateResources = true, summoningSickness = true, adjacentSwap = true }
+                    new RulesRow { drawPileSize = 24, tierRatioBasic = 70, tierRatioIntermediate = 20, tierRatioAdvanced = 10, maxTypesBasic = 5, maxTypesIntermediate = 3, maxTypesAdvanced = 2, bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossPhaseTwoHp = 1, bossWarshipColumn = 1, bossWarshipCardType = "warship", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 5, bossPlays = 1, drawCount = 5, handLimit = 5, initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss", playerControlsBoss = false, accumulateResources = true, summoningSickness = true, adjacentSwap = true }
                 },
                 homes = new[] { new HomeRow { owner = "player", hp = 10, produce = 2 }, new HomeRow { owner = "boss", hp = 10, produce = 0 } },
                 bossSlots = new[]
@@ -249,7 +250,7 @@ namespace Spotlight.Tests
                 field.value = values[i];
                 ConfigFieldBuilder.ApplyCurrentValue(field);
             }
-            var fighter = FindDropdownField("生成战机卡种");
+            var fighter = FindDropdownField("刷怪卡生成战机卡种");
             fighter.index = fighter.choices.FindIndex(label => label.Contains("（soldier）"));
             ConfigFieldBuilder.ApplyCurrentValue(fighter);
             Assert.That(draft.TryCreateConfiguration(out var config, out var error), Is.True, error);
@@ -257,7 +258,7 @@ namespace Spotlight.Tests
             Assert.That(config.Rules.BossSpawnerCountFromColumn, Is.EqualTo(3));
             Assert.That(config.Rules.BossSpawnerUnitThreshold, Is.EqualTo(4));
             Assert.That(config.Rules.BossSpawnerDeployFromColumn, Is.EqualTo(20));
-            Assert.That(config.Rules.BossSpawnerSpawnCardType, Is.EqualTo("soldier"));
+            Assert.That(config.Cards[config.Rules.BossSpawnerCardType].Spawn.SpawnCardType, Is.EqualTo("soldier"));
             Assert.That(draft.FindCard(config.Rules.BossSpawnerCardType).hp, Is.EqualTo(6));
         }
 
@@ -266,7 +267,7 @@ namespace Spotlight.Tests
         public void SpawnerChoiceRebindsHealthWithoutEditingAnotherCard()
         {
             var document = Document();
-            document.cards = document.cards.Concat(new[] { new CardRow { tier = "none", id = "nest", name = "新刷怪卡", category = "special", hp = 2, viewKey = "default" } }).ToArray();
+            document.cards = document.cards.Concat(new[] { new CardRow { tier = "none", id = "nest", name = "新刷怪卡", category = "special", hp = 2, viewKey = "default", canSwap = false, spawnComponent = true, spawnCardType = "boss" } }).ToArray();
             var draft = Open(document);
             var choice = FindDropdownField("刷怪卡卡种");
             choice.index = choice.choices.FindIndex(label => label.Contains("（nest）"));

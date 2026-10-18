@@ -192,8 +192,8 @@ namespace Spotlight.Tests
                     Assert.That(cards.Where(c => c.tier == "advanced").Select(c => c.id),
                         Is.EquivalentTo(new[] { "gate", "houyi2", "texasRanger", "viking2056", "snpEu", "napoleon1769" }));
                     Assert.That(cards.Single(c => c.id == "gate").tier, Is.EqualTo("advanced"));
-                    Assert.That(cards.Where(c => c.tier == "none").Select(c => c.id), Is.EquivalentTo(new[] { "bossCombat", "bossSpawner" }));
-                    Assert.That(cards.Length, Is.EqualTo(22));
+                    Assert.That(cards.Where(c => c.tier == "none").Select(c => c.id), Is.EquivalentTo(new[] { "bossCombat", "bossSpawner", "bossWarship" }));
+                    Assert.That(cards.Length, Is.EqualTo(23));
                 }
             }
             finally { if (File.Exists(path)) File.Delete(path); }

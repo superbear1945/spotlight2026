@@ -78,7 +78,7 @@ namespace Spotlight.Tests
             {
                 clearance.EditorApply(2);
                 damageMark.EditorApply(1);
-                definition.EditorApply(row, null, null, null, null, null, "test.xlsx", "Cards", null, null, null, clearance, killAction, damageMark);
+                definition.EditorApply(row, null, null, null, null, null, "test.xlsx", "Cards", null, null, null, null, clearance, killAction, damageMark);
 
                 var restoredRow = definition.ToCardRow();
                 Assert.That(restoredRow.adjacentClearanceComponent, Is.True);
