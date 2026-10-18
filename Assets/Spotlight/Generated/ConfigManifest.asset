@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: ConfigManifest
   m_EditorClassIdentifier: 
   _sourceWorkbookPath: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceHash: c15a923c6dbe130dea1653c061db934489513a2646eeb9a27de9ef803a5f84f0
-  _compiledAtUtc: 2026-10-17T16:13:44.5793047Z
+  _sourceHash: e08c55a98889e8f30b0748b4443757029be11651f935e488a4582ab7a7b123f5
+  _compiledAtUtc: 2026-10-18T03:55:35.2687409Z
   _generatedPaths:
   - Assets/Spotlight/Generated/Cards/ge1.asset
   - Assets/Spotlight/Generated/Cards/ge1.prefab
