@@ -120,7 +120,8 @@ namespace Spotlight.Tests
             var error = hud.Root.Q<Label>("deck-select-error");
 
             // 把初级全部取消：违反“每阶级至少 1 种”，确认按钮必须不可用并给出原因。
-            foreach (var card in state.Pool(CardTier.Basic).ToArray()) state.Toggle(card.Id);
+            // 注意只取消“已选中”的卡：初级池有 6 种但上限是 5，全量 Toggle 会把唯一没选中的那张重新勾上。
+            foreach (var card in state.Pool(CardTier.Basic).Where(c => state.IsSelected(c.Id)).ToArray()) state.Toggle(card.Id);
             panel.Render();
             Assert.That(state.SelectedCount(CardTier.Basic), Is.EqualTo(0));
             Assert.That(apply.enabledSelf, Is.False, "缺初级卡时不应允许确认");

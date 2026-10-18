@@ -291,7 +291,7 @@ namespace Spotlight.Tests
             var path = Path.Combine(_tempDirectory, "numeric.xlsx");
             DefaultWorkbookWriter.WriteDefault(path);
             ReplaceWorksheetCell(path, 1, "E2", "n", hp);
-            ReplaceWorksheetCell(path, 6, "E2", "n", "0.125");
+            ReplaceWorksheetCell(path, 5, "E2", "n", "0.125");
             var previousCulture = CultureInfo.CurrentCulture;
             try
             {
@@ -335,7 +335,7 @@ namespace Spotlight.Tests
             var numeric = ConfigCompiler.Compile(path, false);
             Assert.That(numeric.Success, Is.True, string.Join("\n", numeric.Issues));
             ReplaceWorksheetCell(path, 1, "E2", "inlineStr", "1");
-            ReplaceWorksheetCell(path, 6, "E2", "inlineStr", "0.2");
+            ReplaceWorksheetCell(path, 5, "E2", "inlineStr", "0.2");
             var text = ConfigCompiler.Compile(path, false);
             Assert.That(text.Success, Is.True, string.Join("\n", text.Issues));
             Assert.That(UnityEngine.JsonUtility.ToJson(text.Document), Is.EqualTo(UnityEngine.JsonUtility.ToJson(numeric.Document)));

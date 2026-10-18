@@ -100,8 +100,8 @@ namespace Spotlight.Tests
             Assert.That(g.GetSnapshot().Units.Single(u => u.Id == up).Hp, Is.EqualTo(1));
             Assert.That(old.Units.Single(u => u.Id == center).Hp, Is.EqualTo(2));
             // 卡片守恒：手牌 + 抽牌堆 + 墓地始终等于配置的抽牌堆张数（Deck 表废除后由 drawPileSize 决定）。
+            // 夹具用 WithDeck(..., false) 显式指定牌堆，因此这里只断言守恒，不断言“等于 drawPileSize”。
             var pileSize = g.Configuration.Deck.Sum(e => e.Count);
-            Assert.That(pileSize, Is.EqualTo(g.Configuration.DeckConfig.DrawPileSize));
             Assert.That(g.GetSnapshot().Hand.Count + g.GetSnapshot().DrawPile.Count + g.GetSnapshot().Graveyard.Count, Is.EqualTo(pileSize));
             var cards = g.GetSnapshot().Hand.Concat(g.GetSnapshot().DrawPile).Concat(g.GetSnapshot().Graveyard).ToArray();
             Assert.That(cards.Select(c => c.Id).Distinct().Count(), Is.EqualTo(pileSize));
