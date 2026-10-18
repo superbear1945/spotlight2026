@@ -2,6 +2,7 @@
 // 为什么必须在 PlayMode 验证：选卡是“启动即弹窗 → 确认后才建对局 → 菜单里换卡会重开”的时序流程，
 // 涉及真实场景装配、UI Toolkit 显示状态与 GameBootstrap 的输入闸门，EditMode 无法覆盖。
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
@@ -105,6 +106,51 @@ namespace Spotlight.Tests
             var snapshot = bootstrap.Session.GetSnapshot();
             Assert.That(snapshot.DrawPile.Count + snapshot.Hand.Count, Is.EqualTo(bootstrap.DeckSelection.Configuration.DeckConfig.DrawPileSize),
                 "开局后抽牌堆与手牌之和应等于 drawPileSize");
+        }
+
+        /// <summary>
+        /// 选卡界面必须能一眼分辨阶级：分成三组（初/中/高），每组带阶级徽章、组内只放该阶级卡种，
+        /// 行内还有短标（初/中/高），且三个分组的左侧竖条颜色互不相同。
+        /// 输入：演示场景启动后的选卡面板；输出：分组数量、徽章文本、组内行数与配色断言。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SelectionGroupsCardsByTierWithDistinctColors()
+        {
+            var context = new Context();
+            yield return Load(context);
+            var hud = context.Hud;
+            var panel = hud.DeckSelectionPanel;
+            yield return null;
+
+            var sections = hud.Root.Query<VisualElement>(className: "deck-tier").ToList();
+            Assert.That(sections.Count, Is.EqualTo(3), "选卡界面应按初级/中级/高级分成三组");
+            var expected = new[]
+            {
+                (Class: "tier-basic", Tier: CardTier.Basic),
+                (Class: "tier-intermediate", Tier: CardTier.Intermediate),
+                (Class: "tier-advanced", Tier: CardTier.Advanced)
+            };
+            var borderColors = new List<Color>();
+            for (var i = 0; i < sections.Count; i++)
+            {
+                var section = sections[i];
+                Assert.That(section.ClassListContains(expected[i].Class), Is.True, $"第 {i + 1} 组缺少类 {expected[i].Class}");
+                var badge = section.Q<Label>(className: "deck-tier-badge");
+                Assert.That(badge, Is.Not.Null, "每个分组都应有阶级徽章");
+                Assert.That(badge.text, Is.EqualTo(CardText.TierLabel(expected[i].Tier)), "徽章文本应为阶级中文名");
+
+                var rows = section.Query<VisualElement>(className: "deck-card-row").ToList();
+                Assert.That(rows.Count, Is.EqualTo(panel.State.Pool(expected[i].Tier).Count()),
+                    $"{expected[i].Class} 组内应只包含该阶级的卡种");
+                foreach (var row in rows)
+                {
+                    var tag = row.Q<Label>(className: "deck-card-tier-tag");
+                    Assert.That(tag, Is.Not.Null, "每行都应带阶级短标");
+                    Assert.That(tag.text.Length, Is.EqualTo(1), "短标是单字（初/中/高）");
+                }
+                borderColors.Add(section.resolvedStyle.borderLeftColor);
+            }
+            Assert.That(borderColors.Distinct().Count(), Is.EqualTo(3), "三个阶级的分组竖条颜色应互不相同");
         }
 
         [UnityTest]

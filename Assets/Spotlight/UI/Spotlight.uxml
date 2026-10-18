@@ -98,7 +98,6 @@
                 <ui:VisualElement class="cfg-body">
                     <ui:ScrollView name="deck-select-scroll" mode="Vertical" class="cfg-scroll">
                         <ui:Label name="deck-select-hint" class="cfg-note" />
-                        <ui:VisualElement name="deck-select-tiers" />
                         <ui:VisualElement name="deck-select-cards" />
                     </ui:ScrollView>
                 </ui:VisualElement>
