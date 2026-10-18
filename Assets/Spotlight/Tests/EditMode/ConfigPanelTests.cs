@@ -425,6 +425,49 @@ namespace Spotlight.Tests
             Assert.That(_root.Q<Button>("debug-import-button").text, Is.EqualTo("从下方导入"));
         }
 
+        /// <summary>
+        /// 攻击类卡展示三种新能力开关；打开带数值的能力后出现数值字段并写入草稿；关闭后清零可通过校验。
+        /// 输入：隔离草稿；输出：字段文案、配置值与非攻击卡不展示开关的断言。
+        /// 为什么需要：这些开关直接决定正式卡是否获得能力，字段缺失或分类限制失效都会让策划静默改错。
+        /// </summary>
+        [Test]
+        public void AttackCardsExposeNewAbilityTogglesAndClosingClearsValues()
+        {
+            var draft = Open(Document());
+            var texts = CollectLabels(_root.Q<VisualElement>("debug-cards"));
+            Assert.That(texts, Does.Contain("四邻空格限制：部署与移动/互换前后至少 N 格为空"));
+            Assert.That(texts, Does.Contain("击杀恢复行动：直接攻击击杀后再行动一次"));
+            Assert.That(texts, Does.Contain("伤害标记：直接攻击后使目标获得 1 层"));
+
+            // 打开两个带数值的能力后，面板出现对应数值字段。
+            var soldier = draft.FindCard("soldier");
+            soldier.adjacentClearanceComponent = true;
+            soldier.adjacentClearanceMinEmpty = 2;
+            soldier.damageMarkComponent = true;
+            soldier.damageMarkDamagePerStack = 1;
+            _panel.Open(draft);
+            var withValues = CollectLabels(_root.Q<VisualElement>("debug-cards"));
+            Assert.That(withValues, Does.Contain("四邻最少空格数（1～4）"));
+            Assert.That(withValues, Does.Contain("每层追加伤害"));
+            Assert.That(draft.TryCreateConfiguration(out var configuration, out var error), Is.True, error);
+            Assert.That(configuration.Cards["soldier"].AdjacentClearance.MinEmptyNeighbors, Is.EqualTo(2));
+            Assert.That(configuration.Cards["soldier"].DamageMark.DamagePerStack, Is.EqualTo(1));
+
+            // 关闭开关必须同时清零数值，否则集中校验会阻止“应用并重开”。
+            soldier.adjacentClearanceComponent = false;
+            soldier.adjacentClearanceMinEmpty = 0;
+            soldier.damageMarkComponent = false;
+            soldier.damageMarkDamagePerStack = 0;
+            Assert.That(draft.Validate(), Is.Empty, string.Join(";", draft.Validate()));
+
+            // 非攻击卡不展示“击杀恢复行动 / 伤害标记”开关（分类约束由集中校验兜底）。
+            var gate = _root.Query<VisualElement>(className: "cfg-card").ToList()
+                .First(c => c.Q<Label>(className: "cfg-card-title")?.text == "星门");
+            var gateTexts = CollectLabels(gate);
+            Assert.That(gateTexts, Has.None.Contains("击杀恢复行动：直接攻击击杀后再行动一次"));
+            Assert.That(gateTexts, Has.None.Contains("伤害标记：直接攻击后使目标获得 1 层"));
+        }
+
         /// <summary>收集容器内全部标签文本。输入：容器；输出：文本列表。</summary>
         static System.Collections.Generic.List<string> CollectLabels(VisualElement container)
             => container.Query<Label>().ToList().Select(l => l.text).ToList();

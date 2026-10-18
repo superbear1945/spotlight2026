@@ -124,6 +124,22 @@ namespace Spotlight.Tests
             Assert.That(DeployCells(g, "soldier"), Does.Contain(new Cell(2, 2)), "星门四邻 + 空格条件同时满足才合法");
         }
 
+        /// <summary>敌方星门不提供部署扩展：己方攻击卡不能借敌方星门四邻部署。</summary>
+        [Test]
+        public void EnemyStarGateCannotGrantDeployment()
+        {
+            var d = Document();
+            d.rules[0].homeRegionWidth = 2;
+            d.rules[0].bossCardType = "gate";
+            var g = Start(d);
+            End(g);
+            Do(g, new GameCommand(CommandKind.BossDeploy, Side.Boss, target: new Cell(2, 8)));
+            Assert.That(g.GetSnapshot().Units.Single(u => u.Owner == Side.Boss).TypeId, Is.EqualTo("gate"));
+            Assert.That(DeployCells(g, "soldier"), Has.No.Member(new Cell(2, 7)), "敌方星门不能扩展己方部署");
+            var card = g.GetSnapshot().Hand.First(c => c.TypeId == "soldier");
+            Assert.That(g.Execute(new GameCommand(CommandKind.Deploy, Side.Player, card.Id, new Cell(2, 7))).Success, Is.False);
+        }
+
         /// <summary>移动检查起点与落点：落点按“旧格已腾空”的最终布局计算，不把原位置当成仍被占用。</summary>
         [Test]
         public void MoveChecksOriginAndDestinationWithFinalLayout()

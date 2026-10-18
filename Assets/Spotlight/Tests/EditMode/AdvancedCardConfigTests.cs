@@ -197,6 +197,72 @@ namespace Spotlight.Tests
             Assert.That(configuration.Cards["napoleon1769"].KillAction, Is.Null);
         }
 
+        /// <summary>
+        /// 五张正式高级卡都免费部署、有资源配置支付维持费；维持费不足时本回合不能行动。
+        /// 输入：正式工作簿 + 玩家家产出（足够 / 不足）；输出：资源、UpkeepPaid 与合法移动断言。
+        /// 为什么需要：新卡全部“免费部署 + 有维持费”，必须证明部署不扣资源、维持费按正式数值结算。
+        /// </summary>
+        [Test]
+        public void FormalAdvancedCardsPayUpkeepAndCannotActWhenShort()
+        {
+            var report = Spotlight.EditorTools.ConfigCompiler.Compile(Spotlight.EditorTools.ConfigCompiler.DefaultWorkbookPath, false);
+            Assert.That(report.Success, Is.True, string.Join("\n", report.Issues));
+            var expectedUpkeep = new System.Collections.Generic.Dictionary<string, int>
+            {
+                ["houyi2"] = 4, ["texasRanger"] = 3, ["viking2056"] = 4, ["snpEu"] = 3, ["napoleon1769"] = 6
+            };
+            foreach (var pair in expectedUpkeep)
+            {
+                var row = report.Document.cards.Single(c => c.id == pair.Key);
+                Assert.That(row.resourceComponent, Is.True, pair.Key + " 必须有资源配置");
+                Assert.That(row.produce, Is.Zero);
+                Assert.That(row.upkeep, Is.EqualTo(pair.Value));
+                Assert.That(row.deployCost, Is.Zero, pair.Key + " 免费部署");
+                Assert.That(row.requiresUpgrade, Is.False);
+            }
+
+            // 足够支付：第 2 回合扣掉维持费后仍可移动。
+            var paid = StartFormal(4, "viking2056");
+            var paidCard = paid.GetSnapshot().Hand.Single();
+            Assert.That(paid.Execute(new GameCommand(CommandKind.Deploy, Side.Player, paidCard.Id, new Cell(2, 4))).Success, Is.True);
+            Assert.That(paid.GetSnapshot().Resources, Is.EqualTo(4), "免费部署不应扣资源");
+            End(paid);
+            End(paid);
+            var paidUnit = paid.GetSnapshot().Units.Single(u => u.TypeId == "viking2056");
+            Assert.That(paidUnit.UpkeepPaid, Is.True);
+            Assert.That(paidUnit.CanAct, Is.True);
+            Assert.That(paid.GetLegalActions(new Selection(SelectionKind.Unit, paidUnit.Id)).Move, Is.Not.Empty);
+
+            // 不足支付：同样部署，但第 2 回合维持费不够，单位不能行动。
+            var shortPaid = StartFormal(1, "viking2056");
+            var shortCard = shortPaid.GetSnapshot().Hand.Single();
+            Assert.That(shortPaid.Execute(new GameCommand(CommandKind.Deploy, Side.Player, shortCard.Id, new Cell(2, 4))).Success, Is.True);
+            End(shortPaid);
+            End(shortPaid);
+            var shortUnit = shortPaid.GetSnapshot().Units.Single(u => u.TypeId == "viking2056");
+            Assert.That(shortUnit.UpkeepPaid, Is.False);
+            Assert.That(shortUnit.CanAct, Is.False);
+            Assert.That(shortPaid.GetLegalActions(new Selection(SelectionKind.Unit, shortUnit.Id)).Move, Is.Empty);
+        }
+
+        /// <summary>用正式工作簿搭一个只带指定卡种的对局。输入：玩家家产出与卡种；输出：固定种子的会话。</summary>
+        static GameSession StartFormal(int homeProduce, string type)
+        {
+            var report = Spotlight.EditorTools.ConfigCompiler.Compile(Spotlight.EditorTools.ConfigCompiler.DefaultWorkbookPath, false);
+            Assert.That(report.Success, Is.True, string.Join("\n", report.Issues));
+            var d = report.Document;
+            d.rules[0].playerControlsBoss = true;
+            d.rules[0].drawCount = 1;
+            d.rules[0].handLimit = 5;
+            d.homes.Single(h => h.owner == "player").produce = homeProduce;
+            var configuration = new GameConfiguration(d).WithDeck(new[] { new DeckEntry(type, 1) }, false);
+            return new GameSession(configuration, new SeededRandom(43), 100);
+        }
+
+        /// <summary>结束当前回合（跳过手动 Boss 的剩余放牌）。输入：会话；输出：无。</summary>
+        static void End(GameSession g) =>
+            Assert.That(g.Execute(new GameCommand(CommandKind.EndTurn, g.GetSnapshot().ActiveSide, skipDeployment: true)).Success, Is.True);
+
         /// <summary>旧 JSON 缺少新字段时按关闭处理；新字段类型错误会被拦截；导出导入不丢值。</summary>
         [Test]
         public void JsonImportKeepsCompatibilityAndRejectsWrongTypes()
