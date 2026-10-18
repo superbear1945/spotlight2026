@@ -74,7 +74,7 @@
   <g id="node-n-xlsx" data-graph-role="node" data-node-id="n-xlsx" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="460,170,940,270">
   <rect x="460.0" y="170.0" width="480.0" height="100.0" rx="10.0" fill="#fff7ed" stroke="#f97316" stroke-width="1.8"/>
   <text data-text-role="title" data-full-text="Spotlight.xlsx 默认工作簿" data-text-max-width="456.0" x="700.0" y="220.0" text-anchor="middle" class="node-title" font-size="18">Spotlight.xlsx 默认工作簿</text>
-  <text data-text-role="subtitle" data-full-text="策划填写；正式单元格禁止公式" data-text-max-width="456.0" x="700.0" y="242.0" text-anchor="middle" class="node-sub" font-size="12">策划填写；正式单元格禁止公式</text>
+  <text data-text-role="subtitle" data-full-text="策划填写；Rules 显式填写抽牌堆张数 / 三比例 / 三上限（无 Deck 表）" data-text-max-width="456.0" x="700.0" y="242.0" text-anchor="middle" class="node-sub" font-size="12">策划填写；Rules 显式填写抽牌堆张数 / 三比例 / 三上限（无 Deck 表）</text>
   </g>
   <g id="node-n-reader" data-graph-role="node" data-node-id="n-reader" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="460,350,940,450">
   <rect x="460.0" y="350.0" width="480.0" height="100.0" rx="10.0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.8"/>
@@ -84,7 +84,7 @@
   <g id="node-n-validator" data-graph-role="node" data-node-id="n-validator" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="460,530,940,630">
   <rect x="460.0" y="530.0" width="480.0" height="100.0" rx="10.0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.8"/>
   <text data-text-role="title" data-full-text="TableSchema · ConfigValidation" data-text-max-width="456.0" x="700.0" y="580.0" text-anchor="middle" class="node-title" font-size="18">TableSchema · ConfigValidation</text>
-  <text data-text-role="subtitle" data-full-text="结构校验与业务校验一次汇总" data-text-max-width="456.0" x="700.0" y="602.0" text-anchor="middle" class="node-sub" font-size="12">结构校验与业务校验一次汇总</text>
+  <text data-text-role="subtitle" data-full-text="结构校验 + 业务校验（含抽牌堆规则）一次汇总" data-text-max-width="456.0" x="700.0" y="602.0" text-anchor="middle" class="node-sub" font-size="12">结构校验 + 业务校验（含抽牌堆规则）一次汇总</text>
   </g>
   <g id="node-n-compiler" data-graph-role="node" data-node-id="n-compiler" data-semantic-role="double_rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="460,710,940,810">
   <rect x="460.0" y="710.0" width="480.0" height="100.0" rx="10.0" fill="#faf5ff" stroke="#7c3aed" stroke-width="2.0"/>
@@ -121,7 +121,7 @@
   <rect x="460.0" y="1270.0" width="480.0" height="100.0" rx="10.0" fill="#eff6ff" stroke="#2563eb" stroke-width="2.0"/>
   <rect x="466.0" y="1276.0" width="468.0" height="88.0" rx="7.0" fill="none" stroke="#2563eb" stroke-width="1.2" opacity="0.65"/>
   <text data-text-role="title" data-full-text="GameSession 建立对局" data-text-max-width="448.0" x="700.0" y="1320.0" text-anchor="middle" class="node-title" font-size="18">GameSession 建立对局</text>
-  <text data-text-role="subtitle" data-full-text="加载有效配置后创建候选对局" data-text-max-width="448.0" x="700.0" y="1342.0" text-anchor="middle" class="node-sub" font-size="12">加载有效配置后创建候选对局</text>
+  <text data-text-role="subtitle" data-full-text="先由选卡结果生成抽牌堆（DeckComposition），再创建候选对局" data-text-max-width="448.0" x="700.0" y="1342.0" text-anchor="middle" class="node-sub" font-size="12">先由选卡结果生成抽牌堆（DeckComposition），再创建候选对局</text>
   </g>
   <g id="node-n-snapshot" data-graph-role="node" data-node-id="n-snapshot" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="460,1450,940,1550">
   <rect x="460.0" y="1450.0" width="480.0" height="100.0" rx="10.0" fill="#eff6ff" stroke="#2563eb" stroke-width="1.8"/>
@@ -131,7 +131,7 @@
   <g id="node-n-ui" data-graph-role="node" data-node-id="n-ui" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="460,1630,940,1730">
   <rect x="460.0" y="1630.0" width="480.0" height="100.0" rx="10.0" fill="#ffffff" stroke="#d1d5db" stroke-width="1.8"/>
   <text data-text-role="title" data-full-text="UXML / UGUI 界面" data-text-max-width="456.0" x="700.0" y="1680.0" text-anchor="middle" class="node-title" font-size="18">UXML / UGUI 界面</text>
-  <text data-text-role="subtitle" data-full-text="点击选牌到提交命令" data-text-max-width="456.0" x="700.0" y="1702.0" text-anchor="middle" class="node-sub" font-size="12">点击选牌到提交命令</text>
+  <text data-text-role="subtitle" data-full-text="选卡面板确认后开局；点击选牌到提交命令" data-text-max-width="456.0" x="700.0" y="1702.0" text-anchor="middle" class="node-sub" font-size="12">选卡面板确认后开局；点击选牌到提交命令</text>
   </g>
   <g id="node-n-draft" data-graph-role="node" data-node-id="n-draft" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1080,1250,1440,1350">
   <rect x="1080.0" y="1250.0" width="360.0" height="100.0" rx="10.0" fill="#fef2f2" stroke="#dc2626" stroke-width="1.8"/>
