@@ -114,7 +114,8 @@ namespace Spotlight.Tests
         {
             var d = Document();
             d.rules[0].homeRegionWidth = 2;
-            var g = Start(d);
+            // 本用例需要星门与足够的阻挡单位，显式给出 16 张夹具牌堆（抽牌数 16 张全进手牌）。
+            var g = Start(d, new DeckEntry("gate", 4), new DeckEntry("miner", 8), new DeckEntry("soldier", 4));
             Put(g, "gate", new Cell(2, 1));
             var blockerA = Put(g, "miner", new Cell(3, 2));
             Put(g, "miner", new Cell(1, 2));
