@@ -84,9 +84,11 @@ MAX_FILE_MB=10 bash scripts/check-repo-hygiene.sh
   多文件、阈值边界、注解/摘要转义、扫描异常与摘要写入失败。测试捕获模拟注解，
   摘要只写临时文件，不污染真实 CI 注解和摘要；不依赖当前仓库大小或 LFS 网络服务。
 
-此外，`scripts/test-font-lfs.sh` 在同一必需检查内验证 TextCore 字体的精确路径 LFS 属性、
+此外，`scripts/test-font-lfs.sh` 在同一必需检查内分别验证 `SimHei SDF.asset`（TMP）与
+`SimHei TextCore.asset` 的精确路径 LFS 属性、
 完整规范指针及其他 `.asset` 未被宽泛迁移；允许字体重新生成后更新 hash 或缩小大小。
-其 `--self-test` 使用无实体字体的临时 index，覆盖原先未迁移、非法指针、宽泛属性和部分扫描失败。
+其 `--self-test` 使用无实体字体的临时 index，逐一覆盖两个字体缺少规则、非法指针，
+以及宽泛属性、相似文件名误匹配和部分扫描失败。增加超限字体的精确路径规则时，须同步更新此清单与回归用例。
 
 同目录下的 `scripts/check-ci-config.sh` 是它的兄弟守卫，负责保证各 workflow 不会把
 已删除的 `push` 触发加回来，见 [使用说明.md](使用说明.md) 第 8 节。
@@ -131,7 +133,8 @@ git commit -m "转为 Git LFS 存储"
 
 - `Assets/Spotlight/Fonts/SimHei.ttf`（9.3 MB）仍是历史中最大的 blob，受限于"不重写历史"的决定，
   它会继续留在 `.git` 里；但它在**当前分支**上已经是 LFS 指针，后续修改都会走 LFS。
-- `Assets/Spotlight/Fonts/SimHei TextCore.asset` 内嵌图集增至 3 张后达到 6,379,140 字节，
-  已按具体路径迁入 LFS；实体字节和 `.meta`/GUID 不变，其他 `.asset` 保留普通文本存储。
+- 合并双方字形后，`Assets/Spotlight/Fonts/SimHei SDF.asset` 为 10,677,126 字节，
+  `Assets/Spotlight/Fonts/SimHei TextCore.asset` 为 10,683,068 字节，均超过 5 MiB。
+  两者按精确路径使用 LFS，检查器逐一校验规范指针；`.meta`/GUID 保持不变，其他 `.asset` 保留普通文本存储。
 - 开启 LFS 后本地 `.git` 体积会短暂变大（旧 blob 与 LFS 对象并存），属于预期现象。
 - `SimHei.ttf` 的**再分发授权**需要单独确认；字体入库的授权风险通常比体积更麻烦。
