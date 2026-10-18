@@ -8,7 +8,7 @@ namespace Spotlight
 {
     /// <summary>
     /// 自包含的只读配置资产（编译产物入口）。
-    /// 输入：编译器写入的 Rules/Homes/BossSlots/Presentation/Deck 行数据与卡种定义清单；
+    /// 输入：编译器写入的 Rules/Homes/BossSlots/Presentation 行数据与卡种定义清单；
     /// 输出：CreateConfiguration() 得到的 GameConfiguration，以及 ToDocument() 得到的可校验/可导出文档。
     /// 为什么需要单独一层：规则内核只认识纯 C# 的文档与接口，不引用 UnityEngine；
     /// 本资产负责把“场景中的 SO 引用”翻译成“内核可用的配置”，并复用同一套业务校验。
@@ -26,8 +26,6 @@ namespace Spotlight
         [SerializeField] PresentationRow _presentation = new PresentationRow();
         /// <summary>卡种定义清单，顺序与 Cards 表一致。</summary>
         [SerializeField] CardDefinitionSO[] _cards;
-        /// <summary>Deck 表行数据。</summary>
-        [SerializeField] DeckRow[] _deck;
         /// <summary>源工作簿文件名，用于 Inspector 提示与过期检测。</summary>
         [SerializeField] string _sourceWorkbook;
         /// <summary>编译时源工作簿的内容摘要，用于进入 Play/构建前的过期检测。</summary>
@@ -45,8 +43,6 @@ namespace Spotlight
         public PresentationRow PresentationRow => _presentation;
         /// <summary>卡种定义清单（只读）。</summary>
         public IReadOnlyList<CardDefinitionSO> Cards => _cards ?? System.Array.Empty<CardDefinitionSO>();
-        /// <summary>卡组行数据（只读）。</summary>
-        public IReadOnlyList<DeckRow> Deck => _deck ?? System.Array.Empty<DeckRow>();
         /// <inheritdoc />
         public string SourceWorkbook => _sourceWorkbook;
         /// <inheritdoc />
@@ -78,9 +74,8 @@ namespace Spotlight
         {
             return new ConfigDocument
             {
-                schemaVersion = 1,
+                schemaVersion = 2,
                 cards = (_cards ?? System.Array.Empty<CardDefinitionSO>()).Where(c => c != null).Select(c => c.ToCardRow()).ToArray(),
-                deck = (_deck ?? System.Array.Empty<DeckRow>()).ToArray(),
                 rules = new[] { _rules },
                 homes = (_homes ?? System.Array.Empty<HomeRow>()).ToArray(),
                 bossSlots = (_bossSlots ?? System.Array.Empty<BossSlotRow>()).ToArray(),
@@ -113,7 +108,6 @@ namespace Spotlight
             _bossSlots = document.bossSlots;
             _presentation = document.presentation[0];
             _cards = cards.ToArray();
-            _deck = document.deck;
             _sourceWorkbook = sourceWorkbook;
             _sourceHash = sourceHash;
             _compiledAtUtc = compiledAtUtc;

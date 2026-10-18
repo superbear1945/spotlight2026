@@ -23,6 +23,8 @@ namespace Spotlight.Tests
         /// 字段说明：资源卡 mine 用来验证“资源卡即使有攻击也不消耗效果”，
         /// sourceOne/Two/Three 是同机制但减攻量不同的来源卡（证明数值完全来自配置），
         /// soldier/heavy/zeroAttack 是不同攻击/射程/移动的攻击卡，bossPenalty 是 Boss 侧的同类来源。
+        /// 说明：Deck 表已废除，抽牌堆由 <see cref="Deck"/> 在建局时显式覆盖；
+        /// 夹具本身不用中级卡，因此额外放一张仅用于满足“中级至少一种可携带卡种”校验的填充卡。
         /// </summary>
         public static ConfigDocument Document()
         {
@@ -41,23 +43,15 @@ namespace Spotlight.Tests
                     new CardRow { tier = "none", id = "boss", name = "敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
                     new CardRow { tier = "none", id = "bossPenalty", name = "减攻敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default", deploymentPenaltyComponent = true, deploymentAttackReduction = 1 },
                     new CardRow { tier = "none", id = "bossFighter", name = "战机", category = "attack", hp = 3, atk = 2, range = 1, moveDistance = 1, viewKey = "default" },
-                    new CardRow { tier = "none", id = "spawner", name = "刷怪卡", category = "special", hp = 1, viewKey = "default" }
-                },
-                deck = new[]
-                {
-                    new DeckRow { cardType = "mine", count = 10 },
-                    new DeckRow { cardType = "kyoto", count = 10 },
-                    new DeckRow { cardType = "sourceOne", count = 10 },
-                    new DeckRow { cardType = "sourceTwo", count = 10 },
-                    new DeckRow { cardType = "sourceThree", count = 10 },
-                    new DeckRow { cardType = "soldier", count = 10 },
-                    new DeckRow { cardType = "heavy", count = 10 },
-                    new DeckRow { cardType = "zeroAttack", count = 10 }
+                    new CardRow { tier = "none", id = "spawner", name = "刷怪卡", category = "special", hp = 1, viewKey = "default" },
+                    // 仅用于满足“中级至少一种可携带卡种”的配置校验，不参与任何断言。
+                    new CardRow { tier = "intermediate", id = "fillerIntermediate", name = "夹具中级卡", category = "resource", hp = 1, resourceComponent = true, produce = 0, viewKey = "default" }
                 },
                 rules = new[]
                 {
                     new RulesRow
                     {
+                        drawPileSize = 24, tierRatioBasic = 70, tierRatioIntermediate = 20, tierRatioAdvanced = 10, maxTypesBasic = 5, maxTypesIntermediate = 3, maxTypesAdvanced = 2,
                         bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 1, bossSpawnerUnitThreshold = 3, bossSpawnerDeployFromColumn = 1,
                         bossSpawnerCardType = "spawner", bossSpawnerSpawnCardType = "bossFighter",
                         bossBombInterval = 1000, bossBombDamage = 3, bossBombColumn = 5,
@@ -81,8 +75,29 @@ namespace Spotlight.Tests
             };
         }
 
-        /// <summary>建立对局。输入：可选文档（默认使用本文件夹具）；输出：固定种子的对局实例。</summary>
-        static GameSession Start(ConfigDocument d = null) => new GameSession(new GameConfiguration(d ?? Document()), new SeededRandom(42), 400);
+        /// <summary>
+        /// 本文件默认抽牌堆：八个玩家卡种各 10 张，共 80 张（与原 Deck 表夹具完全一致）。
+        /// 输入：无；输出：DeckEntry 清单。
+        /// 为什么需要：用例靠“80 张全部进牌区”断言牌区总数恒定，牌堆总量不能变。
+        /// </summary>
+        static DeckEntry[] Deck() => new[]
+        {
+            new DeckEntry("mine", 10), new DeckEntry("kyoto", 10), new DeckEntry("sourceOne", 10), new DeckEntry("sourceTwo", 10),
+            new DeckEntry("sourceThree", 10), new DeckEntry("soldier", 10), new DeckEntry("heavy", 10), new DeckEntry("zeroAttack", 10)
+        };
+
+        /// <summary>
+        /// 建立对局。输入：可选文档（默认使用本文件夹具）；输出：固定种子的对局实例。
+        /// 说明：抽牌堆已不能写在文档里，统一在这里用 WithDeck 覆盖（requireDrawPileSize=false 表示夹具不凑满张数）。
+        /// </summary>
+        static GameSession Start(ConfigDocument d = null) => StartWith(d ?? Document(), Deck());
+
+        /// <summary>
+        /// 用指定抽牌堆建立对局。输入：文档与抽牌堆条目；输出：固定种子的对局实例。
+        /// 为什么需要：个别用例需要“只几张卡”的小牌堆来验证洗回与被重新部署。
+        /// </summary>
+        static GameSession StartWith(ConfigDocument d, params DeckEntry[] deck)
+            => new GameSession(new GameConfiguration(d).WithDeck(deck, false), new SeededRandom(42), 400);
 
         /// <summary>把手牌中的某卡种部署到指定格。输入：对局、卡种与坐标；输出：该格上的新单位快照。</summary>
         static UnitState Put(GameSession g, string type, int row, int col)
@@ -219,9 +234,8 @@ namespace Spotlight.Tests
         public void RedeployingTheSameCardRecordGainsAFreshIndependentEffect()
         {
             var d = Document();
-            d.deck = new[] { new DeckRow { cardType = "sourceOne", count = 1 }, new DeckRow { cardType = "heavy", count = 4 } };
             d.rules[0].drawCount = 5;
-            var g = Start(d);
+            var g = StartWith(d, new DeckEntry("sourceOne", 1), new DeckEntry("heavy", 4));
             var first = Put(g, "sourceOne", 0, 3);
             var hitA = Put(g, "heavy", 0, 0);
             Assert.That(hitA.Attack, Is.EqualTo(3));
@@ -513,7 +527,8 @@ namespace Spotlight.Tests
             Assert.That(draft.Validate(), Is.Empty);
             Assert.That(draft.TryCreateConfiguration(out var configuration, out error), Is.True, error);
             Assert.That(configuration.Cards["kyoto"].DeploymentPenalty, Is.Null, "缺少字段不得凭空获得能力");
-            Assert.That(configuration.Deck.Sum(e => e.Count), Is.EqualTo(80), "卡组数量不变");
+            // 抽牌堆改由张数与阶级比例推导，总张数恒等于 drawPileSize（不再是 Deck 表里的 80 张）。
+            Assert.That(configuration.Deck.Sum(e => e.Count), Is.EqualTo(configuration.DeckConfig.DrawPileSize), "抽牌堆总量应等于配置张数");
 
             // JSON 往返不丢新字段（旧 JSON 读成禁用后，面板重新启用也应能完整导出与导入）。
             var restored = draft.Document.cards.Single(c => c.id == "kyoto");
@@ -585,8 +600,6 @@ namespace Spotlight.Tests
                 Assert.That(kyoto.deploymentPenaltyComponent, Is.True);
                 Assert.That(kyoto.deploymentAttackReduction, Is.EqualTo(2));
                 Assert.That(report.Document.cards.Where(c => c.id != "kyoto_01").All(c => !c.deploymentPenaltyComponent), Is.True, "其余卡不得隐式获得该能力");
-                Assert.That(report.Document.deck.Single(e => e.cardType == "kyoto_01").count, Is.EqualTo(2));
-                Assert.That(report.Document.deck.Sum(e => e.count), Is.EqualTo(34));
                 var configuration = new GameConfiguration(report.Document);
                 Assert.That(configuration.Cards["kyoto_01"].DeploymentPenalty.AttackReduction, Is.EqualTo(2));
             }
@@ -606,7 +619,6 @@ namespace Spotlight.Tests
             Assert.That(kyoto.deploymentPenaltyComponent, Is.True);
             Assert.That(kyoto.deploymentAttackReduction, Is.EqualTo(2));
             Assert.That(kyoto.produce, Is.EqualTo(3));
-            Assert.That(report.Document.deck.Single(e => e.cardType == "kyoto_01").count, Is.EqualTo(2));
         }
 
         /// <summary>

@@ -549,3 +549,88 @@
 .action-button.menu-quit-button:hover {
     background-color: rgb(126, 52, 62);
 }
+
+/* ── 抽牌堆分阶级显示与携带选择面板 ────────────────────────────────────── */
+
+/* 抽牌堆从“一个大数字”改成三行阶级张数，字号相应缩小，避免撑破右侧面板。 */
+.pile-tier-count {
+    font-size: 20px;
+    color: rgb(240, 245, 255);
+    -unity-font-style: bold;
+}
+
+.deck-select-mask {
+    align-items: center;
+}
+
+.deck-select-panel {
+    width: 1000px;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.deck-select-foot {
+    flex-direction: row;
+    align-items: center;
+    padding: 12px 20px;
+    border-top-width: 1px;
+    border-top-color: #2a3448;
+}
+
+/* 选卡面板底部的抽牌堆预览：独立类名，避免与调试面板的 cfg-deck-summary 撞类后被按类查询取到空标签。 */
+.deck-select-preview {
+    flex-grow: 1;
+    margin-right: 16px;
+    font-size: 15px;
+    color: rgb(200, 220, 255);
+    white-space: normal;
+}
+
+/* 每个阶级一组：标题行显示“初级 3/5”，下面是该阶级全部卡种的勾选行。 */
+.deck-tier {
+    margin-bottom: 14px;
+}
+
+.deck-tier-head {
+    font-size: 16px;
+    color: rgb(160, 200, 255);
+    -unity-font-style: bold;
+    margin-bottom: 6px;
+}
+
+.deck-card-row {
+    flex-direction: row;
+    align-items: center;
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    background-color: #1b2436;
+    border-left-width: 3px;
+    border-left-color: #2a3448;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+.deck-card-row.selected {
+    border-left-color: #33ff99;
+    background-color: #20304a;
+}
+
+.deck-card-row Button {
+    width: 76px;
+    margin-right: 10px;
+}
+
+.deck-card-name {
+    flex-grow: 1;
+    font-size: 15px;
+    color: rgb(240, 245, 255);
+}
+
+.deck-card-copies {
+    width: 110px;
+    font-size: 15px;
+    color: rgb(160, 200, 255);
+    -unity-text-align: middle-right;
+}

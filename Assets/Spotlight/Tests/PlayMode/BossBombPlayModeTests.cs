@@ -17,12 +17,44 @@ namespace Spotlight.Tests
     /// </summary>
     public class BossBombPlayModeTests
     {
+        /// <summary>
+        /// 迁移前 Deck 表里的玩家抽牌堆（26 张），逐条保留以便本文件的对局场景不变。
+        /// 输入：无；输出：可直接交给 GameConfiguration.WithDeck 的卡组清单。
+        /// 为什么需要：Deck 表已废除，抽牌堆改由“drawPileSize + 三阶级比例 + 开局选卡”生成；
+        /// 本文件的用例（每次 24 张起手、手牌里存在可部署的非升级资源卡）原本就是按这份牌堆写的，
+        /// 还原它就能在不依赖 Excel 当前卡种与比例的前提下保持原意。
+        /// </summary>
+        static DeckEntry[] PreviousDeckTable() => new[]
+        {
+            new DeckEntry("ge1", 3), new DeckEntry("ge12", 3), new DeckEntry("blade1", 3),
+            new DeckEntry("rabbit2", 2), new DeckEntry("odysseus1", 3), new DeckEntry("gate", 2),
+            new DeckEntry("kyoto_01", 2), new DeckEntry("kepler1", 1), new DeckEntry("kepler2", 1),
+            new DeckEntry("landing1", 1), new DeckEntry("houyi1", 1), new DeckEntry("collector1", 1),
+            new DeckEntry("force1", 1), new DeckEntry("flounder1", 1), new DeckEntry("reserve1", 1)
+        };
+
         /// <summary>本用例加载的真实对局引导器。</summary>
         GameBootstrap _bootstrap;
         /// <summary>本用例棋盘，用于核对内部坐标和实际矩形。</summary>
         BoardView _board;
         /// <summary>本用例的独立配置，重开时继续使用。</summary>
         GameConfiguration _configuration;
+
+        /// <summary>
+        /// 让本类用例加载场景后直接进入对局（跳过“携带选择”面板）。
+        /// 输入：无；输出：无。
+        /// 为什么需要：正式启动流程会先弹出携带选择模态面板并挡住棋盘，
+        /// 而本类只验证炸弹标记、反馈与重开清理；选卡流程本身由 DeckSelectionPlayModeTests 覆盖。
+        /// </summary>
+        [OneTimeSetUp]
+        public void SuppressDeckSelectionOnStart() => GameBootstrap.SuppressDeckSelectionOnStart = true;
+
+        /// <summary>
+        /// 恢复正式启动行为。输入：无；输出：无。
+        /// 为什么需要：PlayMode 用例在同一进程里顺序执行，静态开关必须还原，否则会让后面的用例看不到选卡界面。
+        /// </summary>
+        [OneTimeTearDown]
+        public void RestoreDeckSelectionOnStart() => GameBootstrap.SuppressDeckSelectionOnStart = false;
 
         /// <summary>加载真实场景和独立夹具。输入：模式、先手、间隔及表现时长；输出：已开局的可交互界面。</summary>
         IEnumerator Load(bool manual = true, string first = "player", int interval = 1, float seconds = 0.12f)
@@ -37,13 +69,19 @@ namespace Spotlight.Tests
             d.rules[0].playerControlsBoss = manual; d.rules[0].firstSide = first;
             d.rules[0].bossPlays = 0; d.rules[0].handLimit = 100; d.rules[0].drawCount = 24;
             d.rules[0].playerSide = "left";
+            // 抽牌堆构成规则显式写进夹具：抽牌堆清单由 WithDeck 给定，但配置校验仍要求
+            // “每个阶级至少一种卡”与三比例合法，写死可以不受 Excel 当前取值与资产编译状态影响。
+            d.rules[0].drawPileSize = 24; d.rules[0].tierRatioBasic = 70;
+            d.rules[0].tierRatioIntermediate = 20; d.rules[0].tierRatioAdvanced = 10;
+            d.rules[0].maxTypesBasic = 5; d.rules[0].maxTypesIntermediate = 3; d.rules[0].maxTypesAdvanced = 2;
             d.presentation[0].feedbackSeconds = seconds; d.presentation[0].moveSeconds = seconds;
             if (!manual)
             {
                 var boss = d.cards.Single(c => c.id == d.rules[0].bossCardType);
                 boss.atk = 0; boss.moveDistance = 0;
             }
-            _configuration = new GameConfiguration(d);
+            // 第二个参数 false：夹具牌堆是 26 张，与 drawPileSize（24）不等，这是测试夹具专供的豁免路径。
+            _configuration = new GameConfiguration(d).WithDeck(PreviousDeckTable(), false);
             _bootstrap.RestartWith(_configuration);
             yield return null;
         }

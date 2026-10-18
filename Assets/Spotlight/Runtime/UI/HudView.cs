@@ -44,6 +44,8 @@ namespace Spotlight
         public event Action MenuRequested;
         /// <summary>点击菜单里的“继续”：请求关闭菜单并恢复对局。</summary>
         public event Action MenuResumeRequested;
+        /// <summary>点击菜单里的“选卡”：请求进入携带选择（确认后会重开对局）。</summary>
+        public event Action DeckSelectRequested;
         /// <summary>点击菜单里的“退出游戏”：请求结束本次运行（对局不保存，也不会返回棋盘）。</summary>
         public event Action QuitRequested;
 
@@ -87,7 +89,11 @@ namespace Spotlight
         Label _detailLeftTitle, _detailLeftBody, _detailRightTitle, _detailRightBody;
         /// <summary>手牌同一行两侧的计数区与墓地 / 抽牌堆数字。</summary>
         VisualElement _pileLeft, _pileRight;
-        Label _graveCount, _drawCount;
+        Label _graveCount;
+        /// <summary>抽牌堆按阶级实时剩余张数（高级 / 中级 / 初级）。</summary>
+        Label _drawAdvanced, _drawIntermediate, _drawBasic;
+        /// <summary>携带选择面板（开局前与菜单里共用）。</summary>
+        DeckSelectionPanel _deckSelectionPanel;
         /// <summary>原有的日志面板与 Boss 状态面板（默认隐藏，只在菜单中显示）。</summary>
         VisualElement _logPanel, _sidePanel;
         /// <summary>胜负遮罩。</summary>
@@ -142,7 +148,11 @@ namespace Spotlight
             _pileLeft = _root.Q<VisualElement>("pile-left");
             _pileRight = _root.Q<VisualElement>("pile-right");
             _graveCount = _root.Q<Label>("grave-count");
-            _drawCount = _root.Q<Label>("draw-count");
+            _drawAdvanced = _root.Q<Label>("draw-count-advanced");
+            _drawIntermediate = _root.Q<Label>("draw-count-intermediate");
+            _drawBasic = _root.Q<Label>("draw-count-basic");
+            _deckSelectionPanel = new DeckSelectionPanel();
+            _deckSelectionPanel.Bind(_root);
             _logPanel = _root.Q<VisualElement>("log-panel");
             _sidePanel = _root.Q<VisualElement>("side-panel");
             _victoryOverlay = _root.Q<VisualElement>("victory-overlay");
@@ -157,6 +167,8 @@ namespace Spotlight
             if (_spawnerDeployButton != null) _spawnerDeployButton.clicked += () => SpawnerDeployRequested?.Invoke();
             if (_spawnerSkipButton != null) _spawnerSkipButton.clicked += () => SpawnerSkipRequested?.Invoke();
             if (_menuButton != null) _menuButton.clicked += () => MenuRequested?.Invoke();
+            var menuDeckSelect = _root.Q<Button>("menu-deck-select-button");
+            if (menuDeckSelect != null) menuDeckSelect.clicked += () => DeckSelectRequested?.Invoke();
             var menuResume = _root.Q<Button>("menu-resume-button");
             if (menuResume != null) menuResume.clicked += () => MenuResumeRequested?.Invoke();
             var menuRestart = _root.Q<Button>("menu-restart-button");
@@ -224,7 +236,7 @@ namespace Spotlight
             }
             FillDetailFaces(selection, snapshot, configuration);
             if (_graveCount != null) _graveCount.text = snapshot.Graveyard.Count.ToString();
-            if (_drawCount != null) _drawCount.text = snapshot.DrawPile.Count.ToString();
+            RenderDrawPileByTier(snapshot, configuration);
             AppendLog(snapshot.Log);
             if (_victoryOverlay != null)
             {
@@ -327,6 +339,40 @@ namespace Spotlight
             _lastRenderedEvent = last;
             if (_logScroll != null) _logScroll.scrollOffset = new Vector2(0f, float.MaxValue);
         }
+
+        /// <summary>
+        /// 按阶级统计抽牌堆剩余张数并刷新三行文本。
+        /// 输入：当前快照与配置；输出：无。
+        /// 为什么按快照统计而不是读配置：Q23 要求显示“实时剩余”，
+        /// 开局时正好等于选卡生成的构成，抽牌后递减，墓地洗回后回涨。
+        /// 卡种未注册（配置被改坏）时该张卡不计入任何阶级，避免显示错误的阶级数字。
+        /// </summary>
+        void RenderDrawPileByTier(GameSnapshot snapshot, GameConfiguration configuration)
+        {
+            var basic = 0;
+            var intermediate = 0;
+            var advanced = 0;
+            if (configuration != null)
+            {
+                foreach (var card in snapshot.DrawPile)
+                {
+                    var archetype = configuration.FindCard(card.TypeId);
+                    if (archetype == null) continue;
+                    switch (archetype.Tier)
+                    {
+                        case CardTier.Basic: basic++; break;
+                        case CardTier.Intermediate: intermediate++; break;
+                        case CardTier.Advanced: advanced++; break;
+                    }
+                }
+            }
+            if (_drawAdvanced != null) _drawAdvanced.text = $"高级 {advanced}";
+            if (_drawIntermediate != null) _drawIntermediate.text = $"中级 {intermediate}";
+            if (_drawBasic != null) _drawBasic.text = $"初级 {basic}";
+        }
+
+        /// <summary>携带选择面板（供 GameBootstrap 打开、订阅确认/取消事件）。</summary>
+        public DeckSelectionPanel DeckSelectionPanel => _deckSelectionPanel;
 
         /// <summary>
         /// 切换“战斗界面”与“原有面板”两套视图。

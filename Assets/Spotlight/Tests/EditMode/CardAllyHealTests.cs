@@ -8,16 +8,26 @@ namespace Spotlight.Tests
     /// <summary>覆盖治疗结算、上限限流、高亮集合、家不可治疗与配置校验。</summary>
     public class CardAllyHealTests
     {
-        /// <summary>在标准夹具上追加一个卡种并加入卡组。</summary>
-        static ConfigDocument With(ConfigDocument document, CardRow card, int count = 4)
+        /// <summary>
+        /// 在标准夹具上追加一个卡种（只改 Cards 表）。
+        /// 输入：待改文档与卡行；输出：同一个文档（便于链式调整 Rules）。
+        /// 为什么不再在这里登记张数：Deck 表已废除，追加的卡种通过 Start 的 DeckEntry 参数进入抽牌堆。
+        /// </summary>
+        static ConfigDocument With(ConfigDocument document, CardRow card)
         {
             document.cards = document.cards.Concat(new[] { card }).ToArray();
-            document.deck = document.deck.Concat(new[] { new DeckRow { cardType = card.id, count = count } }).ToArray();
             return document;
         }
 
-        /// <summary>用固定种子创建对局，保证抽牌顺序可复现。</summary>
-        static GameSession Start(ConfigDocument document) => new GameSession(new GameConfiguration(document), new SeededRandom(42), 100);
+        /// <summary>
+        /// 用固定种子创建对局，并把本用例追加的卡种写进抽牌堆。
+        /// 输入：文档与追加的抽牌堆条目；输出：可执行公开命令的对局。
+        /// 为什么需要：抽牌堆已不能写在文档里，必须在建局时用 WithDeck 显式覆盖；
+        /// 默认牌堆来自 GameSessionTests.DefaultDeck()（与原 4/4/4/4 夹具一致）。
+        /// </summary>
+        static GameSession Start(ConfigDocument document, params DeckEntry[] extra) => new GameSession(
+            new GameConfiguration(document).WithDeck(GameSessionTests.DefaultDeck().Concat(extra), false),
+            new SeededRandom(42), 100);
 
         /// <summary>部署指定卡种并断言成功。</summary>
         static UnitState Deploy(GameSession game, string typeId, int row, int column)
@@ -48,7 +58,7 @@ namespace Spotlight.Tests
         [Test]
         public void AllyAttackHealsInsteadOfDamaging()
         {
-            var game = Start(WideHomeDocument(Flounder()));
+            var game = Start(WideHomeDocument(Flounder()), new DeckEntry("flounder", 4));
             var flounder = Deploy(game, "flounder", 0, 3);
             var miner = Deploy(game, "miner", 0, 4);
             var fullHp = miner.MaxHp;
@@ -74,7 +84,7 @@ namespace Spotlight.Tests
         [Test]
         public void HealIsCappedByMaxHp()
         {
-            var game = Start(WideHomeDocument(Flounder()));
+            var game = Start(WideHomeDocument(Flounder()), new DeckEntry("flounder", 4));
             var flounder = Deploy(game, "flounder", 0, 3);
             var miner = Deploy(game, "miner", 0, 4);
 
@@ -87,7 +97,7 @@ namespace Spotlight.Tests
         [Test]
         public void HealTargetsAreListedSeparatelyForHighlighting()
         {
-            var game = Start(WideHomeDocument(Flounder()));
+            var game = Start(WideHomeDocument(Flounder()), new DeckEntry("flounder", 4));
             var flounder = Deploy(game, "flounder", 0, 3);
             var miner = Deploy(game, "miner", 0, 4);
             var soldier = Deploy(game, "soldier", 1, 3);

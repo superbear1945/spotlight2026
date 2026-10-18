@@ -49,7 +49,10 @@
         </ui:VisualElement>
         <ui:VisualElement name="pile-right" picking-mode="Ignore" class="panel pile-panel pile-right">
             <ui:Label text="抽牌堆" class="pile-title" />
-            <ui:Label name="draw-count" text="0" class="pile-count" />
+            <!-- 抽牌堆按阶级实时显示剩余张数：开局即为抽牌堆构成，抽牌与洗回后自动跟随。 -->
+            <ui:Label name="draw-count-advanced" text="高级 0" class="pile-tier-count" />
+            <ui:Label name="draw-count-intermediate" text="中级 0" class="pile-tier-count" />
+            <ui:Label name="draw-count-basic" text="初级 0" class="pile-tier-count" />
             <ui:Button name="end-turn-button" text="结束回合" class="action-button" />
         </ui:VisualElement>
         <!-- 齿轮菜单：正中间放「继续」「重开」与「退出游戏」（退出会直接结束本次运行，不再返回对局）；
@@ -58,6 +61,7 @@
             <ui:VisualElement picking-mode="Ignore" class="overlay-card">
                 <ui:Label text="菜单" class="victory-label" />
                 <ui:Button name="menu-resume-button" text="继续" class="action-button" />
+                <ui:Button name="menu-deck-select-button" text="选卡" class="action-button" />
                 <ui:Button name="menu-restart-button" text="重开" class="action-button" />
                 <ui:Button name="menu-quit-button" text="退出游戏" class="action-button menu-quit-button" />
                 <ui:Button name="debug-button" text="配置/调试" class="action-button menu-debug-button" />
@@ -68,6 +72,41 @@
             <ui:VisualElement picking-mode="Ignore" class="overlay-card">
                 <ui:Label name="victory-label" picking-mode="Ignore" class="victory-label" />
                 <ui:Button name="victory-restart-button" text="再来一局" class="action-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <!-- 选卡入口的二次确认：中途换卡会重开对局，必须先说清代价。 -->
+        <ui:VisualElement name="deck-select-confirm-overlay" class="overlay menu-overlay">
+            <ui:VisualElement picking-mode="Ignore" class="overlay-card">
+                <ui:Label text="进入选卡？" class="victory-label" />
+                <ui:Label text="确认后当前对局将重开，进度不会保留。" class="info-label" />
+                <ui:Button name="deck-select-confirm-yes" text="进入选卡" class="action-button" />
+                <ui:Button name="deck-select-confirm-no" text="继续当前对局" class="action-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <!-- 携带选择面板：开局前必经；齿轮菜单里的“选卡”复用同一面板。 -->
+        <ui:VisualElement name="deck-select-mask" class="cfg-mask deck-select-mask">
+            <ui:VisualElement class="cfg-panel deck-select-panel">
+                <ui:VisualElement class="cfg-head">
+                    <ui:VisualElement class="cfg-head-top">
+                        <ui:Label name="deck-select-title" text="携带选择" class="cfg-title" />
+                        <ui:VisualElement class="cfg-head-actions">
+                            <ui:Button name="deck-select-default-button" text="恢复默认" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    <ui:Label name="deck-select-error" class="cfg-error" />
+                </ui:VisualElement>
+                <ui:VisualElement class="cfg-body">
+                    <ui:ScrollView name="deck-select-scroll" mode="Vertical" class="cfg-scroll">
+                        <ui:Label name="deck-select-hint" class="cfg-note" />
+                        <ui:VisualElement name="deck-select-tiers" />
+                        <ui:VisualElement name="deck-select-cards" />
+                    </ui:ScrollView>
+                </ui:VisualElement>
+                <ui:VisualElement class="deck-select-foot">
+                    <ui:Label name="deck-select-preview" class="deck-select-preview" />
+                    <ui:Button name="deck-select-cancel-button" text="取消" class="action-button" />
+                    <ui:Button name="deck-select-apply-button" text="确认并开局" class="action-button primary" />
+                </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement name="modal-overlay" class="overlay modal-overlay" />

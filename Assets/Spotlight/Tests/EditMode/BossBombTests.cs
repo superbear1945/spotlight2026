@@ -22,8 +22,13 @@ namespace Spotlight.Tests
             return d;
         }
 
-        /// <summary>建立真实对局。输入：配置与固定随机种子；输出：可执行公开命令的规则内核。</summary>
-        static GameSession Start(ConfigDocument d, int seed = 17) => new GameSession(new GameConfiguration(d), new SeededRandom(seed), 1000);
+        /// <summary>
+        /// 建立真实对局。输入：配置与固定随机种子；输出：可执行公开命令的规则内核。
+        /// 抽牌堆固定使用 <see cref="GameSessionTests.DefaultDeck"/>（16 张），
+        /// 因为本文件的用例断言“手牌 + 抽牌堆 + 墓地”总数不变，需要与迁移前完全一致的牌堆张数。
+        /// </summary>
+        static GameSession Start(ConfigDocument d, int seed = 17) =>
+            new GameSession(new GameConfiguration(d).WithDeck(GameSessionTests.DefaultDeck(), false), new SeededRandom(seed), 1000);
 
         /// <summary>执行并断言成功。输入：对局、命令；输出：有序事件结果，失败时显示规则错误。</summary>
         static CommandResult Do(GameSession g, GameCommand command)
@@ -94,9 +99,12 @@ namespace Spotlight.Tests
             Assert.That(g.GetSnapshot().Units.Any(u => u.Id == center), Is.False);
             Assert.That(g.GetSnapshot().Units.Single(u => u.Id == up).Hp, Is.EqualTo(1));
             Assert.That(old.Units.Single(u => u.Id == center).Hp, Is.EqualTo(2));
-            Assert.That(g.GetSnapshot().Hand.Count + g.GetSnapshot().DrawPile.Count + g.GetSnapshot().Graveyard.Count, Is.EqualTo(16));
+            // 卡片守恒：手牌 + 抽牌堆 + 墓地始终等于配置的抽牌堆张数（Deck 表废除后由 drawPileSize 决定）。
+            var pileSize = g.Configuration.Deck.Sum(e => e.Count);
+            Assert.That(pileSize, Is.EqualTo(g.Configuration.DeckConfig.DrawPileSize));
+            Assert.That(g.GetSnapshot().Hand.Count + g.GetSnapshot().DrawPile.Count + g.GetSnapshot().Graveyard.Count, Is.EqualTo(pileSize));
             var cards = g.GetSnapshot().Hand.Concat(g.GetSnapshot().DrawPile).Concat(g.GetSnapshot().Graveyard).ToArray();
-            Assert.That(cards.Select(c => c.Id).Distinct().Count(), Is.EqualTo(16));
+            Assert.That(cards.Select(c => c.Id).Distinct().Count(), Is.EqualTo(pileSize));
         }
 
         /// <summary>同距离按屏幕上右下左共享预算，镜像后仍保持相同视觉优先级。</summary>

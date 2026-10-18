@@ -240,20 +240,6 @@ namespace Spotlight
     }
 
     /// <summary>
-    /// Deck 表的一行：一种卡及其初始数量。
-    /// 输入：Excel 单元格；输出：GameConfiguration.Deck 中的一条 DeckEntry。
-    /// 为什么允许 count 为 0：配置面板支持“新增卡种但暂不上场”，数量 0 表示只注册不打牌。
-    /// </summary>
-    [Serializable]
-    public sealed class DeckRow
-    {
-        /// <summary>引用的卡种 ID，必须在 Cards 表中存在。</summary>
-        public string cardType;
-        /// <summary>初始张数，非负整数。</summary>
-        public int count;
-    }
-
-    /// <summary>
     /// Rules 表的唯一一行：棋盘尺寸、回合节奏与全局规则开关。
     /// 已确认不实现反击与斜移，因此本类没有对应字段，旧 JSON 中的这些字段会被导入器移除。
     /// </summary>
@@ -312,6 +298,20 @@ namespace Spotlight
         public string bossSpawnerCardType;
         /// <summary>刷怪卡每回合生成的已有攻击类卡种 ID，不占固定兵位。</summary>
         public string bossSpawnerSpawnCardType;
+        /// <summary>抽牌堆总张数（正整数，至少 3）。开局按此数量生成卡牌记录，不再由 Deck 表逐卡种配置。</summary>
+        public int drawPileSize;
+        /// <summary>初级卡在抽牌堆中的占比（百分比整数，至少 1）。</summary>
+        public int tierRatioBasic;
+        /// <summary>中级卡在抽牌堆中的占比（百分比整数，至少 1）。</summary>
+        public int tierRatioIntermediate;
+        /// <summary>高级卡在抽牌堆中的占比（百分比整数，至少 1）。</summary>
+        public int tierRatioAdvanced;
+        /// <summary>玩家每局最多携带的初级卡种数量（至少 1）。</summary>
+        public int maxTypesBasic;
+        /// <summary>玩家每局最多携带的中级卡种数量（至少 1）。</summary>
+        public int maxTypesIntermediate;
+        /// <summary>玩家每局最多携带的高级卡种数量（至少 1）。</summary>
+        public int maxTypesAdvanced;
     }
 
     /// <summary>
@@ -395,12 +395,10 @@ namespace Spotlight
     [Serializable]
     public sealed class ConfigDocument
     {
-        /// <summary>文档版本；当前只接受 1，用于拒绝无法识别的旧结构。</summary>
-        public int schemaVersion = 1;
+        /// <summary>文档版本；当前只接受 2（去掉 Deck 表、Rules 增加抽牌堆与阶级比例），用于拒绝无法识别的旧结构。</summary>
+        public int schemaVersion = 2;
         /// <summary>Cards 表行集合。</summary>
         public CardRow[] cards;
-        /// <summary>Deck 表行集合。</summary>
-        public DeckRow[] deck;
         /// <summary>Rules 表行集合，必须恰好一行。</summary>
         public RulesRow[] rules;
         /// <summary>Homes 表行集合，必须恰好两行（player 与 boss）。</summary>
@@ -801,9 +799,13 @@ namespace Spotlight
     {
         /// <summary>本局规则。</summary>
         public MatchConfig Rules { get; }
+        /// <summary>抽牌堆构成规则：张数、三阶级比例与三阶级携带上限。</summary>
+        public DeckConfig DeckConfig { get; }
         /// <summary>卡种索引，键为稳定 ID。</summary>
         public IReadOnlyDictionary<string, CardArchetype> Cards { get; }
-        /// <summary>玩家初始卡组清单（含数量）。</summary>
+        /// <summary>按 Cards 表顺序排列的卡种清单；选卡界面与“余数发给靠前卡种”均以此顺序为准。</summary>
+        public IReadOnlyList<CardArchetype> CardOrder { get; }
+        /// <summary>本局玩家抽牌堆清单（含数量）；由选卡结果与阶级比例生成，不再来自 Excel 逐卡种配置。</summary>
         public IReadOnlyList<DeckEntry> Deck { get; }
         /// <summary>AI 兵位定义。</summary>
         public IReadOnlyList<SpawnSlot> BossSlots { get; }
@@ -820,15 +822,22 @@ namespace Spotlight
         /// 文档路径构造：先验证完整 ConfigDocument，再建立只读索引。
         /// 输入：d 为 Excel 编译或调试 JSON 得到的文档；cards 为可选的外部卡种实现（如 SO）。
         /// 输出：可用于创建对局的配置；任何关联错误都会在创建对局前抛出，避免半成品对局。
+        /// 抽牌堆说明：文档不再包含 Deck 表，这里用“默认选卡”（每阶级按上限取满）+ 阶级比例生成一份抽牌堆，
+        /// 真正的玩家选卡结果由 DeckSelectionState 在开局时另行覆盖。
         /// </summary>
         public GameConfiguration(ConfigDocument d, IEnumerable<CardArchetype> cards = null)
         {
             var errors = ConfigValidation.Validate(d);
             if (errors.Count != 0) throw new ArgumentException(string.Join("\n", errors));
             Rules = new MatchConfig(d.rules[0]);
+            DeckConfig = new DeckConfig(d.rules[0]);
+            var ordered = (cards ?? d.cards.Select(CardArchetype.FromRow)).ToArray();
+            CardOrder = Array.AsReadOnly(ordered);
             Cards = new System.Collections.ObjectModel.ReadOnlyDictionary<string, CardArchetype>(
-                (cards ?? d.cards.Select(CardArchetype.FromRow)).ToDictionary(c => c.Id));
-            Deck = Array.AsReadOnly(d.deck.Select(e => new DeckEntry(e.cardType, e.count)).ToArray());
+                ordered.ToDictionary(c => c.Id));
+            if (!DeckComposition.TryBuildDefault(DeckConfig, ordered, out var defaultDeck, out var deckError))
+                throw new ArgumentException(deckError);
+            Deck = defaultDeck;
             BossSlots = Array.AsReadOnly(d.bossSlots.Select(s => new SpawnSlot(s.id, s.rowFraction, s.edgeOffset)).ToArray());
             PlayerHomeHp = d.homes.Single(h => h.owner == "player").hp;
             BossHomeHp = d.homes.Single(h => h.owner == "boss").hp;
@@ -838,20 +847,25 @@ namespace Spotlight
 
         /// <summary>
         /// 直接组装路径：正式运行包从只读 SO 组装，不经过 ConfigDocument 中间态，避免运行时反序列化开销。
-        /// 输入：已经由编辑器编译器校验过的规则、卡种、卡组、兵位与家数值。
+        /// 输入：已经由编辑器编译器校验过的规则、抽牌堆规则、卡种、抽牌堆、兵位与家数值。
         /// 输出：可用于创建对局的配置；这里仍做一次防御性组合校验，防止生成资产被手工篡改。
         /// </summary>
         public GameConfiguration(MatchConfig rules, IEnumerable<CardArchetype> cards, IEnumerable<DeckEntry> deck,
-            IEnumerable<SpawnSlot> bossSlots, int playerHomeHp, int bossHomeHp, int playerHomeProduce, PresentationConfig presentation)
+            IEnumerable<SpawnSlot> bossSlots, int playerHomeHp, int bossHomeHp, int playerHomeProduce, PresentationConfig presentation,
+            DeckConfig deckConfig, bool requireDrawPileSize = true)
         {
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
             if (cards == null) throw new ArgumentNullException(nameof(cards));
             if (deck == null) throw new ArgumentNullException(nameof(deck));
             if (bossSlots == null) throw new ArgumentNullException(nameof(bossSlots));
-            var errors = ValidateComposition(rules, cards, deck, bossSlots, playerHomeHp, bossHomeHp, playerHomeProduce);
+            if (deckConfig == null) throw new ArgumentNullException(nameof(deckConfig));
+            var errors = ValidateComposition(rules, deckConfig, cards, deck, bossSlots, playerHomeHp, bossHomeHp, playerHomeProduce, requireDrawPileSize);
             if (errors.Count != 0) throw new ArgumentException(string.Join("\n", errors));
-            var map = cards.ToDictionary(c => c.Id);
+            var ordered = cards.ToArray();
+            var map = ordered.ToDictionary(c => c.Id);
+            CardOrder = Array.AsReadOnly(ordered);
             Cards = new System.Collections.ObjectModel.ReadOnlyDictionary<string, CardArchetype>(map);
+            DeckConfig = deckConfig;
             Deck = Array.AsReadOnly(deck.ToArray());
             BossSlots = Array.AsReadOnly(bossSlots.ToArray());
             PlayerHomeHp = playerHomeHp;
@@ -861,12 +875,32 @@ namespace Spotlight
         }
 
         /// <summary>
+        /// 按卡种 ID 查卡种。输入：稳定 ID；输出：卡种，未注册时为 null。
+        /// 用途：选卡与抽牌堆生成需要按 ID 校验与定位，避免界面层重复维护映射。
+        /// </summary>
+        public CardArchetype FindCard(string typeId)
+        {
+            if (string.IsNullOrEmpty(typeId)) return null;
+            return Cards.TryGetValue(typeId, out var card) ? card : null;
+        }
+
+        /// <summary>
+        /// 复制一份只换抽牌堆的配置。
+        /// 输入：新的 DeckEntry 清单与是否要求“总张数等于 drawPileSize”；
+        /// 输出：除 Deck 外完全相同的配置。
+        /// 为什么需要：玩家选卡与调试强制牌堆都只改变抽牌堆，不应重新解析文档或重建卡种。
+        /// 调试强制牌堆传 requireDrawPileSize=false，避免为了压测而被迫凑满配置张数。
+        /// </summary>
+        public GameConfiguration WithDeck(IEnumerable<DeckEntry> deck, bool requireDrawPileSize = true) =>
+            new GameConfiguration(Rules, CardOrder, deck, BossSlots, PlayerHomeHp, BossHomeHp, PlayerHomeProduce, Presentation, DeckConfig, requireDrawPileSize);
+
+        /// <summary>
         /// 组合路径的防御性校验。
         /// 输入：构造参数；输出：错误描述列表，为空表示组合合法。
         /// 为什么需要：SO 资产可能被手工改动，运行前必须用与文档路径一致的业务约束复核引用关系。
         /// </summary>
-        static List<string> ValidateComposition(MatchConfig rules, IEnumerable<CardArchetype> cards, IEnumerable<DeckEntry> deck,
-            IEnumerable<SpawnSlot> bossSlots, int playerHomeHp, int bossHomeHp, int playerHomeProduce)
+        static List<string> ValidateComposition(MatchConfig rules, DeckConfig deckConfig, IEnumerable<CardArchetype> cards, IEnumerable<DeckEntry> deck,
+            IEnumerable<SpawnSlot> bossSlots, int playerHomeHp, int bossHomeHp, int playerHomeProduce, bool requireDrawPileSize)
         {
             var errors = new List<string>();
             var list = cards.Where(c => c != null).ToArray();
@@ -892,6 +926,13 @@ namespace Spotlight
             if (deckList.Any(e => e == null || e.Count < 0 || !ids.Contains(e.TypeId))) errors.Add("卡组引用非法");
             if (deckList.Any(e => e != null && e.Count > 0 && list.Any(c => c.Id == e.TypeId && c.Tier == CardTier.None)))
                 errors.Add("Deck：tier=none（不适用）的卡种不能加入玩家卡组");
+            if (deckList.GroupBy(e => e == null ? string.Empty : e.TypeId, StringComparer.Ordinal).Any(g => g.Count() > 1))
+                errors.Add("卡组：同一卡种不得重复登记");
+            // 抽牌堆总张数必须等于配置值：它决定“每回合抽 5 张能撑几回合”，与比例一起构成可校验的不变量。
+            // 调试强制牌堆（requireDrawPileSize=false）是唯一豁免路径，仅存在于本次运行会话。
+            if (requireDrawPileSize && deckList.Sum(e => e == null ? 0 : e.Count) != deckConfig.DrawPileSize)
+                errors.Add($"卡组：总张数必须等于 drawPileSize（{deckConfig.DrawPileSize}）");
+            ConfigValidation.ValidateDeckRules(deckConfig, list, errors);
             var slotList = bossSlots.ToArray();
             if (slotList.Length != 3) errors.Add("必须恰好三个兵位");
             if (slotList.Any(s => s == null || string.IsNullOrWhiteSpace(s.Id) || s.RowFraction < 0 || s.RowFraction > 1) || slotList.Select(s => s.Id).Distinct().Count() != slotList.Length) errors.Add("兵位定义非法");
@@ -946,9 +987,8 @@ namespace Spotlight
         {
             var errors = new List<string>();
             if (d == null) { errors.Add("配置为空"); return errors; }
-            if (d.schemaVersion != 1) errors.Add("不支持的 schemaVersion");
+            if (d.schemaVersion != 2) errors.Add("不支持的 schemaVersion（当前为 2；Deck 表已废除，请重新编译配置）");
             if (d.cards == null || d.cards.Length == 0 || d.cards.Any(x => x == null)) errors.Add("Cards 必须有卡种且不能含空行对象");
-            if (d.deck == null || d.deck.Any(x => x == null)) errors.Add("Deck 表缺失或含空对象");
             if (d.rules == null || d.rules.Length != 1 || d.rules[0] == null) errors.Add("Rules 必须恰好一行");
             if (d.homes == null || d.homes.Length != 2 || d.homes.Any(x => x == null)) errors.Add("Homes 必须分别定义 player 与 boss");
             if (d.bossSlots == null || d.bossSlots.Length != 3 || d.bossSlots.Any(x => x == null)) errors.Add("BossSlots 必须恰好三个兵位");
@@ -1007,17 +1047,6 @@ namespace Spotlight
                 if (source == null || source.id == c.id || source.category != "resource") errors.Add($"Cards ({c.id}) upgradeFrom：必须引用其他资源卡");
             }
 
-            var deckIds = new HashSet<string>();
-            long total = 0;
-            foreach (var e in d.deck)
-            {
-                if (e.count < 0 || !ids.Contains(e.cardType) || !deckIds.Add(e.cardType)) errors.Add($"Deck ({e.cardType})：数量、卡种或重复条目非法");
-                if (e.count > 0 && d.cards.Any(c => c.id == e.cardType && c.tier == "none"))
-                    errors.Add($"Deck ({e.cardType})：tier=none（不适用）的卡种不能加入玩家卡组");
-                total += e.count;
-            }
-            if (total > int.MaxValue) errors.Add("Deck 总数量溢出");
-
             var r = d.rules[0];
             // 即时卡只在玩家手牌部署路径生效：Boss 兵位与刷怪卡若指向即时卡，会出现“创建后立刻移除”的异常补兵。
             var bossCardRow = d.cards.FirstOrDefault(x => x.id == r.bossCardType);
@@ -1033,6 +1062,9 @@ namespace Spotlight
             var boss = d.cards.FirstOrDefault(c => c.id == r.bossCardType);
             if (boss == null || (!r.playerControlsBoss && boss.category != "attack")) errors.Add("Rules bossCardType：AI 必须使用攻击卡，手动模式必须使用已注册卡种");
             ValidateBossSpawner(new MatchConfig(r), d.cards.Select(CardArchetype.FromRow), errors);
+            // 抽牌堆规则（张数 / 三阶级比例 / 三阶级携带上限）参与业务校验，
+            // 因此 Excel 编译、调试面板与运行前复核都使用同一套检查，不存在“只有表格入口能拦住”的情况。
+            ValidateDeckRules(new DeckConfig(r), d.cards.Select(CardArchetype.FromRow), errors);
 
             if (d.homes.Count(h => h.owner == "player") != 1 || d.homes.Count(h => h.owner == "boss") != 1 || d.homes.Any(h => h.hp < 1 || h.produce < 0 || (h.owner == "boss" && h.produce != 0))) errors.Add("Homes：阵营唯一、生命正数、产出非负且 Boss 产出为零");
             if (d.bossSlots.Select(s => s.id).Distinct().Count() != d.bossSlots.Length || d.bossSlots.Any(s => string.IsNullOrWhiteSpace(s.id) || double.IsNaN(s.rowFraction) || s.rowFraction < 0 || s.rowFraction > 1 || s.edgeOffset < 0 || s.edgeOffset >= r.homeRegionWidth)) errors.Add("BossSlots：ID、行比例或边缘偏移非法");
@@ -1064,6 +1096,48 @@ namespace Spotlight
             var fighter = cards.FirstOrDefault(c => c.Id == rules.BossSpawnerSpawnCardType);
             if (string.IsNullOrWhiteSpace(rules.BossSpawnerSpawnCardType) || fighter == null || fighter.Category != CardCategory.Attack || fighter.Combat == null || fighter.Combat.Hp < 1)
                 errors.Add("Rules bossSpawnerSpawnCardType：必须引用生命正数的已注册攻击类卡种");
+        }
+
+        /// <summary>
+        /// 共用抽牌堆规则校验。输入：抽牌堆规则与卡种清单；输出：追加全部可发现的问题。
+        /// 规则来源：抽牌堆张数至少 3；三阶级比例均至少 1 且和为 100；三阶级携带上限均至少 1；
+        /// 每个阶级至少有一张可携带卡种；按比例算出的张数不得少于“有效携带上限”，
+        /// 否则玩家勾满该阶级时会有卡种一张也抽不到（“每个选中的卡都能抽出来至少一次”的配置期保证）。
+        /// 有效携带上限 = min(配置上限, 该阶级卡种数)，因此卡池暂时不足时不必改上限。
+        /// </summary>
+        internal static void ValidateDeckRules(DeckConfig deck, IEnumerable<CardArchetype> cards, List<string> errors)
+        {
+            if (deck == null) { errors.Add("抽牌堆规则缺失"); return; }
+            if (deck.DrawPileSize < 3) errors.Add("Rules drawPileSize：抽牌堆张数必须至少为 3");
+            if (deck.RatioBasic < 1 || deck.RatioIntermediate < 1 || deck.RatioAdvanced < 1)
+                errors.Add("Rules tierRatioBasic/Intermediate/Advanced：三阶级比例都必须至少为 1（不支持 0%）");
+            else if (deck.RatioBasic + deck.RatioIntermediate + deck.RatioAdvanced != 100)
+                errors.Add("Rules tierRatioBasic/Intermediate/Advanced：三阶级比例之和必须为 100");
+            if (deck.MaxTypesBasic < 1 || deck.MaxTypesIntermediate < 1 || deck.MaxTypesAdvanced < 1)
+                errors.Add("Rules maxTypesBasic/Intermediate/Advanced：三阶级携带上限都必须至少为 1");
+
+            var list = (cards ?? Enumerable.Empty<CardArchetype>()).Where(c => c != null).ToArray();
+            var pool = new Dictionary<CardTier, int>
+            {
+                [CardTier.Basic] = list.Count(c => c.Tier == CardTier.Basic),
+                [CardTier.Intermediate] = list.Count(c => c.Tier == CardTier.Intermediate),
+                [CardTier.Advanced] = list.Count(c => c.Tier == CardTier.Advanced)
+            };
+            foreach (var tier in DeckComposition.PlayerTiers)
+            {
+                if (pool[tier] < 1)
+                {
+                    errors.Add($"Cards tier：{DeckComposition.TierLabel(tier)}没有任何可携带卡种，请至少配置一张{DeckComposition.TierLabel(tier)}卡");
+                    continue;
+                }
+                // 只有在张数与比例本身合法时才检查分配，避免一个笔误刷出一串衍生错误。
+                if (deck.DrawPileSize < 3 || deck.RatioBasic < 1 || deck.RatioIntermediate < 1 || deck.RatioAdvanced < 1
+                    || deck.RatioBasic + deck.RatioIntermediate + deck.RatioAdvanced != 100) continue;
+                var capacity = deck.EffectiveMaxTypes(tier, pool[tier]);
+                var allocated = DeckComposition.AllocateTierCounts(deck)[DeckComposition.TierIndex(tier)];
+                if (allocated < capacity)
+                    errors.Add($"Rules：按 drawPileSize 与阶级比例，{DeckComposition.TierLabel(tier)}只能分到 {allocated} 张，少于携带上限 {capacity} 种；请调整比例或上级上限");
+            }
         }
 
         /// <summary>判断浮点值是否为有限数；NaN/无穷会让动画参数比较失效，因此单独抽取。</summary>

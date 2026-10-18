@@ -256,21 +256,42 @@ namespace Spotlight
             _homeContainer.Add(section);
         }
 
-        /// <summary>构建“卡组”摘要分区。输入：草稿文档；输出：无。</summary>
+        /// <summary>
+        /// 构建“抽牌堆”分区：张数、三阶级比例、三阶级携带上限与调试用强制牌堆。
+        /// 输入：草稿文档；输出：无。
+        /// 为什么这里不再逐卡种设置数量：Deck 表已废除，抽牌堆由“张数 + 比例”推导，
+        /// 具体带哪些卡由玩家在开局选卡界面决定；逐卡种数量只作为调试压测手段保留。
+        /// </summary>
         void BuildDeck(ConfigDocument document)
         {
-            var section = new VisualElement();
-            section.AddToClassList("cfg-section");
-            var head = new VisualElement();
-            head.AddToClassList("cfg-section-head");
-            var title = new Label("卡组");
-            title.AddToClassList("cfg-section-title");
-            head.Add(title);
-            section.Add(head);
+            var rules = document.rules[0];
+            var section = ConfigFieldBuilder.Section("抽牌堆（选卡与阶级比例）", out var content, ConfigFieldBuilder.Grid(
+                ConfigFieldBuilder.Number("抽牌堆张数（默认 24，至少 3）", () => rules.drawPileSize, value => { rules.drawPileSize = value; Changed(); }, 3),
+                ConfigFieldBuilder.Number("初级比例 %（默认 70）", () => rules.tierRatioBasic, value => { rules.tierRatioBasic = value; Changed(); }, 1, 100),
+                ConfigFieldBuilder.Number("中级比例 %（默认 20）", () => rules.tierRatioIntermediate, value => { rules.tierRatioIntermediate = value; Changed(); }, 1, 100),
+                ConfigFieldBuilder.Number("高级比例 %（默认 10）", () => rules.tierRatioAdvanced, value => { rules.tierRatioAdvanced = value; Changed(); }, 1, 100),
+                ConfigFieldBuilder.Number("初级携带上限（种）", () => rules.maxTypesBasic, value => { rules.maxTypesBasic = value; Changed(); }, 1),
+                ConfigFieldBuilder.Number("中级携带上限（种）", () => rules.maxTypesIntermediate, value => { rules.maxTypesIntermediate = value; Changed(); }, 1),
+                ConfigFieldBuilder.Number("高级携带上限（种）", () => rules.maxTypesAdvanced, value => { rules.maxTypesAdvanced = value; Changed(); }, 1)));
             _deckSummary = new Label();
             _deckSummary.AddToClassList("cfg-deck-summary");
-            section.Add(_deckSummary);
-            section.Add(ConfigFieldBuilder.Note("在下方逐种设置卡组数量，0 表示不加入卡组。新增卡默认 0 张。"));
+            content.Add(_deckSummary);
+            content.Add(ConfigFieldBuilder.Note("三阶级比例之和必须为 100，且每阶级至少 1%；抽牌堆张数至少 3。开局时按比例算张数（向下取整，缺额全部给初级，每阶级至少 1 张），再把张数均分给玩家选中的卡种。携带上限的实际值 = min(本值, 该阶级卡种数)。"));
+
+            content.Add(ConfigFieldBuilder.Note("调试用强制牌堆：任一卡种填大于 0 的张数即整体覆盖抽牌堆（与选卡结果无关），仅在本次运行会话生效，不写入任何资产；全部为 0 表示按选卡结果生成。"));
+            var forcedGrid = new VisualElement();
+            forcedGrid.AddToClassList("cfg-grid");
+            foreach (var card in document.cards)
+            {
+                if (card == null) continue;
+                var id = card.id;
+                var label = string.IsNullOrWhiteSpace(card.name) ? id : card.name.Trim();
+                forcedGrid.Add(ConfigFieldBuilder.Number($"{label}（强制）", () => _draft.GetForcedDeckCount(id), value => { _draft.SetForcedDeckCount(id, value); Changed(); }, 0, 999));
+            }
+            content.Add(forcedGrid);
+            var clearForced = new Button(() => { _draft.ClearForcedDeck(); Rebuild(); }) { text = "清空强制牌堆" };
+            clearForced.AddToClassList("cfg-add-button");
+            content.Add(clearForced);
             _deckContainer.Add(section);
         }
 
@@ -306,7 +327,7 @@ namespace Spotlight
         /// <summary>
         /// 构建单个卡种编辑框。
         /// 输入：卡行；输出：卡种编辑框元素。
-        /// 字段顺序与网页版一致：名字、卡组数量、（资源卡）产出、维持费、生命、攻击、射程、移动，
+        /// 字段顺序与网页版一致：名字、卡牌阶级、（资源卡）产出、维持费、生命、攻击、射程、移动，
         /// 之后按分类追加覆盖升级或四邻部署扩展等专属开关。
         /// </summary>
         VisualElement BuildCardBox(CardRow card)
@@ -325,7 +346,6 @@ namespace Spotlight
                     title.text = string.IsNullOrWhiteSpace(value) ? "未命名卡牌" : value.Trim();
                     Changed();
                 }),
-                ConfigFieldBuilder.Number("卡组数量", () => _draft.GetDeckCount(card.id), value => { _draft.SetDeckCountValue(card.id, value); Changed(); }, 0, 999),
                 ConfigFieldBuilder.Choice("卡牌阶级", TierOptions(card.tier), () => card.tier, value => { card.tier = value; Changed(); })
             };
             if (card.category == "resource")
@@ -603,13 +623,12 @@ namespace Spotlight
         void RefreshSummaryAndValidation()
         {
             if (_draft == null) return;
-            var summary = _draft.GetDeckSummary();
-            var tiers = _draft.GetDeckTierSummary();
+            var pile = _draft.GetDrawPileSummary();
             if (_deckSummary != null)
             {
-                _deckSummary.text = $"共 {summary.Total} 张 → 资源卡 {summary.Resource} 张 / 战斗卡 {summary.Combat} 张 / 特殊卡 {summary.Special} 张"
-                    + $"\n初级 {tiers.Basic} 张 / 中级 {tiers.Intermediate} 张 / 高级 {tiers.Advanced} 张";
-                if (tiers.Unclassified > 0) _deckSummary.text += $" / 阶级待修正 {tiers.Unclassified} 张";
+                _deckSummary.text = _draft.HasForcedDeck
+                    ? $"强制牌堆 {pile.Total} 张 → 初级 {pile.Basic} 张 / 中级 {pile.Intermediate} 张 / 高级 {pile.Advanced} 张（仅本次运行会话）"
+                    : $"抽牌堆 {pile.Total} 张 → 初级 {pile.Basic} 张 / 中级 {pile.Intermediate} 张 / 高级 {pile.Advanced} 张（按比例推导，实际卡种由玩家开局时选择）";
             }
             var errors = _draft.Validate();
             if (_errorLabel != null)

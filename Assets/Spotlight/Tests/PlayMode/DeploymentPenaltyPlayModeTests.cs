@@ -36,6 +36,22 @@ namespace Spotlight.Tests
         GameConfiguration _configuration;
 
         /// <summary>
+        /// 让本类用例加载场景后直接进入对局（跳过“携带选择”面板）。
+        /// 输入：无；输出：无。
+        /// 为什么需要：正式启动流程会先弹出携带选择模态面板并挡住棋盘与手牌，
+        /// 而本类只验证减攻数值、卡面文本与点击穿透；选卡流程本身由 DeckSelectionPlayModeTests 覆盖。
+        /// </summary>
+        [OneTimeSetUp]
+        public void SuppressDeckSelectionOnStart() => GameBootstrap.SuppressDeckSelectionOnStart = true;
+
+        /// <summary>
+        /// 恢复正式启动行为。输入：无；输出：无。
+        /// 为什么需要：PlayMode 用例在同一进程里顺序执行，静态开关必须还原，否则会让后面的用例看不到选卡界面。
+        /// </summary>
+        [OneTimeTearDown]
+        public void RestoreDeckSelectionOnStart() => GameBootstrap.SuppressDeckSelectionOnStart = false;
+
+        /// <summary>
         /// 加载真实场景并替换为测试配置。
         /// 输入：目标卡（尖刀1）的攻击力与阶级，用于验证减攻与独立阶级展示；输出：准备好的视图与可交互会话。
         /// 配置要点：homeRegionWidth 设为整块棋盘，攻击卡可部署在任意空格，避免测试被部署区域限制干扰。
@@ -53,11 +69,17 @@ namespace Spotlight.Tests
             r.homeRegionWidth = 10; r.playerPlays = 100; r.bossPlays = 100;
             r.drawCount = 60; r.handLimit = 100; r.bossBombInterval = 1000; r.summoningSickness = true;
             r.bossSpawnerAttackThreshold = 1000;
+            // 抽牌堆构成规则显式写进夹具：Deck 表已废除，抽牌堆由 WithDeck 给定，
+            // 但配置校验仍要求“每阶级至少一种卡”与三比例合法；
+            // 本用例会把 blade1 改成高级卡，比例与上限必须容得下两个高级卡种。
+            r.drawPileSize = 24; r.tierRatioBasic = 70; r.tierRatioIntermediate = 20; r.tierRatioAdvanced = 10;
+            r.maxTypesBasic = 5; r.maxTypesIntermediate = 3; r.maxTypesAdvanced = 2;
             d.cards.Single(c => c.id == "blade1").atk = targetAttack;
             d.cards.Single(c => c.id == "blade1").tier = targetTier;
-            d.deck = new[] { new DeckRow { cardType = "kyoto_01", count = 30 }, new DeckRow { cardType = "blade1", count = 30 } };
             d.presentation[0].moveSeconds = 0.02f; d.presentation[0].feedbackSeconds = 0.02f;
-            _configuration = new GameConfiguration(d);
+            // 第二个参数 false：60 张的夹具牌堆不等于 drawPileSize（24），走测试夹具专供的豁免路径。
+            _configuration = new GameConfiguration(d).WithDeck(
+                new[] { new DeckEntry("kyoto_01", 30), new DeckEntry("blade1", 30) }, false);
             _bootstrap.RestartWith(_configuration);
             yield return null;
             Assert.That(_bootstrap.Session, Is.Not.Null, "对局未启动（配置门禁或配置资产缺失）");

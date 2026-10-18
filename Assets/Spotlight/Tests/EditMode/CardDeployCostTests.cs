@@ -11,19 +11,26 @@ namespace Spotlight.Tests
     public class CardDeployCostTests
     {
         /// <summary>
-        /// 在标准夹具上追加一个卡种并加入卡组。
-        /// 输入：待改文档、卡行与初始张数；输出：同一个文档（便于链式调整 Rules）。
+        /// 在标准夹具上追加一个卡种（只改 Cards 表）。
+        /// 输入：待改文档与卡行；输出：同一个文档（便于链式调整 Rules）。
         /// 为什么复用 GameSessionTests.Document()：确保新用例与既有回归共用同一套规则基线。
+        /// 为什么不再在这里登记张数：Deck 表已废除，追加的卡种通过 Start 的 DeckEntry 参数进入抽牌堆。
         /// </summary>
-        static ConfigDocument With(ConfigDocument document, CardRow card, int count = 4)
+        static ConfigDocument With(ConfigDocument document, CardRow card)
         {
             document.cards = document.cards.Concat(new[] { card }).ToArray();
-            document.deck = document.deck.Concat(new[] { new DeckRow { cardType = card.id, count = count } }).ToArray();
             return document;
         }
 
-        /// <summary>用固定种子创建对局，保证抽牌顺序可复现。</summary>
-        static GameSession Start(ConfigDocument document) => new GameSession(new GameConfiguration(document), new SeededRandom(42), 100);
+        /// <summary>
+        /// 用固定种子创建对局，并把本用例追加的卡种写进抽牌堆。
+        /// 输入：文档与追加的抽牌堆条目；输出：可执行公开命令的对局。
+        /// 为什么需要：抽牌堆已不能写在文档里，必须在建局时用 WithDeck 显式覆盖；
+        /// 默认牌堆来自 GameSessionTests.DefaultDeck()（与原 4/4/4/4 夹具一致）。
+        /// </summary>
+        static GameSession Start(ConfigDocument document, params DeckEntry[] extra) => new GameSession(
+            new GameConfiguration(document).WithDeck(GameSessionTests.DefaultDeck().Concat(extra), false),
+            new SeededRandom(42), 100);
 
         /// <summary>部署指定卡种到指定格并断言成功，返回新单位。</summary>
         static UnitState Deploy(GameSession game, string typeId, int row, int column)
@@ -54,7 +61,7 @@ namespace Spotlight.Tests
             // 首回合资源 = initialResources + 玩家家产出 2，因此先记录快照再比较差额。
             var document = With(GameSessionTests.Document(), Costly(5));
             document.rules[0].initialResources = 10;
-            var game = Start(document);
+            var game = Start(document, new DeckEntry("costly", 4));
             var before = game.GetSnapshot().Resources;
 
             Deploy(game, "costly", 0, 0);
@@ -67,7 +74,7 @@ namespace Spotlight.Tests
         {
             // 默认夹具初始资源 0、家产出 2，凑不出 50：失败必须完全原子，不扣资源、不移出手牌、不产生单位。
             var document = With(GameSessionTests.Document(), Costly(50));
-            var game = Start(document);
+            var game = Start(document, new DeckEntry("costly", 4));
             var before = game.GetSnapshot();
             var card = before.Hand.First(c => c.TypeId == "costly");
 
@@ -86,7 +93,7 @@ namespace Spotlight.Tests
         {
             // 资源不足时规则层不下发任何部署目标（高亮为空），但同一局里放得起的卡不受影响。
             var document = With(GameSessionTests.Document(), Costly(50));
-            var game = Start(document);
+            var game = Start(document, new DeckEntry("costly", 4));
             var expensive = game.GetSnapshot().Hand.First(c => c.TypeId == "costly");
             var cheap = game.GetSnapshot().Hand.First(c => c.TypeId == "miner");
 
@@ -119,7 +126,7 @@ namespace Spotlight.Tests
         {
             // (0,1) 的四邻中只有一个资源卡单位，少于配置的 2 个：拒绝部署并说明当前数量。
             var document = With(GameSessionTests.Document(), Kepler(2));
-            var game = Start(document);
+            var game = Start(document, new DeckEntry("kepler", 4));
             Deploy(game, "miner", 0, 0);
             var card = game.GetSnapshot().Hand.First(c => c.TypeId == "kepler");
 
@@ -134,7 +141,7 @@ namespace Spotlight.Tests
         {
             // (0,0) 与 (0,2) 各一个资源卡单位，正好构成 (0,1) 的两个四邻。
             var document = With(GameSessionTests.Document(), Kepler(2));
-            var game = Start(document);
+            var game = Start(document, new DeckEntry("kepler", 4));
             Deploy(game, "miner", 0, 0);
             Deploy(game, "miner", 0, 2);
 
@@ -148,7 +155,7 @@ namespace Spotlight.Tests
         {
             // (2,1) 只与玩家家 (2,0) 相邻：家不是单位，因此计数为 0，必须拒绝部署。
             var document = With(GameSessionTests.Document(), Kepler(1));
-            var game = Start(document);
+            var game = Start(document, new DeckEntry("kepler", 4));
             var card = game.GetSnapshot().Hand.First(c => c.TypeId == "kepler");
 
             var result = game.Execute(new GameCommand(CommandKind.Deploy, Side.Player, card.Id, new Cell(2, 1)));

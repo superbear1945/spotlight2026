@@ -64,29 +64,10 @@ namespace Spotlight.EditorTools
             "flounder1,比目鱼,attack,default,2,1,1,1,0,3,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,true,false,0,intermediate\n" +
             "reserve1,战时储备,special,default,1,0,0,0,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,true,3,intermediate";
 
-        /// <summary>Deck 表内容（首行为表头，其余为数据行，列以逗号分隔）。</summary>
-        private const string DeckSheetText =
-            "cardType,count\n" +
-            "ge1,4\n" +
-            "ge12,4\n" +
-            "kyoto_01,2\n" +
-            "blade1,4\n" +
-            "rabbit2,4\n" +
-            "odysseus1,4\n" +
-            "gate,4\n" +
-            "kepler1,1\n" +
-            "kepler2,1\n" +
-            "landing1,1\n" +
-            "houyi1,1\n" +
-            "collector1,1\n" +
-            "force1,1\n" +
-            "flounder1,1\n" +
-            "reserve1,1";
-
         /// <summary>Rules 表内容（首行为表头，第二行为唯一数据行，列以逗号分隔）。</summary>
         private const string RulesSheetText =
-            "rows,columns,homeRegionWidth,playerPlays,bossPlays,drawCount,handLimit,initialResources,bossRespawnDelay,playerSide,firstSide,bossCardType,playerControlsBoss,accumulateResources,summoningSickness,adjacentSwap,lineBlocking,bossBombInterval,bossBombDamage,bossBombColumn,bossSpawnerAttackThreshold,bossSpawnerCountFromColumn,bossSpawnerUnitThreshold,bossSpawnerDeployFromColumn,bossSpawnerCardType,bossSpawnerSpawnCardType\n" +
-            "5,10,2,5,1,5,5,0,5,left,player,bossCombat,false,true,true,true,false,10,3,5,12,4,2,5,bossSpawner,bossCombat";
+            "rows,columns,homeRegionWidth,playerPlays,bossPlays,drawCount,handLimit,initialResources,bossRespawnDelay,playerSide,firstSide,bossCardType,playerControlsBoss,accumulateResources,summoningSickness,adjacentSwap,lineBlocking,bossBombInterval,bossBombDamage,bossBombColumn,bossSpawnerAttackThreshold,bossSpawnerCountFromColumn,bossSpawnerUnitThreshold,bossSpawnerDeployFromColumn,bossSpawnerCardType,bossSpawnerSpawnCardType,drawPileSize,tierRatioBasic,tierRatioIntermediate,tierRatioAdvanced,maxTypesBasic,maxTypesIntermediate,maxTypesAdvanced\n" +
+            "5,10,2,5,1,5,5,0,5,left,player,bossCombat,false,true,true,true,false,10,3,5,12,4,2,5,bossSpawner,bossCombat,24,70,20,10,5,3,2";
 
         /// <summary>Homes 表内容（首行为表头，其余为数据行，列以逗号分隔）。</summary>
         private const string HomesSheetText =
@@ -180,7 +161,7 @@ namespace Spotlight.EditorTools
 
         /// <summary>
         /// 构建默认工作簿的六张表定义。
-        /// 输入：无；输出：顺序固定为 Cards、Deck、Rules、Homes、BossSlots、Presentation 的表定义列表。
+        /// 输入：无；输出：顺序固定为 Cards、Rules、Homes、BossSlots、Presentation 的表定义列表。
         /// 为什么需要：把玩法文档中的默认数值集中在一处，避免写出流程里散落硬编码。
         /// </summary>
         private static IReadOnlyList<SheetSpec> BuildDefaultSheets()
@@ -188,7 +169,6 @@ namespace Spotlight.EditorTools
             return new[]
             {
                 CreateSheetSpec("Cards", CardsSheetText),
-                CreateSheetSpec("Deck", DeckSheetText),
                 CreateSheetSpec("Rules", RulesSheetText),
                 CreateSheetSpec("Homes", HomesSheetText),
                 CreateSheetSpec("BossSlots", BossSlotsSheetText),
@@ -318,7 +298,7 @@ namespace Spotlight.EditorTools
         /// <summary>
         /// 写出 xl/workbook.xml，列出全部工作表名与顺序。
         /// 输入：ZIP 包与表定义列表；输出：无（写入条目）。
-        /// 为什么需要：设置工作表顺序（Cards、Deck、Rules、Homes、BossSlots、Presentation）与名称，
+        /// 为什么需要：设置工作表顺序（Cards、Rules、Homes、BossSlots、Presentation）与名称，
         /// 读取器按名称取表时依赖这里。
         /// </summary>
         private static void WriteWorkbookPart(ZipArchive archive, IReadOnlyList<SheetSpec> sheets)

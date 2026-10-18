@@ -76,7 +76,7 @@
 | 能力配置 SO 与视图组件 | `Runtime/Config/DeploymentPenaltyConfigSO.cs`、`Runtime/Cards/DeploymentPenaltyComponent.cs`、`CombatComponent.cs`、`Card.cs` | 代码完成 |
 | 表现与调试 | `Runtime/View/CardText.cs`（`StatLine(def, unit)`、`UnitDetail`、`DeploymentPenaltyLine`）、`Runtime/UI/HudView.cs`、`Runtime/Debug/ConfigDebugPanel.cs` | 代码完成 |
 | 配置管线 | `Editor/Excel/TableSchema.cs`、`DefaultWorkbookWriter.cs`、`ConfigAssetPublisher.cs`、`Editor/View/ViewTemplateBuilder.cs` | 代码完成 |
-| 正式数据 | `Assets/Spotlight/Config/Spotlight.xlsx`（Cards 加两列 + `kyoto_01` 行；Deck 加 2 张） | 已改 |
+| 正式数据 | `Assets/Spotlight/Config/Spotlight.xlsx`（Cards 加两列 + `kyoto_01` 行；Deck 加 2 张） | 已改（后被取代：`Deck` 表已废除，改由 `Rules` 抽牌堆 7 列 + 开局选卡生成） |
 | 测试 | `Tests/EditMode/DeploymentPenaltyTests.cs`、`Tests/PlayMode/DeploymentPenaltyPlayModeTests.cs` | EditMode 179/179、PlayMode 26/26 全部通过 |
 | 生成资产 | `Generated/` | 已按管线重编译：新增 `kyoto_01.asset`（含 `_DeploymentPenalty` 子资产）与 `kyoto_01.prefab`，共 20 个资产 |
 
