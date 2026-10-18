@@ -25,7 +25,6 @@ namespace Spotlight
 
         VisualElement _mask;
         VisualElement _confirmMask;
-        VisualElement _tierContainer;
         VisualElement _cardContainer;
         Label _title;
         Label _hint;
@@ -53,7 +52,6 @@ namespace Spotlight
             if (root == null) return;
             _mask = root.Q<VisualElement>("deck-select-mask");
             _confirmMask = root.Q<VisualElement>("deck-select-confirm-overlay");
-            _tierContainer = root.Q<VisualElement>("deck-select-tiers");
             _cardContainer = root.Q<VisualElement>("deck-select-cards");
             _title = root.Q<Label>("deck-select-title");
             _hint = root.Q<Label>("deck-select-hint");
@@ -111,20 +109,31 @@ namespace Spotlight
         /// </summary>
         public void Render()
         {
-            if (_state == null || _tierContainer == null || _cardContainer == null) return;
-            _tierContainer.Clear();
+            if (_state == null || _cardContainer == null) return;
             _cardContainer.Clear();
             var preview = _state.PreviewTierCounts();
             var copies = _state.PreviewTypeCounts();
             foreach (var tier in DeckComposition.PlayerTiers)
             {
-                var name = DeckComposition.TierLabel(tier);
-                var selected = _state.SelectedCount(tier);
-                var capacity = _state.Capacity(tier);
-                var total = preview.TryGetValue(tier, out var value) ? value : 0;
-                var head = new Label($"{name}  {selected}/{capacity}  ·  抽牌堆 {total} 张");
+                // 每个阶级自成一组：左侧彩色竖条 + 阶级徽章 + 计数，组内只放该阶级的卡种行，
+                // 避免出现“标题全在上、卡种全在下”导致玩家看不出哪张卡属于哪个阶级。
+                var section = new VisualElement();
+                section.AddToClassList("deck-tier");
+                section.AddToClassList(TierClass(tier));
+
+                var head = new VisualElement();
                 head.AddToClassList("deck-tier-head");
-                _tierContainer.Add(head);
+                var badge = new Label(CardText.TierLabel(tier));
+                badge.AddToClassList("deck-tier-badge");
+                var typeCount = new Label($"{_state.SelectedCount(tier)}/{_state.Capacity(tier)} 种");
+                typeCount.AddToClassList("deck-tier-count");
+                var pile = new Label($"本阶级抽牌堆 {(preview.TryGetValue(tier, out var value) ? value : 0)} 张");
+                pile.AddToClassList("deck-tier-pile");
+                head.Add(badge);
+                head.Add(typeCount);
+                head.Add(pile);
+                section.Add(head);
+
                 foreach (var card in _state.Pool(tier))
                 {
                     var isSelected = _state.IsSelected(card.Id);
@@ -135,15 +144,20 @@ namespace Spotlight
                     var toggle = new Button(() => OnCardClicked(id)) { text = isSelected ? "取消" : "携带" };
                     // 已达上限时按钮置灰：这本身就是“不能再带”的提示，不需要弹窗打断。
                     toggle.SetEnabled(isSelected || _state.CanSelect(id));
+                    // 行内再带一个阶级短标（初/中/高），方便逐行扫读时确认阶级而不必回看分组标题。
+                    var tierTag = new Label(TierShortLabel(tier));
+                    tierTag.AddToClassList("deck-card-tier-tag");
                     var label = new Label($"{card.Name} · {CardText.CategoryLabel(card.Category)}");
                     label.AddToClassList("deck-card-name");
                     var copy = new Label(isSelected ? $"本局 ×{(copies.TryGetValue(id, out var count) ? count : 0)}" : "—");
                     copy.AddToClassList("deck-card-copies");
                     row.Add(toggle);
+                    row.Add(tierTag);
                     row.Add(label);
                     row.Add(copy);
-                    _cardContainer.Add(row);
+                    section.Add(row);
                 }
+                _cardContainer.Add(section);
             }
 
             var totalCards = 0;
@@ -167,6 +181,31 @@ namespace Spotlight
             if (_error == null) return;
             _error.text = message ?? string.Empty;
             _error.style.display = string.IsNullOrEmpty(message) ? DisplayStyle.None : DisplayStyle.Flex;
+        }
+
+        /// <summary>
+        /// 阶级对应的 USS 类名。输入：玩家阶级；输出：tier-basic / tier-intermediate / tier-advanced。
+        /// 为什么用类名而不是内联颜色：配色集中在 Spotlight.uss 里，改色不需要改代码。
+        /// </summary>
+        static string TierClass(CardTier tier)
+        {
+            switch (tier)
+            {
+                case CardTier.Basic: return "tier-basic";
+                case CardTier.Intermediate: return "tier-intermediate";
+                default: return "tier-advanced";
+            }
+        }
+
+        /// <summary>阶级短名（行内标签用）。输入：玩家阶级；输出：初 / 中 / 高。</summary>
+        static string TierShortLabel(CardTier tier)
+        {
+            switch (tier)
+            {
+                case CardTier.Basic: return "初";
+                case CardTier.Intermediate: return "中";
+                default: return "高";
+            }
         }
 
         /// <summary>读取某阶级预览张数。输入：预览表与阶级；输出：张数（缺失为 0）。</summary>

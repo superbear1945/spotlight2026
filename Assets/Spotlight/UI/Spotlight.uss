@@ -586,23 +586,78 @@
     white-space: normal;
 }
 
-/* 每个阶级一组：标题行显示“初级 3/5”，下面是该阶级全部卡种的勾选行。 */
+/* 每个阶级一组：左侧彩色竖条 + 阶级徽章 + 计数，组内只放该阶级的卡种行。
+   初级=绿、中级=蓝、高级=紫，三处（分组竖条 / 徽章 / 行内短标）使用同一套颜色，
+   让玩家即使只看卡片行也能判断阶级。 */
 .deck-tier {
     margin-bottom: 14px;
+    padding-left: 10px;
+    border-left-width: 4px;
+    border-left-color: #2a3448;
 }
 
+.deck-tier.tier-basic { border-left-color: #3ddc97; }
+.deck-tier.tier-intermediate { border-left-color: #4aa3ff; }
+.deck-tier.tier-advanced { border-left-color: #c084fc; }
+
 .deck-tier-head {
-    font-size: 16px;
-    color: rgb(160, 200, 255);
-    -unity-font-style: bold;
-    margin-bottom: 6px;
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 8px;
 }
+
+.deck-tier-badge {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: #0b1220;
+    padding: 2px 12px;
+    margin-right: 10px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.tier-basic .deck-tier-badge { background-color: #3ddc97; }
+.tier-intermediate .deck-tier-badge { background-color: #4aa3ff; }
+.tier-advanced .deck-tier-badge { background-color: #c084fc; }
+
+.deck-tier-count {
+    font-size: 15px;
+    color: rgb(240, 245, 255);
+    -unity-font-style: bold;
+    margin-right: 12px;
+}
+
+.deck-tier-pile {
+    font-size: 13px;
+    color: rgb(160, 200, 255);
+}
+
+/* 行内阶级短标（初 / 中 / 高）：颜色与所属分组一致。 */
+.deck-card-tier-tag {
+    width: 26px;
+    font-size: 13px;
+    -unity-font-style: bold;
+    color: #0b1220;
+    -unity-text-align: middle-center;
+    margin-right: 8px;
+    padding: 1px 0;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+.tier-basic .deck-card-tier-tag { background-color: #3ddc97; }
+.tier-intermediate .deck-card-tier-tag { background-color: #4aa3ff; }
+.tier-advanced .deck-card-tier-tag { background-color: #c084fc; }
 
 .deck-card-row {
     flex-direction: row;
     align-items: center;
-    padding: 6px 10px;
-    margin-bottom: 4px;
+    padding: 4px 10px;
+    margin-bottom: 3px;
     background-color: #1b2436;
     border-left-width: 3px;
     border-left-color: #2a3448;
