@@ -1,0 +1,83 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-24684707265919611
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3099d18b4ff55c4cbe7732b2d6561a9, type: 3}
+  m_Name: snpEu_Combat
+  m_EditorClassIdentifier: 
+  _hp: 1
+  _attack: 1
+  _range: 3
+  _moveDistance: 1
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f286b130caf66f84cbd77f9f1a0c2cc5, type: 3}
+  m_Name: snpEu
+  m_EditorClassIdentifier: 
+  _id: snpEu
+  _name: SNP-EU
+  _category: attack
+  _tier: advanced
+  _viewKey: default
+  _requiresUpgrade: 0
+  _upgradeFrom: 
+  _deployHomeOnly: 0
+  _avoidAdjacentSameType: 0
+  _deployCost: 0
+  _deployRequireAdjacentCategory: 
+  _deployRequireAdjacentCount: 0
+  _attacksAlliesAsHeal: 0
+  _combat: {fileID: -24684707265919611}
+  _resource: {fileID: 2433111971903885105}
+  _teleport: {fileID: 0}
+  _deploymentPenalty: {fileID: 0}
+  _markOnEnter: {fileID: 0}
+  _deathGrowth: {fileID: 0}
+  _instant: {fileID: 0}
+  _adjacentClearance: {fileID: 0}
+  _killAction: {fileID: 0}
+  _damageMark: {fileID: 208750862775590117}
+  _prefab: {fileID: 6525540940052022041, guid: ff4124cd1ba5a6f4990715df2b343054, type: 3}
+  _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
+  _sourceSheet: Cards
+--- !u!114 &208750862775590117
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07c3fa9b4175456db4eeb758c8042f08, type: 3}
+  m_Name: snpEu_DamageMark
+  m_EditorClassIdentifier: 
+  _damagePerStack: 1
+--- !u!114 &2433111971903885105
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f46270952f46ef441a82ecbe84dc9fd9, type: 3}
+  m_Name: snpEu_Resource
+  m_EditorClassIdentifier: 
+  _produce: 0
+  _upkeep: 3

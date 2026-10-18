@@ -140,6 +140,63 @@ namespace Spotlight.Tests
             Assert.That(error.Message, Does.Contain("四邻空格限制"));
         }
 
+        /// <summary>
+        /// 正式工作簿必须包含五张高级新卡，数值与能力同计划一致；星门与旧卡保持原值。
+        /// 输入：正式 xlsx 编译结果；输出：逐卡数值、能力开关与资源组件断言。
+        /// 为什么需要：新卡是“正式数据”而非测试夹具，任何一项填错都会直接进入玩家可选池。
+        /// </summary>
+        [Test]
+        public void FormalWorkbookContainsFiveAdvancedCards()
+        {
+            var report = Spotlight.EditorTools.ConfigCompiler.Compile(Spotlight.EditorTools.ConfigCompiler.DefaultWorkbookPath, false);
+            Assert.That(report.Success, Is.True, string.Join("\n", report.Issues));
+            var cards = report.Document.cards.ToDictionary(c => c.id);
+
+            void Expect(string id, string name, int hp, int atk, int range, int move, int upkeep,
+                bool clearance, int minEmpty, bool killAction, bool damageMark, int perStack)
+            {
+                var row = cards[id];
+                Assert.That(row.name, Is.EqualTo(name));
+                Assert.That(row.category, Is.EqualTo("attack"));
+                Assert.That(row.tier, Is.EqualTo("advanced"));
+                Assert.That(new[] { row.hp, row.atk, row.range, row.moveDistance, row.upkeep },
+                    Is.EqualTo(new[] { hp, atk, range, move, upkeep }), id + " 数值不符");
+                Assert.That(row.produce, Is.Zero);
+                Assert.That(row.resourceComponent, Is.True, id + " 需要资源配置来支付维持费");
+                Assert.That(row.deployCost, Is.Zero, id + " 本次新卡不新增部署费用");
+                Assert.That(row.requiresUpgrade, Is.False);
+                Assert.That(row.adjacentClearanceComponent, Is.EqualTo(clearance), id + " 空格限制开关不符");
+                Assert.That(row.adjacentClearanceMinEmpty, Is.EqualTo(minEmpty));
+                Assert.That(row.killActionComponent, Is.EqualTo(killAction), id + " 击杀恢复开关不符");
+                Assert.That(row.damageMarkComponent, Is.EqualTo(damageMark), id + " 伤害标记开关不符");
+                Assert.That(row.damageMarkDamagePerStack, Is.EqualTo(perStack));
+            }
+
+            Expect("houyi2", "后羿-II综合舰", 6, 2, 2, 1, 4, true, 2, false, false, 0);
+            Expect("texasRanger", "德克萨斯游骑兵", 3, 3, 2, 1, 3, false, 0, false, false, 0);
+            Expect("viking2056", "维京长船-2056", 2, 3, 2, 1, 4, false, 0, true, false, 0);
+            Expect("snpEu", "SNP-EU", 1, 1, 3, 1, 3, false, 0, false, true, 1);
+            Expect("napoleon1769", "拿破仑-1769", 8, 3, 2, 1, 6, false, 0, false, false, 0);
+
+            // 星门保持正式配置现状：不因为新增高级卡而被覆盖成参考表数值。
+            var gate = cards["gate"];
+            Assert.That(gate.category, Is.EqualTo("special"));
+            Assert.That(new[] { gate.hp, gate.atk, gate.range, gate.moveDistance, gate.upkeep },
+                Is.EqualTo(new[] { 2, 0, 0, 1, 4 }));
+            Assert.That(gate.teleportComponent, Is.True);
+            Assert.That(gate.permitsAttackDeploy, Is.True);
+            Assert.That(gate.deployHomeOnly, Is.True);
+            Assert.That(gate.adjacentClearanceComponent, Is.False);
+
+            // 新卡全部能通过配置构造进入正式卡池，并且未启用的能力为 null。
+            var configuration = new GameConfiguration(report.Document);
+            Assert.That(configuration.Cards["houyi2"].AdjacentClearance.MinEmptyNeighbors, Is.EqualTo(2));
+            Assert.That(configuration.Cards["viking2056"].KillAction, Is.Not.Null);
+            Assert.That(configuration.Cards["snpEu"].DamageMark.DamagePerStack, Is.EqualTo(1));
+            Assert.That(configuration.Cards["texasRanger"].AdjacentClearance, Is.Null);
+            Assert.That(configuration.Cards["napoleon1769"].KillAction, Is.Null);
+        }
+
         /// <summary>旧 JSON 缺少新字段时按关闭处理；新字段类型错误会被拦截；导出导入不丢值。</summary>
         [Test]
         public void JsonImportKeepsCompatibilityAndRejectsWrongTypes()

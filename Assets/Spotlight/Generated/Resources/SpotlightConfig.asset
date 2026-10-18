@@ -98,6 +98,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 0b3c5383a4d663e48a3bf6fc869e92c2, type: 2}
   - {fileID: 11400000, guid: 9825d805fe2068b43b90b56ec0765baf, type: 2}
   - {fileID: 11400000, guid: 2a0f7b5f60c6f6e4abcc2ba781e9dc47, type: 2}
+  - {fileID: 11400000, guid: 14472cbb5721f8647853a9ba1aed0022, type: 2}
+  - {fileID: 11400000, guid: fa37c9cdd43e7be4e94d2741213edf3b, type: 2}
+  - {fileID: 11400000, guid: 1d584f604a7e6e44b8f25f2cb319f87e, type: 2}
+  - {fileID: 11400000, guid: 948c01bac6f874c49923c990ec5c1bb9, type: 2}
+  - {fileID: 11400000, guid: a815185a622cddb498f2a7bf12d3bfd6, type: 2}
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceHash: 20296974a68a57344dd60ecd0bbf3d00a39acf2dd65f9b7dd99e6d78fe2d421f
-  _compiledAtUtc: 2026-10-18T08:43:58.1177886Z
+  _sourceHash: ebbac566c6404071bcb2561ee99ace9dccbae29c86042475866ebb88e5d7ae1d
+  _compiledAtUtc: 2026-10-18T14:12:18.7270061Z

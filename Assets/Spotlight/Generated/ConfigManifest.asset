@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: ConfigManifest
   m_EditorClassIdentifier: 
   _sourceWorkbookPath: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceHash: 20296974a68a57344dd60ecd0bbf3d00a39acf2dd65f9b7dd99e6d78fe2d421f
-  _compiledAtUtc: 2026-10-18T08:43:58.1177886Z
+  _sourceHash: ebbac566c6404071bcb2561ee99ace9dccbae29c86042475866ebb88e5d7ae1d
+  _compiledAtUtc: 2026-10-18T14:12:18.7270061Z
   _generatedPaths:
   - Assets/Spotlight/Generated/Cards/ge1.asset
   - Assets/Spotlight/Generated/Cards/ge1.prefab
@@ -50,4 +50,14 @@ MonoBehaviour:
   - Assets/Spotlight/Generated/Cards/flounder1.prefab
   - Assets/Spotlight/Generated/Cards/reserve1.asset
   - Assets/Spotlight/Generated/Cards/reserve1.prefab
+  - Assets/Spotlight/Generated/Cards/houyi2.asset
+  - Assets/Spotlight/Generated/Cards/houyi2.prefab
+  - Assets/Spotlight/Generated/Cards/texasRanger.asset
+  - Assets/Spotlight/Generated/Cards/texasRanger.prefab
+  - Assets/Spotlight/Generated/Cards/viking2056.asset
+  - Assets/Spotlight/Generated/Cards/viking2056.prefab
+  - Assets/Spotlight/Generated/Cards/snpEu.asset
+  - Assets/Spotlight/Generated/Cards/snpEu.prefab
+  - Assets/Spotlight/Generated/Cards/napoleon1769.asset
+  - Assets/Spotlight/Generated/Cards/napoleon1769.prefab
   - Assets/Spotlight/Generated/Resources/SpotlightConfig.asset

@@ -305,5 +305,41 @@ namespace Spotlight.Tests
             // 正式路径必须与 drawPileSize 一致。
             Assert.Throws<ArgumentException>(() => configuration.WithDeck(shortDeck));
         }
+
+        /// <summary>
+        /// 正式工作簿必须提供六种高级卡（总 22 行），且高级上限 2 时的默认选卡与预览/正式抽牌堆一致。
+        /// 输入：正式 xlsx；输出：卡池、默认选卡、预览张数与 WithDeck 结果的断言。
+        /// 为什么需要：新增五张高级卡会改变默认携带结果（星门 + 后羿-II），必须锁定这份正式契约。
+        /// </summary>
+        [Test]
+        public void FormalWorkbookExposesSixAdvancedTypesAndTwoCardPreview()
+        {
+            var report = Spotlight.EditorTools.ConfigCompiler.Compile(Spotlight.EditorTools.ConfigCompiler.DefaultWorkbookPath, false);
+            Assert.That(report.Success, Is.True, string.Join("\n", report.Issues));
+            var configuration = new GameConfiguration(report.Document);
+            var advanced = configuration.CardOrder.Where(c => c.Tier == CardTier.Advanced).Select(c => c.Id).ToArray();
+            Assert.That(advanced, Is.EqualTo(new[] { "gate", "houyi2", "texasRanger", "viking2056", "snpEu", "napoleon1769" }));
+            Assert.That(configuration.CardOrder.Count, Is.EqualTo(22), "正式卡种总数应为 22");
+            Assert.That(configuration.DeckConfig.EffectiveMaxTypes(CardTier.Advanced, advanced.Length), Is.EqualTo(2),
+                "正式高级上限仍为 2，卡池扩大后有效上限从 1 变为 2");
+
+            // 默认选卡按 Cards 表顺序取满：高级为星门 + 后羿-II，2 张平分各 1 张。
+            var state = new DeckSelectionState(configuration);
+            Assert.That(state.SelectedTypeIds.Where(id => configuration.FindCard(id).Tier == CardTier.Advanced),
+                Is.EqualTo(new[] { "gate", "houyi2" }));
+            var preview = state.PreviewTypeCounts();
+            Assert.That(preview["gate"], Is.EqualTo(1));
+            Assert.That(preview["houyi2"], Is.EqualTo(1));
+            Assert.That(state.TryBuildDeck(out var deck, out var error), Is.True, error);
+            Assert.That(deck.Where(e => configuration.FindCard(e.TypeId).Tier == CardTier.Advanced).Select(e => e.Count),
+                Is.EqualTo(new[] { 1, 1 }), "预览与正式抽牌堆必须一致");
+
+            // 只带一种高级卡时，该卡种拿走全部 2 张。
+            var single = new DeckSelectionState(configuration);
+            Assert.That(single.Toggle("houyi2"), Is.True, "高级只选一种也必须合法");
+            Assert.That(single.PreviewTypeCounts()["gate"], Is.EqualTo(2));
+            Assert.That(single.TryBuildDeck(out var singleDeck, out var singleError), Is.True, singleError);
+            Assert.That(singleDeck.Single(e => configuration.FindCard(e.TypeId).Tier == CardTier.Advanced).Count, Is.EqualTo(2));
+        }
     }
 }

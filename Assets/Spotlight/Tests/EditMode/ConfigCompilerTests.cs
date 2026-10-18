@@ -187,9 +187,9 @@ namespace Spotlight.Tests
             var first = ConfigCompiler.Compile(path, false);
             Assert.That(first.Success, Is.True, string.Join("\n", first.Issues));
             Assert.That(first.Document, Is.Not.Null);
-            // 默认工作簿：9 个既有卡种 + 开普勒-I/II、星铆-1、后羿、星棹-1、力场-I、比目鱼、战时储备 共 17 行；
+            // 默认工作簿：既有 17 行 + 高级五张新卡（后羿-II、德克萨斯、维京长船、SNP-EU、拿破仑）共 22 行；
             // Deck 表已废除，抽牌堆改由 Rules 的张数与阶级比例生成，不再有“逐卡种张数”。
-            Assert.That(first.Document.cards.Length, Is.EqualTo(17));
+            Assert.That(first.Document.cards.Length, Is.EqualTo(22));
             Assert.That(first.Document.rules[0].drawPileSize, Is.EqualTo(24));
             Assert.That(new[] { first.Document.rules[0].tierRatioBasic, first.Document.rules[0].tierRatioIntermediate, first.Document.rules[0].tierRatioAdvanced }, Is.EqualTo(new[] { 70, 20, 10 }));
             Assert.That(new[] { first.Document.rules[0].maxTypesBasic, first.Document.rules[0].maxTypesIntermediate, first.Document.rules[0].maxTypesAdvanced }, Is.EqualTo(new[] { 5, 3, 2 }));

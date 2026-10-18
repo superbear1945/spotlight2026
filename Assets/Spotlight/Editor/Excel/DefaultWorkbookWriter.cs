@@ -62,7 +62,12 @@ namespace Spotlight.EditorTools
             "collector1,星棹-1收集系统,resource,default,1,0,0,0,1,0,true,false,false,false,false,false,,false,0,0,,0,true,1,1,false,0,0,false,false,0,intermediate,false,0,false,false,0\n" +
             "force1,力场-I,attack,default,3,0,1,1,0,4,true,false,false,false,false,false,,false,0,0,,0,false,0,0,true,1,4,false,false,0,intermediate,false,0,false,false,0\n" +
             "flounder1,比目鱼,attack,default,2,1,1,1,0,3,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,true,false,0,intermediate,false,0,false,false,0\n" +
-            "reserve1,战时储备,special,default,1,0,0,0,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,true,3,intermediate,false,0,false,false,0";
+            "reserve1,战时储备,special,default,1,0,0,0,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,true,3,intermediate,false,0,false,false,0\n" +
+            "houyi2,后羿-II综合舰,attack,default,6,2,2,1,0,4,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,true,2,false,false,0\n" +
+            "texasRanger,德克萨斯游骑兵,attack,default,3,3,2,1,0,3,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,false,false,0\n" +
+            "viking2056,维京长船-2056,attack,default,2,3,2,1,0,4,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,true,false,0\n" +
+            "snpEu,SNP-EU,attack,default,1,1,3,1,0,3,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,false,true,1\n" +
+            "napoleon1769,拿破仑-1769,attack,default,8,3,2,1,0,6,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,false,false,0";
 
         /// <summary>Rules 表内容（首行为表头，第二行为唯一数据行，列以逗号分隔）。</summary>
         private const string RulesSheetText =

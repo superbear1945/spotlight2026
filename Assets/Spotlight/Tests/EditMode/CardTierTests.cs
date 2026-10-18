@@ -19,7 +19,7 @@ namespace Spotlight.Tests
         {
             var font = UnityEditor.AssetDatabase.LoadAssetAtPath<Font>(CjkFontSetup.FontPath);
             Assert.That(font, Is.Not.Null);
-            foreach (var character in "卡牌阶级初级中级高级不适用请补齐待修正专用".Distinct())
+            foreach (var character in "卡牌阶级初级中级高级不适用请补齐待修正专用后羿综合舰德克萨斯游骑兵维京长船拿破仑四邻空格限制击杀恢复行动伤害标记层追加递归外算".Distinct())
                 Assert.That(font.HasCharacter(character), Is.True, "字体缺少：" + character);
             var panel = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.UIElements.PanelSettings>(CjkFontSetup.PanelSettingsPath);
             Assert.That(CjkFontSetup.ValidatePanelFonts(panel), Is.Empty);
@@ -172,7 +172,7 @@ namespace Spotlight.Tests
             Assert.That(issues.Any(i => i.Row == 2 && i.Column == 1 && i.Reason.Contains("tier")), Is.True);
         }
 
-        /// <summary>正式表和默认生成器都只增加已确认的阶级，不引入卡组包；初级六种、中级八种、高级星门、Boss 两种不适用。</summary>
+        /// <summary>正式表和默认生成器都只增加已确认的阶级，不引入卡组包；初级六种、中级八种、高级六种、Boss 两种不适用。</summary>
         [Test]
         public void AuthoredAndDefaultWorkbooksHaveConfirmedTiers()
         {
@@ -189,9 +189,11 @@ namespace Spotlight.Tests
                         Is.EquivalentTo(new[] { "ge1", "ge12", "blade1", "rabbit2", "odysseus1", "kyoto_01" }));
                     Assert.That(cards.Where(c => c.tier == "intermediate").Select(c => c.id),
                         Is.EquivalentTo(new[] { "kepler1", "kepler2", "landing1", "houyi1", "collector1", "force1", "flounder1", "reserve1" }));
+                    Assert.That(cards.Where(c => c.tier == "advanced").Select(c => c.id),
+                        Is.EquivalentTo(new[] { "gate", "houyi2", "texasRanger", "viking2056", "snpEu", "napoleon1769" }));
                     Assert.That(cards.Single(c => c.id == "gate").tier, Is.EqualTo("advanced"));
                     Assert.That(cards.Where(c => c.tier == "none").Select(c => c.id), Is.EquivalentTo(new[] { "bossCombat", "bossSpawner" }));
-                    Assert.That(cards.Length, Is.EqualTo(17));
+                    Assert.That(cards.Length, Is.EqualTo(22));
                 }
             }
             finally { if (File.Exists(path)) File.Delete(path); }

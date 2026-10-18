@@ -9,6 +9,7 @@
 | 3 UI 与调试 | UXML、UGUI、场景、DOTween、临时配置 | 已完成 |
 | 4 验证与架构图 | EditMode 全量回归、运行验证、四组 SVG/PNG/HTML、使用说明 | 已完成（Windows 独立构建未执行） |
 | 5 界面同步修复 | 棋盘点击穿透、移动后棋子停在旧格、动画遗留补间与 DOTween 警告 | 已完成（含 EditMode + PlayMode 回归） |
+| 6 高级卡 | 统一伤害结算、伤害标记、四邻空格限制、击杀恢复行动、五张正式高级卡与配置/文档同步 | 已完成（EditMode + PlayMode 用例已提交，待 PR 云端验证） |
 
 确认后的规则：不实现反击和斜移；星门仅扩展部署；特殊卡在 AI 非致死优先级中排在资源卡之后；资源卡不参与互换（既不能发起也不能作为目标）；玩家可主动让己方单位离场（不消耗行动、来源卡不回收，Boss 单位与家不可离场）；正式数据禁止公式；调试只影响当前运行会话。
 
@@ -112,6 +113,23 @@
 1. **点击被卡牌吃掉**：卡牌模板自带 `Image`、`Button` 与三个 TMP 文本，UGUI 射线会先命中卡牌并交给卡牌上的 `Button`（它没有任何监听），格子的 `Button` 永远收不到点击。实测射线命中顺序修复前为 `blade1(Clone) | Cell_0_0`，因此“点棋子选单位 / 点相邻牌换位 / 点自己的家”全部无反应。修复：棋盘卡牌统一 `SetRaycastTarget(false)`（只做显示），手牌保持可点。
 2. **移动动画可能把棋子留在旧格**：`PlayMove` 先把卡牌摆到旧格位置再补间回格心，一旦补间没启动、被停止或被打断，卡牌就永久停在旧格附近，表现为“日志说移动了、棋子却在原地”；旧实现里 `DOKill()` 还会把动画停在半途。修复：调试用的位移补间加上 `SetTarget` 并挂 `OnComplete/OnKill` 把位移归零；`Kill` 改为 `DOKill(true)`（先写回结束值再停）；`Place` 在没有动画时把任何残留偏移校准回格心，于是“规则快照改变 → 界面必然跟随”。
 3. **补间泄漏到已销毁对象**：手牌打出后立即被回收，模板上的选中/部署补间会在下一帧访问已销毁的 `RectTransform` 并打印 DOTween 警告。修复：`Card.OnDestroy` 停止自身补间（只停不补完，避免写回已销毁对象）。
+
+### 模块 6：高级卡（统一伤害、伤害标记、四邻空格、击杀恢复）
+
+| 子项 | 文件 | 状态 |
+|---|---|---|
+| 伤害数据契约 | `Assets/Spotlight/Core/DamageResolution.cs` | 完成 |
+| 伤害标记层与快照隔离 | `Assets/Spotlight/Core/GameState.cs` | 完成 |
+| 统一扣血、空格检查、击杀恢复、AI 再决策 | `Assets/Spotlight/Core/GameSession.cs` | 完成 |
+| 三种能力接口与校验 | `Assets/Spotlight/Core/Configuration.cs` | 完成 |
+| 能力子资产 | `Assets/Spotlight/Runtime/Config/AdjacentClearanceConfigSO.cs` / `KillActionConfigSO.cs` / `DamageMarkConfigSO.cs` | 完成 |
+| 表结构、默认工作簿、正式工作簿、发布器 | `Assets/Spotlight/Editor/Excel/*`、`Assets/Spotlight/Config/Spotlight.xlsx` | 完成 |
+| 卡面与详情文案 | `Assets/Spotlight/Runtime/View/CardText.cs` | 完成 |
+| 调试面板新开关 | `Assets/Spotlight/Runtime/Debug/ConfigDebugPanel.cs` | 完成 |
+| EditMode 用例 | `AdvancedCardConfigTests` / `CardAdjacentClearanceTests` / `CardKillActionTests` / `CardDamageMarkTests` / `DamageResolutionTests` | 完成 |
+| PlayMode 用例 | `AdvancedCardsPlayModeTests` | 完成 |
+
+正式数据：高级池六种（星门 + 五张新卡），卡种总数 22；默认高级上限仍为 2，默认选卡为星门 + 后羿-II。
 
 ## 依赖与来源
 
