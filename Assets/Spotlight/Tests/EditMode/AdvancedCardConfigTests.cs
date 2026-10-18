@@ -252,6 +252,7 @@ namespace Spotlight.Tests
             Assert.That(report.Success, Is.True, string.Join("\n", report.Issues));
             var d = report.Document;
             d.rules[0].playerControlsBoss = true;
+            d.rules[0].homeRegionWidth = 10;
             d.rules[0].drawCount = 1;
             d.rules[0].handLimit = 5;
             d.homes.Single(h => h.owner == "player").produce = homeProduce;

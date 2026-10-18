@@ -150,6 +150,7 @@ namespace Spotlight.Tests
             var g = Start(d);
             var victim = Put(g, "miner", new Cell(2, 4));
             var blast = Explode(g, new Cell(2, 4));
+            // 预算在中心格耗尽，因此只会记录中心这一格；空格路径不会出现。
             var step = blast.BlastSteps.Single();
             Assert.That(step.UnitId, Is.EqualTo(victim));
             Assert.That(step.Damage, Is.EqualTo(3), "预算消耗保持原语义");
@@ -172,7 +173,8 @@ namespace Spotlight.Tests
             var g = Start(d);
             var victim = Put(g, "miner", new Cell(2, 4));
             var blast = Explode(g, new Cell(2, 4));
-            var step = blast.BlastSteps.Single();
+            // 阵亡后仍有 1 点预算，会继续记录后续空格；只取该单位所在的步骤。
+            var step = blast.BlastSteps.First(s => s.UnitId == victim);
             Assert.That(step.Damage, Is.EqualTo(2), "阵亡后不再消耗剩余预算");
             Assert.That(step.Killed, Is.True);
             Assert.That(g.GetSnapshot().Units.Any(u => u.Id == victim), Is.False);
@@ -215,7 +217,7 @@ namespace Spotlight.Tests
             Do(g, new GameCommand(CommandKind.DeployBossBomb, Side.Boss, target: bombCell));
             End(g);
             Do(g, new GameCommand(CommandKind.Attack, Side.Boss, boss.Id, targetId: victim));
-            End(g);
+            // 这条 EndTurn 交出 Boss 回合，玩家第 3 回合开始时才引爆炸弹，因此爆炸事件在本次结果里。
             return End(g).Events.Single(e => e.Kind == "bomb-explode");
         }
 

@@ -143,7 +143,8 @@ namespace Spotlight.Tests
             End(g);
             Attack(g, raider, boss);
             Assert.That(g.GetSnapshot().Units.Single(u => u.Id == raider).Acted, Is.False);
-            Do(g, new GameCommand(CommandKind.Move, Side.Player, raider, new Cell(2, 6)));
+            // 维京长船移动距离为 1，且 Boss 原格已腾空，因此只能走一格到 (2,5)。
+            Do(g, new GameCommand(CommandKind.Move, Side.Player, raider, new Cell(2, 5)));
             Assert.That(g.GetSnapshot().Units.Single(u => u.Id == raider).Acted, Is.True, "移动照常消耗恢复的机会");
             Assert.That(g.GetSnapshot().Units.Single(u => u.Id == ally).Acted, Is.False, "互换/移动不会给其它单位额外机会");
         }

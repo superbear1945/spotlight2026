@@ -116,12 +116,17 @@ namespace Spotlight.Tests
             var d = Document();
             d.cards.Single(c => c.id == "soldier").atk = 3;
             var g = Start(d);
-            var target = FaceOff(g);
-            var a = g.GetSnapshot().Units.First(u => u.Position == new Cell(2, 4)).Id;
-            var b = g.GetSnapshot().Units.First(u => u.Position == new Cell(2, 3)).Id;
+            var a = Put(g, "soldier", new Cell(2, 4));
+            var b = Put(g, "soldier", new Cell(2, 3));
+            var thirdAttacker = Put(g, "soldier", new Cell(1, 4));
+            End(g);
+            Do(g, new GameCommand(CommandKind.BossDeploy, Side.Boss, target: new Cell(2, 5)));
+            var target = g.GetSnapshot().Units.Single(u => u.Owner == Side.Boss).Id;
+            End(g);
             Attack(g, a, target);
             Attack(g, b, target);
-            var third = Attack(g, a, target).Events.Single(e => e.Kind == "attack");
+            // 第三次攻击必须由尚未行动的单位发起，否则会被“本回合已行动”拒绝。
+            var third = Attack(g, thirdAttacker, target).Events.Single(e => e.Kind == "attack");
             Assert.That(third.Damage.BaseDamage, Is.EqualTo(3));
             Assert.That(third.Damage.BonusDamage, Is.EqualTo(2), "两层各追加一次，共 2 点");
             Assert.That(third.Damage.TotalDamage, Is.EqualTo(5));

@@ -39,7 +39,8 @@ namespace Spotlight.Tests
 
         /// <summary>建立对局。输入：配置与可选牌堆；输出：固定种子的规则内核。</summary>
         static GameSession Start(ConfigDocument d, params DeckEntry[] deck) =>
-            new GameSession(new GameConfiguration(d).WithDeck(deck.Length > 0 ? deck : GameSessionTests.DefaultDeck(), false), new SeededRandom(37), 1000);
+            // 默认牌堆恰好 16 张（抽牌数 16 张全进手牌）：10 张矿机用于摆放阻挡，6 张士兵用于能力验证。
+            new GameSession(new GameConfiguration(d).WithDeck(deck.Length > 0 ? deck : new[] { new DeckEntry("miner", 10), new DeckEntry("soldier", 6) }, false), new SeededRandom(37), 1000);
 
         /// <summary>执行并断言成功。输入：对局与命令；输出：命令结果。</summary>
         static CommandResult Do(GameSession g, GameCommand command)
@@ -262,22 +263,12 @@ namespace Spotlight.Tests
             Put(g, "miner", new Cell(1, 5));
             End(g);
             var units = g.GetSnapshot().Units.Where(u => u.Owner == Side.Boss).ToArray();
+            // (2,5) 是“最远可达但四邻不足”的落点：AI 必须退回到合法格 (2,6) 而不是停在这里。
             Assert.That(units.Any(u => u.Position == new Cell(2, 6)), Is.True,
                 "AI 应从最远落点 (2,5) 退回满足 3 空的 (2,6)：" + string.Join(",", units.Select(u => u.Position.ToString())));
             Assert.That(units.Any(u => u.Position == new Cell(2, 5)), Is.False);
-            // 所有带能力的 Boss 单位最终位置都必须满足自己的阈值。
-            var snapshot = g.GetSnapshot();
-            var directions = new[] { new Cell(1, 0), new Cell(-1, 0), new Cell(0, 1), new Cell(0, -1) };
-            foreach (var unit in units)
-            {
-                var empties = directions.Count(direction =>
-                {
-                    var cell = new Cell(unit.Position.Row + direction.Row, unit.Position.Col + direction.Col);
-                    if (cell.Row < 0 || cell.Row >= g.Configuration.Rules.Rows || cell.Col < 0 || cell.Col >= g.Configuration.Rules.Columns) return true;
-                    return !snapshot.Units.Any(u => u.Position == cell) && !snapshot.Homes.Any(h => h.Position == cell);
-                });
-                Assert.That(empties, Is.GreaterThanOrEqualTo(3), $"{unit.Position} 的空邻格不足");
-            }
+            // 注意：其它单位随后可以合法靠近，把先行动的单位重新围到不足阈值（玩法明确允许），
+            // 因此不能断言“最终快照里所有单位都满足阈值”；退回落点本身由上面的断言锁定。
         }
     }
 }
