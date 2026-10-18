@@ -53,6 +53,10 @@ namespace Spotlight
         int Range { get; }
         /// <summary>每次移动可经过的最大格数，0 表示不能移动。</summary>
         int MoveDistance { get; }
+        /// <summary>是否允许直接攻击资源类单位；AI、手动命令和高亮共用。</summary>
+        public bool CanAttackResources { get; }
+        /// <summary>是否允许参与互换；资源分类的额外限制仍然生效。</summary>
+        public bool CanSwap { get; }
     }
 
     /// <summary>
@@ -143,7 +147,7 @@ namespace Spotlight
     /// 不建立具体卡种子类，避免继承链膨胀。
     /// </summary>
     [Serializable]
-    public sealed class CardRow : ICombatConfig, IResourceConfig, ITeleportConfig, IDeploymentPenaltyConfig
+    public sealed class CardRow : ICombatConfig, IResourceConfig, ITeleportConfig, IDeploymentPenaltyConfig, ISpawnConfig
     {
         /// <summary>稳定 ID，唯一且字母开头；改名不影响引用与升级关联。</summary>
         public string id;
@@ -166,6 +170,14 @@ namespace Spotlight
         public int range;
         /// <summary>单次移动最大格数，0 表示不能移动。</summary>
         public int moveDistance;
+        /// <summary>允许直接攻击资源单位；正式 Excel/JSON 必须显式填写。</summary>
+        public bool canAttackResources = true;
+        /// <summary>允许参与互换；正式 Excel/JSON 必须显式填写。</summary>
+        public bool canSwap = true;
+        /// <summary>是否启用所属阵营回合开始时的八邻刷怪能力。</summary>
+        public bool spawnComponent;
+        /// <summary>刷怪能力生成的攻击类卡种 ID；禁用时为空。</summary>
+        public string spawnCardType;
         /// <summary>每回合产出。</summary>
         public int produce;
         /// <summary>每回合维持费。</summary>
@@ -229,6 +241,12 @@ namespace Spotlight
         public int Range => range;
         /// <inheritdoc />
         public int MoveDistance => moveDistance;
+        /// <inheritdoc />
+        public bool CanAttackResources => canAttackResources;
+        /// <inheritdoc />
+        public bool CanSwap => canSwap;
+        /// <inheritdoc />
+        public string SpawnCardType => spawnCardType;
         /// <inheritdoc />
         public int Produce => produce;
         /// <inheritdoc />
@@ -296,8 +314,12 @@ namespace Spotlight
         public int bossSpawnerDeployFromColumn;
         /// <summary>技能部署的刷怪卡卡种 ID，引用不具备攻击、移动、资源与传送能力的特殊卡。</summary>
         public string bossSpawnerCardType;
-        /// <summary>刷怪卡每回合生成的已有攻击类卡种 ID，不占固定兵位。</summary>
-        public string bossSpawnerSpawnCardType;
+        /// <summary>二阶段锁血阈值，正数且小于 Boss 初始生命。</summary>
+        public int bossPhaseTwoHp;
+        /// <summary>战舰首选列，从玩家一侧起算，必须在棋盘内。</summary>
+        public int bossWarshipColumn;
+        /// <summary>两艘阶段战舰的卡种引用，须具备战斗与刷怪能力。</summary>
+        public string bossWarshipCardType;
         /// <summary>抽牌堆总张数（正整数，至少 3）。开局按此数量生成卡牌记录，不再由 Deck 表逐卡种配置。</summary>
         public int drawPileSize;
         /// <summary>初级卡在抽牌堆中的占比（百分比整数，至少 1）。</summary>
@@ -433,6 +455,8 @@ namespace Spotlight
         public ITeleportConfig Teleport { get; }
         /// <summary>一次性部署减攻属性；为 null 表示该卡种没有这项能力。</summary>
         public IDeploymentPenaltyConfig DeploymentPenalty { get; }
+        /// <summary>通用刷怪能力；不依赖卡名、Boss 阶段或部署来源。</summary>
+        public ISpawnConfig Spawn { get; }
         /// <summary>是否必须覆盖指定资源单位才能部署。</summary>
         public bool RequiresUpgrade { get; }
         /// <summary>覆盖升级来源卡种 ID。</summary>
@@ -461,7 +485,7 @@ namespace Spotlight
         /// 输入：row 提供标识与开关，combat/resource/teleport 提供各能力数值（可为 null）；
         /// 输出：供 GameConfiguration 索引的不可变对象。
         /// </summary>
-        public CardArchetype(CardRow row, ICombatConfig combat, IResourceConfig resource, ITeleportConfig teleport, IDeploymentPenaltyConfig deploymentPenalty = null, IMarkOnEnterConfig markOnEnter = null, IDeathGrowthConfig deathGrowth = null, IInstantEffectConfig instant = null)
+        public CardArchetype(CardRow row, ICombatConfig combat, IResourceConfig resource, ITeleportConfig teleport, IDeploymentPenaltyConfig deploymentPenalty = null, IMarkOnEnterConfig markOnEnter = null, IDeathGrowthConfig deathGrowth = null, IInstantEffectConfig instant = null, ISpawnConfig spawn = null)
         {
             Id = row.id;
             Name = row.name?.Trim();
@@ -473,6 +497,7 @@ namespace Spotlight
             DeploymentPenalty = deploymentPenalty;
             MarkOnEnter = markOnEnter;
             DeathGrowth = deathGrowth;
+            Spawn = spawn;
             RequiresUpgrade = row.requiresUpgrade;
             UpgradeFrom = row.upgradeFrom;
             DeployHomeOnly = row.deployHomeOnly;
@@ -495,13 +520,14 @@ namespace Spotlight
         {
             if (row == null) throw new ArgumentNullException(nameof(row));
             return new CardArchetype(row,
-                new CombatValues(row.hp, row.atk, row.range, row.moveDistance),
+                new CombatValues(row.hp, row.atk, row.range, row.moveDistance, row.canAttackResources, row.canSwap),
                 row.resourceComponent ? new ResourceValues(row.produce, row.upkeep) : null,
                 row.teleportComponent ? new TeleportValues(row.permitsAttackDeploy) : null,
                 row.deploymentPenaltyComponent ? new DeploymentPenaltyValues(row.deploymentAttackReduction) : null,
                 row.markOnEnterComponent ? new MarkOnEnterValues(row.markOnEnterRadius, row.markRewardResource) : null,
                 row.deathGrowthComponent ? new DeathGrowthValues(row.deathGrowthPerKill, row.deathGrowthLimit) : null,
-                row.leaveAfterDeploy ? new InstantEffectValues(row.deployGainResource) : null);
+                row.leaveAfterDeploy ? new InstantEffectValues(row.deployGainResource) : null,
+                spawn: row.spawnComponent ? new SpawnValues(row.spawnCardType) : null);
         }
     }
 
@@ -520,14 +546,20 @@ namespace Spotlight
         public int Range { get; }
         /// <inheritdoc />
         public int MoveDistance { get; }
+        /// <summary>是否允许直接攻击资源类单位；AI、手动命令和高亮共用。</summary>
+        public bool CanAttackResources { get; }
+        /// <summary>是否允许参与互换；资源分类的额外限制仍然生效。</summary>
+        public bool CanSwap { get; }
 
         /// <summary>复制战斗数值。输入：生命、攻击、射程与移动距离；输出：只读副本。</summary>
-        public CombatValues(int hp, int attack, int range, int moveDistance)
+        public CombatValues(int hp, int attack, int range, int moveDistance, bool canAttackResources, bool canSwap)
         {
             Hp = hp;
             Attack = attack;
             Range = range;
             MoveDistance = moveDistance;
+            CanAttackResources = canAttackResources;
+            CanSwap = canSwap;
         }
     }
 
@@ -671,8 +703,12 @@ namespace Spotlight
         public int BossSpawnerDeployFromColumn { get; }
         /// <summary>刷怪卡的配置引用。</summary>
         public string BossSpawnerCardType { get; }
-        /// <summary>生成战机的配置引用。</summary>
-        public string BossSpawnerSpawnCardType { get; }
+        /// <summary>一阶段生命下限与二阶段触发阈值。</summary>
+        public int BossPhaseTwoHp { get; }
+        /// <summary>战舰部署列，玩家视角一基坐标。</summary>
+        public int BossWarshipColumn { get; }
+        /// <summary>阶段战舰卡种引用。</summary>
+        public string BossWarshipCardType { get; }
         /// <summary>玩家是否在左侧。</summary>
         public bool PlayerOnLeft { get; }
         /// <summary>先手阵营。</summary>
@@ -713,7 +749,9 @@ namespace Spotlight
             BossSpawnerUnitThreshold = r.bossSpawnerUnitThreshold;
             BossSpawnerDeployFromColumn = r.bossSpawnerDeployFromColumn;
             BossSpawnerCardType = r.bossSpawnerCardType;
-            BossSpawnerSpawnCardType = r.bossSpawnerSpawnCardType;
+            BossPhaseTwoHp = r.bossPhaseTwoHp;
+            BossWarshipColumn = r.bossWarshipColumn;
+            BossWarshipCardType = r.bossWarshipCardType;
             PlayerOnLeft = r.playerSide == "left";
             FirstSide = r.firstSide == "player" ? Side.Player : Side.Boss;
             BossCardType = r.bossCardType;
@@ -940,6 +978,7 @@ namespace Spotlight
             if (rules.BossBombInterval < 1 || rules.BossBombDamage < 1 || rules.BossBombColumn < 1) errors.Add("Rules：bossBombInterval、bossBombDamage、bossBombColumn 必须至少为 1");
             if (rules.Rows < 1 || rules.Columns < 2 || rules.HomeRegionWidth < 1 || rules.HomeRegionWidth > rules.Columns) errors.Add("棋盘尺寸非法");
             ConfigValidation.ValidateBossSpawner(rules, list, errors);
+            ConfigValidation.ValidateBossPhases(rules, list, bossHomeHp, errors);
             return errors;
         }
     }
@@ -1062,6 +1101,9 @@ namespace Spotlight
             var boss = d.cards.FirstOrDefault(c => c.id == r.bossCardType);
             if (boss == null || (!r.playerControlsBoss && boss.category != "attack")) errors.Add("Rules bossCardType：AI 必须使用攻击卡，手动模式必须使用已注册卡种");
             ValidateBossSpawner(new MatchConfig(r), d.cards.Select(CardArchetype.FromRow), errors);
+            ValidateBossPhases(new MatchConfig(r), d.cards.Select(CardArchetype.FromRow), d.homes.FirstOrDefault(h => h.owner == "boss")?.hp ?? 0, errors);
+            foreach (var card in d.cards)
+                if (!card.spawnComponent && !string.IsNullOrEmpty(card.spawnCardType)) errors.Add($"Cards {card.id}：spawnCardType 需要启用 spawnComponent");
             // 抽牌堆规则（张数 / 三阶级比例 / 三阶级携带上限）参与业务校验，
             // 因此 Excel 编译、调试面板与运行前复核都使用同一套检查，不存在“只有表格入口能拦住”的情况。
             ValidateDeckRules(new DeckConfig(r), d.cards.Select(CardArchetype.FromRow), errors);
@@ -1091,11 +1133,31 @@ namespace Spotlight
                 errors.Add("Rules bossSpawnerCardType：必须引用已注册的刷怪卡");
             else if (spawner.Category != CardCategory.Special || spawner.Combat == null || spawner.Combat.Hp < 1 ||
                 spawner.Combat.Attack != 0 || spawner.Combat.Range != 0 || spawner.Combat.MoveDistance != 0 ||
-                spawner.Resource != null || spawner.Teleport != null || spawner.RequiresUpgrade)
+                spawner.Resource != null || spawner.Teleport != null || spawner.RequiresUpgrade || spawner.Spawn == null || spawner.Combat.CanSwap)
                 errors.Add("Rules bossSpawnerCardType：须为生命正数、攻击/射程/移动为零且无资源、传送和升级能力的特殊卡");
-            var fighter = cards.FirstOrDefault(c => c.Id == rules.BossSpawnerSpawnCardType);
-            if (string.IsNullOrWhiteSpace(rules.BossSpawnerSpawnCardType) || fighter == null || fighter.Category != CardCategory.Attack || fighter.Combat == null || fighter.Combat.Hp < 1)
-                errors.Add("Rules bossSpawnerSpawnCardType：必须引用生命正数的已注册攻击类卡种");
+            foreach (var source in cards.Where(c => c.Spawn != null))
+            {
+                var fighter = cards.FirstOrDefault(c => c.Id == source.Spawn.SpawnCardType);
+                if (fighter == null || fighter.Category != CardCategory.Attack || fighter.Combat == null || fighter.Combat.Hp < 1)
+                    errors.Add($"Cards {source.Id} spawnCardType：必须引用生命正数的已注册攻击类卡种");
+            }
+        }
+
+        /// <summary>校验阶段参数及战舰能力组合。输入：规则、卡种、Boss 初始生命；输出：追加全部错误，避免锁血后无法完成阶段。</summary>
+        internal static void ValidateBossPhases(MatchConfig rules, IEnumerable<CardArchetype> cards, int bossHp, List<string> errors)
+        {
+            if (rules.BossPhaseTwoHp < 1 || rules.BossPhaseTwoHp >= bossHp)
+                errors.Add("Rules bossPhaseTwoHp：必须大于 0 且小于 Boss 初始生命，旧配置请补齐阶段字段");
+            if (rules.BossWarshipColumn < 1 || rules.BossWarshipColumn > rules.Columns)
+                errors.Add("Rules bossWarshipColumn：必须位于棋盘列范围内");
+            var ship = cards.FirstOrDefault(c => c.Id == rules.BossWarshipCardType);
+            if (ship == null || ship.Category != CardCategory.Attack || ship.Spawn == null || ship.Combat == null ||
+                ship.Combat.Hp < 1 || ship.Combat.Attack < 1 || ship.Combat.Range < 1 || ship.Combat.MoveDistance < 1 ||
+                ship.Combat.CanAttackResources || !ship.Combat.CanSwap || ship.RequiresUpgrade)
+                errors.Add("Rules bossWarshipCardType：须引用可移动、可攻击、可互换、不可攻击资源单位且具有刷怪能力的攻击卡");
+            // 二阶段完成依赖两艘真实在场战舰的阵亡，部署即离场会永久卡住存活记录。
+            if (ship != null && ship.Instant != null)
+                errors.Add("Rules bossWarshipCardType：战舰不能是即时卡");
         }
 
         /// <summary>

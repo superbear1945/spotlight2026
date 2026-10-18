@@ -3,10 +3,11 @@
 // 1) 卡种资产按稳定 ID 原地更新，保留 GUID，因此改名不会破坏升级关联、卡组引用与场景引用。
 // 2) 组件 SO 作为卡种资产的子资产集中保存，确保同一卡种数值只有一份来源。
 // 3) 全部结构/业务校验已在 ConfigCompiler 中完成；本类只在写入阶段做防御性检查。
-// 4) 回滚语义：写入过程中出现异常时，把主配置资产恢复为上一套文档并清空本次生成的卡种清单，
-//    但已经落盘的卡种资产不做颗粒度回滚（它们是幂等的，重新成功编译一次即可完全修复）。
+// 4) 回滚语义：写入或产物验证失败时恢复 Generated 下本次发布前的文件与 meta，
+//    同时移除本次新建文件，避免主配置恢复了但卡种子资产仍含半套新数值。
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -56,15 +57,13 @@ namespace Spotlight.EditorTools
                 return result;
             }
 
-            EnsureFolders();
-            var template = ViewTemplateBuilder.EnsureTemplate();
-
-            var config = LoadOrCreate<SpotlightConfigAsset>(ConfigAssetPath);
-            var previousDocument = config.ToDocument();
-            var previousCards = new List<CardDefinitionSO>(config.Cards);
+            var previousFiles = CapturePublishedFiles();
 
             try
             {
+                EnsureFolders();
+                var template = ViewTemplateBuilder.EnsureTemplate();
+                var config = LoadOrCreate<SpotlightConfigAsset>(ConfigAssetPath);
                 var definitions = new List<CardDefinitionSO>();
                 foreach (var row in document.cards)
                 {
@@ -89,22 +88,54 @@ namespace Spotlight.EditorTools
                 AssetDatabase.Refresh();
 
                 result.Issues.AddRange(VerifyPrefabs(definitions, sourceWorkbook));
+                if (result.Issues.Count > 0) throw new InvalidOperationException("生成产物引用验证失败");
             }
             catch (Exception e)
             {
-                // 回滚：主配置恢复为上一套文档，保证“失败保留上一套有效产物”。
-                // 仅当上一套文档本身完整时才回写，否则（首次编译即失败）保持空资产而不是写入半截数据。
-                if (previousDocument != null && previousDocument.rules != null && previousDocument.rules.Length == 1
-                    && previousDocument.cards != null
-                    && previousDocument.homes != null && previousDocument.bossSlots != null && previousDocument.presentation != null)
+                try
                 {
-                    config.EditorApply(previousDocument, previousCards, sourceWorkbook, config.SourceHash ?? string.Empty, config.CompiledAtUtc ?? string.Empty);
-                    EditorUtility.SetDirty(config);
-                    AssetDatabase.SaveAssets();
+                    RestorePublishedFiles(previousFiles);
+                    result.Paths.Clear();
+                    result.Issues.Add(new ConfigIssue(sourceWorkbook, "（发布）", 0, 0, "发布失败并已回滚全部生成产物：" + e.Message));
                 }
-                result.Issues.Add(new ConfigIssue(sourceWorkbook, "（发布）", 0, 0, "发布失败并已回滚主配置：" + e.Message));
+                catch (Exception rollbackError)
+                {
+                    result.Issues.Add(new ConfigIssue(sourceWorkbook, "（发布）", 0, 0,
+                        "发布失败：" + e.Message + "；回滚失败，请重新编译配置：" + rollbackError.Message));
+                }
             }
             return result;
+        }
+
+        /// <summary>
+        /// 发布前读取 Generated 的原始文件和 meta，输出路径到内容的独立副本。
+        /// 不改动源 Excel 或模板；同步发布期间不会有其他发布者插入写入，故可准确区分本次新增文件。
+        /// </summary>
+        static Dictionary<string, byte[]> CapturePublishedFiles()
+        {
+            return Directory.Exists(GeneratedRoot)
+                ? Directory.GetFiles(GeneratedRoot, "*", SearchOption.AllDirectories).ToDictionary(p => p, File.ReadAllBytes)
+                : new Dictionary<string, byte[]>();
+        }
+
+        /// <summary>
+        /// 输入发布前文件副本，恢复本次失败前的资产、子资产、Prefab、清单及 GUID。
+        /// 先保存脏对象，再批量恢复磁盘并强制导入，避免稍后 SaveAssets 把失败的内存数值重新写回。
+        /// 删除范围严格限于 GeneratedRoot 内本次新增的文件，不递归删除目录或其他项目文件。
+        /// </summary>
+        static void RestorePublishedFiles(Dictionary<string, byte[]> previous)
+        {
+            AssetDatabase.SaveAssets();
+            AssetDatabase.StartAssetEditing();
+            try
+            {
+                if (Directory.Exists(GeneratedRoot))
+                    foreach (var path in Directory.GetFiles(GeneratedRoot, "*", SearchOption.AllDirectories))
+                        if (!previous.ContainsKey(path)) File.Delete(path);
+                foreach (var file in previous) File.WriteAllBytes(file.Key, file.Value);
+            }
+            finally { AssetDatabase.StopAssetEditing(); }
+            AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
         }
 
         /// <summary>卡种资产路径。输入：卡种 ID；输出：Assets 相对路径。</summary>
@@ -127,7 +158,7 @@ namespace Spotlight.EditorTools
             }
 
             var combat = EnsureSubAsset<CombatConfigSO>(assetPath, definition, row.id + "_Combat");
-            combat.EditorApply(row.hp, row.atk, row.range, row.moveDistance);
+            combat.EditorApply(row.hp, row.atk, row.range, row.moveDistance, row.canAttackResources, row.canSwap);
             EditorUtility.SetDirty(combat);
 
             var resource = EnsureSubAsset<ResourceConfigSO>(assetPath, definition, row.id + "_Resource");
@@ -182,6 +213,13 @@ namespace Spotlight.EditorTools
                 EditorUtility.SetDirty(instant);
             }
             else RemoveSubAsset(assetPath, instant);
+            var spawn = EnsureSubAsset<SpawnConfigSO>(assetPath, definition, row.id + "_Spawn");
+            if (row.spawnComponent)
+            {
+                spawn.EditorApply(row.spawnCardType);
+                EditorUtility.SetDirty(spawn);
+            }
+            else RemoveSubAsset(assetPath, spawn);
 
             var prefabPath = CardPrefabPath(row.id);
             var instance = template != null ? (GameObject)PrefabUtility.InstantiatePrefab(template) : ViewTemplateBuilder.BuildTemplateObject();
@@ -191,6 +229,7 @@ namespace Spotlight.EditorTools
             var resourceComponent = SyncComponent<ResourceComponent>(instance, row.resourceComponent);
             var teleportComponent = SyncComponent<TeleportComponent>(instance, row.teleportComponent);
             var penaltyComponent = SyncComponent<DeploymentPenaltyComponent>(instance, row.deploymentPenaltyComponent);
+            var spawnComponent = SyncComponent<SpawnComponent>(instance, row.spawnComponent);
 
             var cardSerialized = new SerializedObject(card);
             ViewTemplateBuilder.AssignReference(cardSerialized, "_definition", definition);
@@ -198,12 +237,14 @@ namespace Spotlight.EditorTools
             ViewTemplateBuilder.AssignReference(cardSerialized, "_resource", row.resourceComponent ? resourceComponent : null);
             ViewTemplateBuilder.AssignReference(cardSerialized, "_teleport", row.teleportComponent ? teleportComponent : null);
             ViewTemplateBuilder.AssignReference(cardSerialized, "_deploymentPenalty", row.deploymentPenaltyComponent ? penaltyComponent : null);
+            ViewTemplateBuilder.AssignReference(cardSerialized, "_spawn", row.spawnComponent ? spawnComponent : null);
             cardSerialized.ApplyModifiedPropertiesWithoutUndo();
 
             AssignComponentConfig(combatComponent, combat);
             if (row.resourceComponent) AssignComponentConfig(resourceComponent, resource);
             if (row.teleportComponent) AssignComponentConfig(teleportComponent, teleport);
             if (row.deploymentPenaltyComponent) AssignComponentConfig(penaltyComponent, penalty);
+            if (row.spawnComponent) AssignComponentConfig(spawnComponent, spawn);
 
             PrefabUtility.SaveAsPrefabAsset(instance, prefabPath);
             UnityEngine.Object.DestroyImmediate(instance);
@@ -216,7 +257,7 @@ namespace Spotlight.EditorTools
                 return null;
             }
 
-            definition.EditorApply(row, combat, row.resourceComponent ? resource : null, row.teleportComponent ? teleport : null, row.deploymentPenaltyComponent ? penalty : null, prefabCard, sourceWorkbook, "Cards", row.markOnEnterComponent ? mark : null, row.deathGrowthComponent ? growth : null, row.leaveAfterDeploy ? instant : null);
+            definition.EditorApply(row, combat, row.resourceComponent ? resource : null, row.teleportComponent ? teleport : null, row.deploymentPenaltyComponent ? penalty : null, prefabCard, sourceWorkbook, "Cards", row.markOnEnterComponent ? mark : null, row.deathGrowthComponent ? growth : null, row.leaveAfterDeploy ? instant : null, spawn: row.spawnComponent ? spawn : null);
             EditorUtility.SetDirty(definition);
             return definition;
         }
@@ -292,6 +333,8 @@ namespace Spotlight.EditorTools
                     issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0, $"卡种 {definition.Id} 缺少 Prefab 引用"));
                     continue;
                 }
+                if ((prefab.Spawn != null) != (definition.Spawn != null) || (prefab.Spawn != null && prefab.Spawn.Config != definition.Spawn))
+                    issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0, $"卡种 {definition.Id} 的刷怪组件与配置引用不一致"));
                 if (prefab.Combat == null) issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0, $"卡种 {definition.Id} 的 Prefab 缺少战斗组件"));
                 if ((prefab.Resource != null) != (definition.Resource != null)) issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0, $"卡种 {definition.Id} 的资源组件与配置不一致"));
                 if ((prefab.Teleport != null) != (definition.Teleport != null)) issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0, $"卡种 {definition.Id} 的传送组件与配置不一致"));

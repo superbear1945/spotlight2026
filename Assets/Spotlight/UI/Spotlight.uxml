@@ -5,6 +5,8 @@
             <ui:Label name="turn-label" text="第 1 回合 · 玩家行动" class="title-label" />
             <ui:Label name="resource-label" text="资源 0" class="info-label" />
             <ui:Label name="plays-label" text="剩余出牌 5" class="info-label" />
+            <!-- 战斗界面的常驻阶段摘要；详细技能状态仍在齿轮菜单的 Boss 面板。 -->
+            <ui:Label name="boss-phase-label" text="Boss 第 1 阶段" picking-mode="Ignore" class="info-label" />
         </ui:VisualElement>
         <!-- 齿轮：位于顶部信息条正下方（回合数下方）。图案是 gear.png（.action-button.menu-button 的背景图），
              点击进入菜单：隐藏战斗界面、显示原有面板与「继续 / 重开 / 退出游戏」。 -->

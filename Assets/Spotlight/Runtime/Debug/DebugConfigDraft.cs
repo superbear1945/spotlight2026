@@ -76,6 +76,7 @@ namespace Spotlight
                 // JsonUtility 对类型不匹配极为宽松（会把 "yes" 静默当成 false），
                 // 因此必须在反序列化之前自行检查数值/布尔字段的形状。
                 if (!JsonShapeValidator.TryValidate(cleaned, out error)) return false;
+                if (!JsonShapeValidator.ValidateSpawnMigration(cleaned, out error)) return false;
                 var document = JsonUtility.FromJson<ConfigDocument>(cleaned);
                 if (document == null) { error = "JSON 无法解析为配置文档"; return false; }
                 document.schemaVersion = document.schemaVersion == 0 ? 2 : document.schemaVersion;
@@ -340,6 +341,47 @@ namespace Spotlight
     /// </summary>
     public static class JsonShapeValidator
     {
+        /// <summary>
+        /// 校验能力迁移的显式字段。输入为 JSON 文本，输出为错误；不静默补默认值，避免旧草稿意外改变目标权限。
+        /// Cards/Rules 是平面行数组，按行检查显式字段；数值范围和引用继续交给 ConfigValidation 汇总。
+        /// </summary>
+        public static bool ValidateSpawnMigration(string json, out string error)
+        {
+            error = null;
+            if (Regex.IsMatch(json, "\"bossSpawnerSpawnCardType\"\\s*:"))
+            {
+                error = "旧字段 Rules.bossSpawnerSpawnCardType 已移除，请迁移至对应 Cards 行的 spawnComponent=true 与 spawnCardType，并补齐阶段配置。";
+                return false;
+            }
+            return RequireRowFields(json, "cards", new[] { "spawnComponent", "spawnCardType", "canAttackResources", "canSwap" }, out error) &&
+                RequireRowFields(json, "rules", new[] { "bossPhaseTwoHp", "bossWarshipColumn", "bossWarshipCardType" }, out error);
+        }
+
+        /// <summary>
+        /// 输入平面表行 JSON、表名和必填字段，输出迁移错误。完整匹配字符串令牌，避免卡名中的括号或引号截断行。
+        /// 仅检测字段存在性；格式解析仍由 JsonUtility 完成，缺失整张表由业务校验报告。
+        /// </summary>
+        static bool RequireRowFields(string json, string table, string[] fields, out string error)
+        {
+            error = null;
+            const string jsonString = "\"(?:\\\\.|[^\"\\\\])*\"";
+            var array = Regex.Match(json, "\"" + table + "\"\\s*:\\s*\\[((?:" + jsonString + "|[^\\]\"])*)\\]", RegexOptions.Singleline);
+            if (!array.Success) return true;
+            foreach (Match row in Regex.Matches(array.Groups[1].Value, "\\{(?:" + jsonString + "|[^{}\"])*\\}"))
+            {
+                var keys = new HashSet<string>();
+                foreach (Match property in Regex.Matches(row.Value, "(?<key>" + jsonString + ")\\s*:\\s*(?:" + jsonString + "|[^,{}]+)"))
+                    keys.Add(property.Groups["key"].Value.Trim('"'));
+                foreach (var field in fields)
+                    if (!keys.Contains(field))
+                    {
+                        error = "旧 " + table + " 配置缺少 " + field + "，请按新工作簿补齐字段后重新导入；迁移步骤见 docs/使用说明.md。";
+                        return false;
+                    }
+            }
+            return true;
+        }
+
         /// <summary>字段名 → 期望类型；“?” 表示同名但类型冲突，跳过检查。</summary>
         static Dictionary<string, string> _kinds;
 

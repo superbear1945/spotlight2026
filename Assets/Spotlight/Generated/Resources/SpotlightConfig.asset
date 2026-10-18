@@ -38,7 +38,9 @@ MonoBehaviour:
     bossSpawnerUnitThreshold: 2
     bossSpawnerDeployFromColumn: 5
     bossSpawnerCardType: bossSpawner
-    bossSpawnerSpawnCardType: bossCombat
+    bossPhaseTwoHp: 20
+    bossWarshipColumn: 8
+    bossWarshipCardType: bossWarship
     drawPileSize: 24
     tierRatioBasic: 70
     tierRatioIntermediate: 20
@@ -98,6 +100,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 0b3c5383a4d663e48a3bf6fc869e92c2, type: 2}
   - {fileID: 11400000, guid: 9825d805fe2068b43b90b56ec0765baf, type: 2}
   - {fileID: 11400000, guid: 2a0f7b5f60c6f6e4abcc2ba781e9dc47, type: 2}
+  - {fileID: 11400000, guid: 1f97a516bb8cce94784a1d64b53775e8, type: 2}
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceHash: 20296974a68a57344dd60ecd0bbf3d00a39acf2dd65f9b7dd99e6d78fe2d421f
-  _compiledAtUtc: 2026-10-18T08:43:58.1177886Z
+  _sourceHash: a2dc2feabe4d51515a3628771994f39cceb8f650918b981d9ff915b78ae6ac3c
+  _compiledAtUtc: 2026-10-18T14:22:26.1116297Z

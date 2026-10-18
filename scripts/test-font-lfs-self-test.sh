@@ -7,7 +7,10 @@ export LC_ALL=C
 _checker="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/test-font-lfs.sh}"
 _tmp=$(mktemp -d)
 _count=0
-readonly fontPath='Assets/Spotlight/Fonts/SimHei TextCore.asset'
+readonly fontPaths=(
+  'Assets/Spotlight/Fonts/SimHei SDF.asset'
+  'Assets/Spotlight/Fonts/SimHei TextCore.asset'
+)
 
 # Cleanup：无输入；退出时删除所有临时夹具，真实工作区和 index 不受影响。
 Cleanup() { rm -rf -- "$_tmp"; }
@@ -24,11 +27,11 @@ StageText() {
   printf '100644 %s\t%s\0' "$oid" "$1" | git -C "$_repo" update-index -z --index-info
 }
 
-# StagePointer：输入实体长度；构造标准三行指针，hash 仅是独立测试夹具。
+# StagePointer：输入字体路径与实体长度；构造标准三行指针，hash 仅是独立测试夹具。
 StagePointer() {
   local pointer
-  printf -v pointer 'version https://git-lfs.github.com/spec/v1\noid sha256:%064d\nsize %s\n' 1 "$1"
-  StageText "$fontPath" "$pointer"
+  printf -v pointer 'version https://git-lfs.github.com/spec/v1\noid sha256:%064d\nsize %s\n' 1 "$2"
+  StageText "$1" "$pointer"
 }
 
 # NewFixture：输入场景名；创建干净临时仓库及精确路径属性，隔离各个场景。
@@ -38,9 +41,14 @@ NewFixture() {
   mkdir -p "$_repo"
   git init -q "$_repo"
   git -C "$_repo" config core.attributesFile /dev/null
-  StageText '.gitattributes' $'*.asset text diff=unity\n"Assets/Spotlight/Fonts/SimHei TextCore.asset" filter=lfs diff=lfs merge=lfs -text\n'
+  local fontPath attributes=$'*.asset text diff=unity\n' rule
+  for fontPath in "${fontPaths[@]}"; do
+    printf -v rule '"%s" filter=lfs diff=lfs merge=lfs -text\n' "$fontPath"
+    attributes+="$rule"
+    StagePointer "$fontPath" 6379140
+  done
+  StageText '.gitattributes' "$attributes"
   StageText 'ordinary.asset' 'ordinary Unity YAML'
-  StagePointer 6379140
   _log="$_repo/check.log"
 }
 
@@ -76,33 +84,49 @@ MakeGitFailure() {
 
 NewFixture 'pointer-only-checkout'
 RunCheck 0 'Git blob 132 bytes'
-[ ! -e "$_repo/$fontPath" ] || exit 1
+for fontPath in "${fontPaths[@]}"; do
+  [ ! -e "$_repo/$fontPath" ] || exit 1
+done
 
-NewFixture 'regenerated-smaller-font'
-StagePointer 1024
-RunCheck 0 'size 1024;'
+# 每个字体分别破坏，另一个保持合法，证明两条路径均被完整验证而非简单跳过。
+for fontPath in "${fontPaths[@]}"; do
+  NewFixture "regenerated-smaller-${fontPath##*/}"
+  StagePointer "$fontPath" 1024
+  RunCheck 0 'size 1024;'
 
-NewFixture 'original-non-lfs-font'
-StageText '.gitattributes' $'*.asset text diff=unity\n'
-StageText "$fontPath" 'original YAML'
-RunCheck 1 'filter: unspecified (expected lfs)'
+  NewFixture "missing-rule-${fontPath##*/}"
+  _attributes=$'*.asset text diff=unity\n'
+  for otherFont in "${fontPaths[@]}"; do
+    if [[ "$otherFont" != "$fontPath" ]]; then
+      printf -v _rule '"%s" filter=lfs diff=lfs merge=lfs -text\n' "$otherFont"
+      _attributes+="$_rule"
+    fi
+  done
+  StageText '.gitattributes' "$_attributes"
+  RunCheck 1 "$fontPath: filter: unspecified (expected lfs)"
 
-NewFixture 'raw-content-under-lfs-rule'
-StageText "$fontPath" 'original YAML'
-RunCheck 1 'expected a complete three-line v1 SHA256 LFS pointer'
+  NewFixture "raw-content-${fontPath##*/}"
+  StageText "$fontPath" 'original YAML'
+  RunCheck 1 "$fontPath: expected a complete three-line v1 SHA256 LFS pointer"
 
-NewFixture 'malformed-pointer'
-StageText "$fontPath" $'version https://git-lfs.github.com/spec/v1\noid sha256:invalid\nsize 100\n'
-RunCheck 1 'expected a complete three-line v1 SHA256 LFS pointer'
+  NewFixture "malformed-pointer-${fontPath##*/}"
+  StageText "$fontPath" $'version https://git-lfs.github.com/spec/v1\noid sha256:invalid\nsize 100\n'
+  RunCheck 1 "$fontPath: expected a complete three-line v1 SHA256 LFS pointer"
 
-NewFixture 'noncanonical-extra-newline'
-printf -v _pointer 'version https://git-lfs.github.com/spec/v1\noid sha256:%064d\nsize 100\n\n' 1
-StageText "$fontPath" "$_pointer"
-RunCheck 1 'pointer is not canonical LF-terminated text'
+  NewFixture "noncanonical-extra-newline-${fontPath##*/}"
+  printf -v _pointer 'version https://git-lfs.github.com/spec/v1\noid sha256:%064d\nsize 100\n\n' 1
+  StageText "$fontPath" "$_pointer"
+  RunCheck 1 "$fontPath: pointer is not canonical LF-terminated text"
+done
 
 NewFixture 'overbroad-asset-rule'
 StageText '.gitattributes' $'*.asset filter=lfs diff=lfs merge=lfs -text\n'
 RunCheck 1 'ordinary.asset: non-target .asset unexpectedly uses LFS'
+
+NewFixture 'similar-font-path-is-not-allowlisted'
+StageText '.gitattributes' $'*.asset text diff=unity\n"Assets/Spotlight/Fonts/SimHei*.asset" filter=lfs diff=lfs merge=lfs -text\n'
+StagePointer 'Assets/Spotlight/Fonts/SimHei SDF Copy.asset' 1024
+RunCheck 1 'SimHei SDF Copy.asset: non-target .asset unexpectedly uses LFS'
 
 for _command in ls-files check-attr; do
   NewFixture "partial-scan-failure-$_command"

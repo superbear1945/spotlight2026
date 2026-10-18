@@ -1,5 +1,5 @@
 // 卡种定义资产：一个卡种的全部共享配置入口。
-// 生成方式：每张 Cards 表数据行生成一个定义资产，三个组件 SO 作为其子资产集中保存，
+// 生成方式：每张 Cards 表数据行生成一个定义资产，启用的五种能力 SO 作为其子资产集中保存，
 // 保证同一卡种的数值只有一份来源；Prefab 只保存组件组合与引用，不重复存数值。
 using UnityEngine;
 
@@ -55,6 +55,8 @@ namespace Spotlight
         [SerializeField] DeathGrowthConfigSO _deathGrowth;
         /// <summary>即时卡效果配置；为 null 表示该卡部署后留在场上。</summary>
         [SerializeField] InstantEffectConfigSO _instant;
+        /// <summary>刷怪能力配置，禁用时为空。</summary>
+        [SerializeField] SpawnConfigSO _spawn;
         /// <summary>卡牌 Prefab，由外观模板生成；手牌与棋盘共用同一模板。</summary>
         [SerializeField] Card _prefab;
         /// <summary>源工作簿文件名，用于 Inspector 提示与校验报告。</summary>
@@ -102,6 +104,8 @@ namespace Spotlight
         public DeathGrowthConfigSO DeathGrowth => _deathGrowth;
         /// <summary>即时卡效果配置 SO（可能为 null）。</summary>
         public InstantEffectConfigSO Instant => _instant;
+        /// <summary>通用刷怪配置子资产。</summary>
+        public SpawnConfigSO Spawn => _spawn;
         /// <summary>卡牌 Prefab，UI 实例化手牌与棋盘单位时使用。</summary>
         public Card Prefab => _prefab;
         /// <inheritdoc />
@@ -129,6 +133,10 @@ namespace Spotlight
                 atk = _combat != null ? _combat.Attack : 0,
                 range = _combat != null ? _combat.Range : 0,
                 moveDistance = _combat != null ? _combat.MoveDistance : 0,
+                canAttackResources = _combat != null && _combat.CanAttackResources,
+                canSwap = _combat != null && _combat.CanSwap,
+                spawnComponent = _spawn != null,
+                spawnCardType = _spawn != null ? _spawn.SpawnCardType : string.Empty,
                 produce = _resource != null ? _resource.Produce : 0,
                 upkeep = _resource != null ? _resource.Upkeep : 0,
                 resourceComponent = _resource != null,
@@ -161,7 +169,7 @@ namespace Spotlight
         public CardArchetype ToArchetype()
         {
             var row = ToCardRow();
-            return new CardArchetype(row, _combat, _resource, _teleport, _deploymentPenalty, _markOnEnter, _deathGrowth, _instant);
+            return new CardArchetype(row, _combat, _resource, _teleport, _deploymentPenalty, _markOnEnter, _deathGrowth, _instant, spawn: _spawn);
         }
 
         /// <summary>
@@ -170,7 +178,7 @@ namespace Spotlight
         /// 说明：只允许编辑器编译器调用；运行时不修改已发布资产。
         /// 一次性减攻配置为 null 时引用被清空，因此 SO 与 Excel 行始终一致（禁用即无能力）。
         /// </summary>
-        public void EditorApply(CardRow row, CombatConfigSO combat, ResourceConfigSO resource, TeleportConfigSO teleport, DeploymentPenaltyConfigSO deploymentPenalty, Card prefab, string sourceWorkbook, string sourceSheet, MarkOnEnterConfigSO markOnEnter = null, DeathGrowthConfigSO deathGrowth = null, InstantEffectConfigSO instant = null)
+        public void EditorApply(CardRow row, CombatConfigSO combat, ResourceConfigSO resource, TeleportConfigSO teleport, DeploymentPenaltyConfigSO deploymentPenalty, Card prefab, string sourceWorkbook, string sourceSheet, MarkOnEnterConfigSO markOnEnter = null, DeathGrowthConfigSO deathGrowth = null, InstantEffectConfigSO instant = null, SpawnConfigSO spawn = null)
         {
             _id = row.id;
             _name = row.name.Trim();
@@ -192,6 +200,7 @@ namespace Spotlight
             _markOnEnter = markOnEnter;
             _deathGrowth = deathGrowth;
             _instant = instant;
+            _spawn = spawn;
             _prefab = prefab;
             _sourceWorkbook = sourceWorkbook;
             _sourceSheet = sourceSheet;

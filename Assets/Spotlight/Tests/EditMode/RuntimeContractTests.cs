@@ -27,13 +27,60 @@ namespace Spotlight.Tests
                     new CardRow { tier = "advanced", id = "gate", name = "星门", category = "special", hp = 3, moveDistance = 1, upkeep = 4, resourceComponent = true, teleportComponent = true, permitsAttackDeploy = true, deployHomeOnly = true, avoidAdjacentSameType = true, viewKey = "default" },
                     new CardRow { tier = "intermediate", id = "upgrade", name = "高级矿机", category = "resource", hp = 6, atk = 1, range = 1, requiresUpgrade = true, upgradeFrom = "miner", viewKey = "default" },
                     new CardRow { tier = "none", id = "boss", name = "敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
-                    new CardRow { tier="none", id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" }
+                    new CardRow { tier = "none", id = "spawner", name="刷怪卡", category="special", hp=1, viewKey="default" , canSwap = false, spawnComponent = true, spawnCardType = "boss" },
+                    new CardRow { tier = "none", id = "warship", name="战舰", category="attack", hp=15, atk=2, range=1, moveDistance=1, canAttackResources=false, spawnComponent=true, spawnCardType="boss", viewKey="default" }
                 },
-                rules = new[] { new RulesRow { drawPileSize = 24, tierRatioBasic = 70, tierRatioIntermediate = 20, tierRatioAdvanced = 10, maxTypesBasic = 5, maxTypesIntermediate = 3, maxTypesAdvanced = 2, bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossSpawnerSpawnCardType = "boss", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 5, bossPlays = 1, drawCount = 3, handLimit = 5, initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss", playerControlsBoss = false, accumulateResources = true, summoningSickness = true, adjacentSwap = true } },
+                rules = new[] { new RulesRow { drawPileSize = 24, tierRatioBasic = 70, tierRatioIntermediate = 20, tierRatioAdvanced = 10, maxTypesBasic = 5, maxTypesIntermediate = 3, maxTypesAdvanced = 2, bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossPhaseTwoHp = 1, bossWarshipColumn = 1, bossWarshipCardType = "warship", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 5, bossPlays = 1, drawCount = 3, handLimit = 5, initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss", playerControlsBoss = false, accumulateResources = true, summoningSickness = true, adjacentSwap = true } },
                 homes = new[] { new HomeRow { owner = "player", hp = 10, produce = 2 }, new HomeRow { owner = "boss", hp = 10, produce = 0 } },
                 bossSlots = new[] { new BossSlotRow { id = "a", rowFraction = 0, edgeOffset = 1 }, new BossSlotRow { id = "b", rowFraction = 0.5, edgeOffset = 1 }, new BossSlotRow { id = "c", rowFraction = 1, edgeOffset = 1 } },
                 presentation = new[] { new PresentationRow { referenceWidth = 1920, referenceHeight = 1080, fontSize = 18, logLimit = 50, moveSeconds = 0.2f, feedbackSeconds = 0.1f, selectedScale = 1.05f, playerColor = "#3366FF", bossColor = "#FF3333", resourceColor = "#33AA66", attackColor = "#EE8833", specialColor = "#AA55FF", moveColor = "#33AAFF", attackTargetColor = "#FF3333", swapColor = "#AA33FF", deployColor = "#33FF99" } }
             };
+        }
+
+        /// <summary>导出的每张可变表必须独立。输入为内存资产；修改文档后源资产和另一份文档均不变。</summary>
+        [Test]
+        public void ExportedDocumentDoesNotShareMutableRowsWithAsset()
+        {
+            var asset = ScriptableObject.CreateInstance<SpotlightConfigAsset>();
+            try
+            {
+                asset.EditorApply(Document(), System.Array.Empty<CardDefinitionSO>(), "fixture", "hash", "time");
+                var original = JsonUtility.ToJson(asset.ToDocument());
+                var copy = asset.ToDocument();
+                var other = asset.ToDocument();
+                Assert.That(copy.rules[0], Is.Not.SameAs(asset.RulesRow));
+                Assert.That(copy.presentation[0], Is.Not.SameAs(asset.PresentationRow));
+                Assert.That(copy.homes[0], Is.Not.SameAs(asset.Homes[0]));
+                Assert.That(copy.bossSlots[0], Is.Not.SameAs(asset.BossSlots[0]));
+                copy.rules[0].homeRegionWidth = 10;
+                copy.presentation[0].moveSeconds = .03f;
+                copy.homes[0].hp = 999;
+                copy.bossSlots[0].edgeOffset = 7;
+                Assert.That(JsonUtility.ToJson(asset.ToDocument()), Is.EqualTo(original));
+                Assert.That(JsonUtility.ToJson(other), Is.EqualTo(original));
+            }
+            finally { Object.DestroyImmediate(asset); }
+        }
+
+        /// <summary>调试面板的编辑和恢复默认必须只操作草稿；输入为内存资产，输出为源数据与默认值断言。</summary>
+        [Test]
+        public void EditingDebugDraftCannotChangeAssetOrResetDefaults()
+        {
+            var asset = ScriptableObject.CreateInstance<SpotlightConfigAsset>();
+            try
+            {
+                asset.EditorApply(Document(), System.Array.Empty<CardDefinitionSO>(), "fixture", "hash", "time");
+                var original = JsonUtility.ToJson(asset.ToDocument());
+                var draft = new DebugConfigDraft(asset);
+                draft.Document.rules[0].homeRegionWidth = 10;
+                draft.Document.presentation[0].moveSeconds = .03f;
+                draft.Document.homes[0].hp = 999;
+                draft.Document.bossSlots[0].edgeOffset = 7;
+                Assert.That(JsonUtility.ToJson(asset.ToDocument()), Is.EqualTo(original));
+                draft.ResetToAsset(asset);
+                Assert.That(JsonUtility.ToJson(draft.Document), Is.EqualTo(original));
+            }
+            finally { Object.DestroyImmediate(asset); }
         }
 
         [Test]

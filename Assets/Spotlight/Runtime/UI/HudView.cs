@@ -59,6 +59,8 @@ namespace Spotlight
         Label _playsLabel;
         /// <summary>Boss 兵位与手动模式提示文本。</summary>
         Label _bossLabel;
+        /// <summary>顶部常驻 Boss 阶段摘要，战斗中无需打开暂停菜单即可查看锁血和战舰数量。</summary>
+        Label _bossPhaseLabel;
         /// <summary>阶段提示（弃牌、模态等）。</summary>
         Label _phaseLabel;
         /// <summary>选中对象详情文本。</summary>
@@ -125,6 +127,7 @@ namespace Spotlight
             _resourceLabel = _root.Q<Label>("resource-label");
             _playsLabel = _root.Q<Label>("plays-label");
             _bossLabel = _root.Q<Label>("boss-info-label");
+            _bossPhaseLabel = _root.Q<Label>("boss-phase-label");
             _phaseLabel = _root.Q<Label>("phase-label");
             _detailLabel = _root.Q<Label>("unit-detail");
             _errorLabel = _root.Q<Label>("error-label");
@@ -209,6 +212,7 @@ namespace Spotlight
             if (_resourceLabel != null) _resourceLabel.text = $"资源 {snapshot.Resources}";
             if (_playsLabel != null) _playsLabel.text = $"剩余出牌 {snapshot.PlaysRemaining}";
             if (_bossLabel != null) _bossLabel.text = BuildBossLine(snapshot, configuration);
+            if (_bossPhaseLabel != null) _bossPhaseLabel.text = BuildBossPhaseSummary(snapshot);
             if (_phaseLabel != null) _phaseLabel.text = BuildPhaseLine(snapshot);
             if (_detailLabel != null) _detailLabel.text = BuildDetail(selection, snapshot, configuration);
             if (_endTurnButton != null) _endTurnButton.SetEnabled(!inputBlocked && snapshot.Phase != MatchPhase.Finished && !snapshot.BossBombPending && !snapshot.BossSpawnerPending);
@@ -247,6 +251,16 @@ namespace Spotlight
             }
         }
 
+        /// <summary>输入只读快照，输出顶部常驻摘要；只呈现结算结果，不在 UI 推算阶段或战舰状态。</summary>
+        string BuildBossPhaseSummary(GameSnapshot snapshot)
+        {
+            var summary = $"Boss 第 {(int)snapshot.BossPhase + 1} 阶段" + (snapshot.BossInvulnerable ? " · 锁血" : "");
+            if (snapshot.BossWarships.Count == 0) return summary;
+            return summary + $"\n战舰 待部署 {snapshot.BossWarships.Count(s => s.Status == BossWarshipStatus.Pending)}" +
+                $" · 存活 {snapshot.BossWarships.Count(s => s.Status == BossWarshipStatus.Alive)}" +
+                $" · 已击败 {snapshot.BossWarships.Count(s => s.Status == BossWarshipStatus.Defeated)}";
+        }
+
         /// <summary>
         /// 组装 Boss 区域的提示文本：AI 兵位剩余回合、等待空位或手动模式放牌提示。
         /// 输入：快照与配置；输出：单行或多行文本。
@@ -254,20 +268,25 @@ namespace Spotlight
         string BuildBossLine(GameSnapshot snapshot, GameConfiguration configuration)
         {
             var sb = new StringBuilder();
+            sb.Append("Boss 第 ").Append((int)snapshot.BossPhase + 1).Append(" 阶段").AppendLine(snapshot.BossInvulnerable ? " · 锁血，无法被攻击" : "");
+            if (snapshot.BossWarships.Count > 0)
+                sb.Append("战舰：待部署 ").Append(snapshot.BossWarships.Count(s => s.Status == BossWarshipStatus.Pending))
+                    .Append(" · 存活 ").Append(snapshot.BossWarships.Count(s => s.Status == BossWarshipStatus.Alive))
+                    .Append(" · 已击败 ").Append(snapshot.BossWarships.Count(s => s.Status == BossWarshipStatus.Defeated)).AppendLine();
             foreach (var bomb in snapshot.BossBombs)
                 sb.Append("炸弹 ").Append(bomb.Position).Append(" · 第 ").Append(bomb.DueRound).Append(" 回合玩家行动前爆炸 · 伤害 ").Append(bomb.Damage).AppendLine();
             if (snapshot.BossBombPending) sb.AppendLine("炸弹机会：请先布置或跳过");
             if (snapshot.BossSpawnerPending) sb.AppendLine("刷怪卡机会：请先部署或跳过");
             var spawner = snapshot.Units.FirstOrDefault(u => u.IsBossSpawner);
             if (spawner != null)
-                sb.Append("刷怪卡：").Append(spawner.Hp).Append(" 血 · ").AppendLine(snapshot.Round <= spawner.DeployedRound ? "下个 Boss 回合开始生成战机" : "每个 Boss 回合尝试生成一架战机");
+                sb.Append("刷怪卡：").Append(spawner.Hp).AppendLine(" 血 · 从部署后下一次 Boss 回合起尝试生成一架战机");
             if (snapshot.PlayerControlsBoss)
             {
                 var bossName = configuration != null && configuration.Cards.TryGetValue(configuration.Rules.BossCardType, out var boss) ? boss.Name : configuration?.Rules.BossCardType;
                 sb.Append("手动 Boss 模式：放牌 ").Append(configuration?.Rules.BossPlays ?? 0).Append(" 张（").Append(bossName).Append("）");
                 return sb.ToString();
             }
-            sb.Append("AI 兵位：");
+            sb.Append(snapshot.BossPhase == BossPhase.PhaseOne ? "AI 兵位：" : "固定兵位（补兵已暂停）：");
             foreach (var slot in snapshot.BossReplacements)
             {
                 sb.Append(slot.SlotId).Append("=");
@@ -285,6 +304,7 @@ namespace Spotlight
             if (snapshot.BossBombPending) return "先布置炸弹或跳过炸弹，再开始玩家行动";
             if (snapshot.BossSpawnerPending) return "先部署刷怪卡或跳过，再开始 Boss 普通行动";
             if (snapshot.Phase == MatchPhase.Discard) return $"请弃牌至上限（剩余 {snapshot.Hand.Count} 张）";
+            if (snapshot.BossInvulnerable) return "Boss 二阶段锁血：击败两艘战舰以解除锁血";
             if (snapshot.ActiveSide == Side.Boss && !snapshot.PlayerControlsBoss) return "Boss 回合（AI 自动结算）";
             return string.Empty;
         }
@@ -307,7 +327,6 @@ namespace Spotlight
             {
                 var unit = snapshot.Units.FirstOrDefault(u => u.Id == selection.Id);
                 if (unit == null) return string.Empty;
-                if (unit.IsBossSpawner) return $"{configuration.Cards[unit.TypeId].Name} · 当前生命 {unit.Hp}\n固定据点，不能攻击、移动或互换。下个 Boss 回合起，每回合在周围八格生成一架战机；满格时随机顶替玩家单位，无可用位置则暂停。";
                 // 单位详情必须用单位快照（当前攻击/射程/移动与一次性减攻状态），不能用卡种基础配置。
                 var text = configuration.Cards.TryGetValue(unit.TypeId, out var arch) ? CardText.UnitDetail(arch, unit) : string.Empty;
                 return text + Environment.NewLine + $"行动机会 {(unit.CanAct ? "可用" : unit.Acted ? "已用完" : "维持费不足")}";
@@ -316,7 +335,7 @@ namespace Spotlight
             {
                 var home = snapshot.Homes.FirstOrDefault(h => h.Id == selection.Id);
                 if (home == null) return string.Empty;
-                return $"{(home.Owner == Side.Player ? "玩家" : "Boss")}的家 · 生命 {home.Hp} · {(home.Acted ? "本回合已移动" : "本回合可移动一格")}";
+                return $"{(home.Owner == Side.Player ? "玩家" : "Boss")}的家 · 生命 {home.Hp}{(home.Owner == Side.Boss && snapshot.BossInvulnerable ? "（锁血，无法被攻击）" : "")} · {(home.Acted ? "本回合已移动" : "本回合可移动一格")}";
             }
             if (selection.Kind == SelectionKind.BossDeployment) return "选择一个高亮格放置 Boss 卡";
             return "点击手牌、己方单位或己方家进行操作";

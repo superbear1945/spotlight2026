@@ -17,7 +17,7 @@ namespace Spotlight
     /// 单位只保存来源卡的值副本（SourceCardId/TypeId/Owner），不引用 CardRecord；
     /// 玩家卡在成功部署时进入墓地，单位阵亡或被覆盖升级不再重复回收，牌堆总数恒定。
     /// </summary>
-    public sealed class GameSession
+    public sealed partial class GameSession
     {
         /// <summary>本局不可变配置索引。</summary>
         readonly GameConfiguration _config;
@@ -145,6 +145,9 @@ namespace Spotlight
             PlayerControlsBoss = Rules.PlayerControlsBoss,
             BossRespawnDelay = Rules.BossRespawnDelay,
             BossBombPending = _bossBombPending,
+            BossPhase = _bossPhases.Phase,
+            BossInvulnerable = _bossPhases.Phase == BossPhase.PhaseTwo,
+            BossWarships = Array.AsReadOnly(_bossWarships.Select(s => s.Copy()).ToArray()),
             BossSpawnerPending = _bossSpawnerPending,
             BossBombs = Array.AsReadOnly(_bossBombs.ToArray()),
             Hand = Array.AsReadOnly(_hand.ToArray()),
@@ -287,6 +290,7 @@ namespace Spotlight
                     if (target == null && allyTarget == null) return "目标不在合法攻击范围";
                     var targetPosition = target != null ? target.Position : allyTarget.Position;
                     if (!CanAttack(attacker, attacker.Position, targetPosition)) return "目标不在合法攻击范围";
+                    if (target != null && !CanTarget(attacker, target)) return "目标不在合法攻击范围";
                     // 治疗分支：数值 = 当前生命 + 攻击力，受生命上限限流；满血也允许（白打但仍消耗行动）。
                     // 治疗只改生命，不触发阵亡判定，因此不会因为“攻击”而误杀友方。
                     if (allyTarget != null)
@@ -304,11 +308,19 @@ namespace Spotlight
                     var damage = attacker.Attack;
                     if (target.Unit != null)
                     {
+                        damage = Math.Min(damage, target.Unit.Hp);
                         target.Unit.Hp = Math.Max(0, target.Unit.Hp - damage);
                         if (target.Unit.Hp == 0) Remove(target.Unit, Removal.Death);
                     }
-                    else target.Home.Hp = Math.Max(0, target.Home.Hp - damage);
+                    else
+                    {
+                        var beforeHp = target.Home.Hp;
+                        var floor = target.Home.Owner == Side.Boss && _bossPhases.Phase == BossPhase.PhaseOne ? Rules.BossPhaseTwoHp : 0;
+                        target.Home.Hp = Math.Max(floor, beforeHp - damage);
+                        damage = beforeHp - target.Home.Hp;
+                    }
                     Emit("attack", $"{Type(attacker).Name} 攻击 {target.Name}，造成 {damage} 伤害", target.Id);
+                    _bossPhases.AfterResolution(this);
                     CheckVictory();
                     break;
                 case CommandKind.Swap:
@@ -402,7 +414,7 @@ namespace Spotlight
                 if (Available(u))
                 {
                     actions.Move = Paths(u.Position).Where(p => p.Value.Count > 0 && p.Value.Count <= u.MoveDistance).Select(p => p.Key).ToArray();
-                    var attackCells = Targets(_activeSide).Where(t => CanAttack(u, u.Position, t.Position)).Select(t => t.Position).ToList();
+                    var attackCells = Targets(_activeSide).Where(t => CanTarget(u, t) && CanAttack(u, u.Position, t.Position)).Select(t => t.Position).ToList();
                     // 具备“攻击友方即治疗”的单位，合法目标额外包含己方单位（不含自己）。
                     // 这些格同时进入 Attack（点击链路与敌方目标一致）与 Heal（视图据此染成治疗色）。
                     if (Type(u).AttacksAlliesAsHeal)
@@ -479,7 +491,7 @@ namespace Spotlight
         /// 所有创建路径（玩家部署、手动 Boss、AI 首次与补兵、刷怪卡战机）都只经过这里一次，
         /// 因此一次性减攻只会在本函数内结算一次，调用方不可重复处理。
         /// </summary>
-        UnitState Place(CardRecord card, Cell p, bool firstSpawn, string slotId)
+        UnitState Place(CardRecord card, Cell p, bool firstSpawn, string slotId, bool recyclePlayerCard = true)
         {
             var covered = _units.FirstOrDefault(u => u.Position == p);
             if (covered != null) Remove(covered, Removal.Upgrade);
@@ -499,6 +511,9 @@ namespace Spotlight
                 Attack = combat != null ? combat.Attack : 0,
                 Range = combat != null ? combat.Range : 0,
                 MoveDistance = combat != null ? combat.MoveDistance : 0,
+                CanAttackResources = combat != null && combat.CanAttackResources,
+                CanSwap = combat != null && combat.CanSwap,
+                DeployedOwnerTurn = _ownerTurns[(int)card.Owner],
                 DeploymentPenaltyPending = penalty != null,
                 DeploymentAttackReduction = penalty != null ? penalty.AttackReduction : 0,
                 DeathGrowthPerKill = growth != null ? growth.PerKill : 0,
@@ -512,7 +527,7 @@ namespace Spotlight
             u.DeployedRound = _round;
             // 玩家卡：成功部署即进入墓地，成为可再次抽到的循环卡；
             // 场上单位只保存值副本，与墓地中的这张卡互不影响。
-            if (card.Owner == Side.Player) _grave.Add(card);
+            if (card.Owner == Side.Player && recyclePlayerCard) _grave.Add(card);
             Emit("deploy", $"{SideName(card.Owner)}部署 {type.Name} 至 {p}", u.Id);
             // 即时卡：在场时间视为 0。必须跳过一次性减攻与入场标记，
             // 否则一张“打完就走”的卡可以白嫖减攻/标记；结算完效果后立即以 Consumed 原因离场，
@@ -639,6 +654,12 @@ namespace Spotlight
                     Emit("death-growth", $"{Type(grower).Name} 因 {Type(u).Name} 阵亡获得 +{grower.DeathGrowthPerKill} 攻击（{grower.DeathGrowthTriggers}/{grower.DeathGrowthLimit}）", grower.Id);
                 }
             }
+            var warship = _bossWarships.FirstOrDefault(s => s.UnitId == u.Id && s.Status == BossWarshipStatus.Alive);
+            if (warship != null && reason == Removal.Death)
+            {
+                warship.Status = BossWarshipStatus.Defeated;
+                Emit("warship-defeated", $"战舰 {warship.Index} 已被击败", u.Id);
+            }
             if (u.Owner == Side.Boss) _bossGrave.Add(new CardRecord(u.SourceCardId, u.TypeId, Side.Boss));
             if (u.BossSlotId != null)
             {
@@ -655,16 +676,18 @@ namespace Spotlight
         /// <summary>
         /// 开始指定阵营的行动回合。
         /// 输入：side 为即将行动的阵营；输出：无。
-        /// 玩家顺序：恢复行动 → 引爆到期炸弹 → 可选清零资源 → 存活单位产出及维持费 → 抽牌 → 检查炸弹部署机会。
+        /// 玩家顺序：恢复行动 → 引爆到期炸弹 → 可选清零资源 → 存活单位产出及维持费 → 抽牌 → 通用刷怪 → 当前阶段玩家回合技能。
         /// AI 自动布置；手动模式必须布置或跳过后才能进行玩家普通操作。间隔一时先爆旧炸弹再布置新炸弹。
-        /// Boss 顺序：读取技能条件 → 恢复已有行动 → 已有刷怪卡生成 → 新刷怪卡机会 → AI 补兵 → 普通行动。
+        /// Boss 顺序：读取一阶段技能条件 → 恢复已有行动 → 通用刷怪 → 当前阶段 Boss 回合技能 → 普通行动。
+        /// 一阶段技能含新刷怪笼机会和 AI 补兵；二阶段只重试待部署战舰；三阶段技能占位。
         /// 新单位在恢复行动之后创建以保留召唤失调；Boss 不结算资源与维持费。
         /// 欠费只禁止行动，不能关闭星门部署扩展（扩展在 DeploymentError 中独立判断）。
         /// </summary>
         void BeginTurn(Side side)
         {
             // 必须在任何生成或顶替前只读取一次；欠费与已行动不改变配置攻击力和卡种分类。
-            var spawnerTriggered = side == Side.Boss && MeetsSpawnerTrigger();
+            var spawnerTriggered = side == Side.Boss && _bossPhases.Phase == BossPhase.PhaseOne && MeetsSpawnerTrigger();
+            _ownerTurns[(int)side]++;
             _activeSide = side;
             _phase = MatchPhase.Action;
             _bossBombPending = false;
@@ -688,33 +711,46 @@ namespace Spotlight
                     else Emit("upkeep", $"{Type(u).Name} 维持费不足，本回合不能行动", u.Id);
                 }
                 DrawCards();
-                _bossBombPending = _round % Rules.BossBombInterval == 0;
-                if (!Rules.PlayerControlsBoss)
-                {
-                    if (_bossBombPending)
-                    {
-                        ExecuteCommand(new GameCommand(CommandKind.DeployBossBomb, Side.Boss,
-                            target: new Cell(_random.Next(Rules.Rows), BossBombColumn())), true);
-                    }
-                }
-                else if (_bossBombPending) Emit("bomb-ready", "请先布置炸弹或跳过炸弹，再开始玩家行动");
+                ProduceSpawnUnits(side);
+                _bossPhases.OnPlayerTurnStarted(this);
             }
             else
             {
-                ProduceSpawnerFighter();
-                if (spawnerTriggered && !_units.Any(u => u.IsBossSpawner))
-                {
-                    var cells = SpawnerCells().ToArray();
-                    if (cells.Length == 0) Emit("spawner-skip", "刷怪卡部署区域无空格，跳过当次机会");
-                    else
-                    {
-                        _bossSpawnerPending = true;
-                        if (Rules.PlayerControlsBoss) Emit("spawner-ready", "请先部署刷怪卡或跳过，再开始 Boss 普通行动");
-                        else ExecuteCommand(new GameCommand(CommandKind.DeployBossSpawner, Side.Boss, target: cells[_random.Next(cells.Length)]), true);
-                    }
-                }
-                if (!Rules.PlayerControlsBoss) SpawnBoss();
+                ProduceSpawnUnits(side);
+                _bossPhases.OnBossTurnStarted(this, spawnerTriggered);
             }
+        }
+
+        /// <summary>一阶段玩家回合技能入口。输入为当前回合；输出为自动或手动炸弹机会，已有炸弹结算不经过这里。</summary>
+        internal void PreparePhaseOneBomb()
+        {
+            _bossBombPending = _round % Rules.BossBombInterval == 0;
+            if (!Rules.PlayerControlsBoss)
+            {
+                if (_bossBombPending)
+                {
+                    ExecuteCommand(new GameCommand(CommandKind.DeployBossBomb, Side.Boss,
+                        target: new Cell(_random.Next(Rules.Rows), BossBombColumn())), true);
+                }
+            }
+            else if (_bossBombPending) Emit("bomb-ready", "请先布置炸弹或跳过炸弹，再开始玩家行动");
+        }
+
+        /// <summary>一阶段 Boss 回合技能入口。输入为回合开始的压力快照；输出为普通刷怪笼机会和 AI 补兵。</summary>
+        internal void RunPhaseOneBossSkills(bool spawnerTriggered)
+        {
+            if (spawnerTriggered && !_units.Any(u => u.IsBossSpawner))
+            {
+                var cells = SpawnerCells().ToArray();
+                if (cells.Length == 0) Emit("spawner-skip", "刷怪卡部署区域无空格，跳过当次机会");
+                else
+                {
+                    _bossSpawnerPending = true;
+                    if (Rules.PlayerControlsBoss) Emit("spawner-ready", "请先部署刷怪卡或跳过，再开始 Boss 普通行动");
+                    else ExecuteCommand(new GameCommand(CommandKind.DeployBossSpawner, Side.Boss, target: cells[_random.Next(cells.Length)]), true);
+                }
+            }
+            if (!Rules.PlayerControlsBoss) SpawnBoss();
         }
 
         /// <summary>
@@ -733,43 +769,37 @@ namespace Spotlight
         int PlayerColumn(Cell cell) => Rules.PlayerOnLeft ? cell.Col + 1 : Rules.Columns - cell.Col;
 
         /// <summary>列出刷怪卡合法位置。输入：当前棋盘；输出：区域内空格，已有刷怪卡时为空，供命令和高亮共用。</summary>
-        IEnumerable<Cell> SpawnerCells() => _units.Any(u => u.IsBossSpawner) ? Enumerable.Empty<Cell>() :
+        IEnumerable<Cell> SpawnerCells() => _bossPhases.Phase != BossPhase.PhaseOne || _units.Any(u => u.IsBossSpawner) ? Enumerable.Empty<Cell>() :
             Cells().Where(p => PlayerColumn(p) >= Rules.BossSpawnerDeployFromColumn && !Occupied(p));
 
         /// <summary>
-        /// 让已有刷怪卡尝试生成一架战机。输入：本回合棋盘；输出：新单位、顶替或暂停事件及对应阶段快照。
-        /// 八邻优先空格，其次随机顶替玩家单位；家和 Boss 单位永不顶替，失败不累计，之后每回合重试。
+        /// 通用刷怪结算定位入口。输入为开始回合的阵营；输出为每个已有来源的一次生成、顶替或暂停事件。
+        /// 来源按部署顺序固定，生成单位不加入本次遍历；恢复行动后运行，故新单位保留召唤失调。
         /// </summary>
-        void ProduceSpawnerFighter()
+        void ProduceSpawnUnits(Side side)
         {
-            var spawner = _units.FirstOrDefault(u => u.IsBossSpawner);
-            if (spawner == null || spawner.DeployedRound >= _round) return;
-            var neighbors = new List<Cell>();
-            for (var row = -1; row <= 1; row++)
-                for (var col = -1; col <= 1; col++)
+            var sources = _units.Where(u => u.Owner == side && Type(u).Spawn != null &&
+                u.DeployedOwnerTurn < _ownerTurns[(int)side]).OrderBy(u => u.DeploymentOrder).ToArray();
+            foreach (var source in sources)
+            {
+                if (!_units.Contains(source) || _phase == MatchPhase.Finished) continue;
+                var target = SpawnResolver.ChooseCell(source, Rules.Rows, Rules.Columns, Occupied, _units, _random);
+                if (!target.HasValue)
                 {
-                    var cell = new Cell(spawner.Position.Row + row, spawner.Position.Col + col);
-                    if ((row != 0 || col != 0) && Inside(cell)) neighbors.Add(cell);
+                    Emit("spawner-wait", $"{Type(source).Name} 周围无空格或可顶替的敌方单位，本回合暂停生成", source.Id);
+                    CapturePresentationFrame();
+                    continue;
                 }
-            var candidates = neighbors.Where(p => !Occupied(p)).ToArray();
-            if (candidates.Length == 0)
-                candidates = neighbors.Where(p => _units.Any(u => u.Owner == Side.Player && u.Position == p)).ToArray();
-            if (candidates.Length == 0)
-            {
-                Emit("spawner-wait", "刷怪卡周围无空格或可顶替的玩家单位，本回合暂停生成", spawner.Id);
-                CapturePresentationFrame();
-                return;
-            }
-            var target = candidates[_random.Next(candidates.Length)];
-            var replaced = _units.FirstOrDefault(u => u.Position == target);
-            if (replaced != null)
-            {
-                Remove(replaced, Removal.ReplacedBySpawn);
+                var replaced = _units.FirstOrDefault(u => u.Position == target.Value);
+                if (replaced != null)
+                {
+                    Remove(replaced, Removal.ReplacedBySpawn);
+                    CapturePresentationFrame();
+                }
+                var fighter = Place(NewCard(Type(source).Spawn.SpawnCardType, side), target.Value, false, null, false);
+                Emit("spawner-produce", $"{Type(source).Name} 生成 {Type(fighter).Name} 至 {target.Value}", fighter.Id);
                 CapturePresentationFrame();
             }
-            var fighter = Place(NewCard(Rules.BossSpawnerSpawnCardType, Side.Boss), target, false, null);
-            Emit("spawner-produce", $"刷怪卡生成 {Type(fighter).Name} 至 {target}", fighter.Id);
-            CapturePresentationFrame();
         }
 
         /// <summary>
@@ -931,7 +961,7 @@ namespace Spotlight
         /// </summary>
         IEnumerable<Target> Targets(Side attacker)
         {
-            foreach (var h in _homes.Where(h => h.Owner != attacker)) yield return new Target { Home = h, Name = SideName(h.Owner) + "的家" };
+            foreach (var h in _homes.Where(h => h.Owner != attacker && (h.Owner != Side.Boss || _bossPhases.Phase != BossPhase.PhaseTwo))) yield return new Target { Home = h, Name = SideName(h.Owner) + "的家" };
             foreach (var u in _units.Where(u => u.Owner != attacker)) yield return new Target { Unit = u, Name = Type(u).Name };
         }
 
@@ -962,7 +992,7 @@ namespace Spotlight
             {
                 if (_phase == MatchPhase.Finished) return;
                 if (!u.CanAct) continue;
-                var target = Targets(Side.Boss)
+                var target = Targets(Side.Boss).Where(t => CanTarget(u, t))
                     .Where(t => CanAttack(u, u.Position, t.Position))
                     .OrderBy(t => AttackPriority(u, t))
                     .ThenBy(t => t.Hp)
@@ -972,7 +1002,7 @@ namespace Spotlight
                 if (target != null) { ExecuteCommand(new GameCommand(CommandKind.Attack, Side.Boss, u.Id, targetId: target.Id), true); continue; }
                 if (u.Attack <= 0 || u.Range <= 0 || u.MoveDistance <= 0) { Emit("wait", $"{Type(u).Name} 待机", u.Id); continue; }
                 var paths = Paths(u.Position);
-                var best = Targets(Side.Boss)
+                var best = Targets(Side.Boss).Where(t => CanTarget(u, t))
                     .SelectMany(t => paths.Where(p => p.Value.Count > 0 && CanAttack(u, p.Key, t.Position)).Select(p => new { Target = t, Path = p.Value }))
                     .OrderBy(x => x.Path.Count)
                     .ThenBy(x => TargetKind(x.Target))
@@ -1056,7 +1086,7 @@ namespace Spotlight
         /// 高亮（GetLegalActions）与结算（ExecuteCommand）共用同一份判定，
         /// 不会出现“没有高亮、点下去却换了位置”的分叉。
         /// </summary>
-        bool Swappable(UnitState u) => Available(u) && Type(u).Category != CardCategory.Resource;
+        bool Swappable(UnitState u) => Available(u) && u.CanSwap && Type(u).Category != CardCategory.Resource;
 
         /// <summary>按来源卡种号查询共享配置。输入：单位；输出：卡种描述。</summary>
         CardArchetype Type(UnitState u) => _config.Cards[u.TypeId];
