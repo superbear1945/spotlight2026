@@ -300,15 +300,19 @@ namespace Spotlight
                     }
                     // 只扣目标生命：不存在反击、连锁或动画回调产生的补充伤害。
                     // 伤害读取攻击者的当前攻击力（部署时从配置初始化、可被一次性减攻降低），不重读卡种配置。
+                    // 统一伤害入口会把“基础伤害”与“已有伤害标记的追加伤害”一起结算，并只触发一次死亡处理。
                     attacker.Acted = true;
                     var damage = attacker.Attack;
+                    DamageResult applied;
                     if (target.Unit != null)
                     {
-                        target.Unit.Hp = Math.Max(0, target.Unit.Hp - damage);
-                        if (target.Unit.Hp == 0) Remove(target.Unit, Removal.Death);
+                        applied = ResolveDirectDamage(target.Unit, damage, new DamageContext(attacker.Owner, attacker.Id, target.Unit.Id, DamageKind.DirectAttack));
                     }
-                    else target.Home.Hp = Math.Max(0, target.Home.Hp - damage);
-                    Emit("attack", $"{Type(attacker).Name} 攻击 {target.Name}，造成 {damage} 伤害", target.Id);
+                    else
+                    {
+                        applied = ResolveHomeDamage(target.Home, damage, new DamageContext(attacker.Owner, attacker.Id, target.Home.Id, DamageKind.DirectAttack));
+                    }
+                    Emit("attack", $"{Type(attacker).Name} 攻击 {target.Name}，造成 {applied.TotalDamage} 伤害", target.Id, damage: applied);
                     CheckVictory();
                     break;
                 case CommandKind.Swap:
@@ -863,7 +867,7 @@ namespace Spotlight
             {
                 var remaining = bomb.Damage;
                 var steps = new List<BombBlastStep>();
-                ResolveBombCell(bomb.Position, ref remaining, steps);
+                ResolveBombCell(bomb.Position, ref remaining, steps, bomb);
                 var horizontal = Rules.PlayerOnLeft ? 1 : -1;
                 var directions = new[] { new Cell(1, 0), new Cell(0, horizontal), new Cell(-1, 0), new Cell(0, -horizontal) };
                 for (var distance = 1; distance < Math.Max(Rules.Rows, Rules.Columns) && remaining > 0; distance++)
@@ -871,27 +875,44 @@ namespace Spotlight
                     {
                         if (remaining == 0) break;
                         var cell = new Cell(bomb.Position.Row + direction.Row * distance, bomb.Position.Col + direction.Col * distance);
-                        if (Inside(cell)) ResolveBombCell(cell, ref remaining, steps);
+                        if (Inside(cell)) ResolveBombCell(cell, ref remaining, steps, bomb);
                     }
                 _bossBombs.Remove(bomb);
-                Emit("bomb-explode", $"炸弹在 {bomb.Position} 爆炸，造成 {bomb.Damage - remaining} 点伤害", bomb: bomb, blastSteps: steps.ToArray());
+                // 预算消耗与总扣血必须分开记录：伤害标记追加的伤害不消耗预算，
+                // 因此“初始预算 - 剩余预算”只代表预算消耗，不能再被当成实际总伤害。
+                var budgetUsed = bomb.Damage - remaining;
+                var totalDamage = steps.Sum(s => s.TotalDamage);
+                Emit("bomb-explode", $"炸弹在 {bomb.Position} 爆炸，消耗预算 {budgetUsed}，实际造成 {totalDamage} 点伤害", bomb: bomb, blastSteps: steps.ToArray());
             }
         }
 
         /// <summary>
-        /// 结算单格炸弹伤害。输入：格子、共享剩余预算、路径记录；输出：更新预算与路径。
+        /// 结算单格炸弹伤害。输入：格子、共享剩余预算、路径记录与所属炸弹；输出：更新预算、路径与追加伤害。
+        /// 每轮先把 1 点预算换成 1 点基础伤害，再交给统一伤害入口；追加伤害只扣生命、不扣预算。
         /// 阵亡沿用 Remove，玩家来源卡早已进入墓地，此处不重复回收；空格同样记录以复现搜索动画。
         /// </summary>
-        void ResolveBombCell(Cell cell, ref int remaining, List<BombBlastStep> steps)
+        void ResolveBombCell(Cell cell, ref int remaining, List<BombBlastStep> steps, BossBombState bomb)
         {
             var unit = _units.FirstOrDefault(u => u.Owner == Side.Player && u.Position == cell);
-            var damage = 0;
+            var budgetUsed = 0;
+            var bonusDamage = 0;
+            var killed = false;
             if (unit != null)
             {
-                while (remaining > 0 && unit.Hp > 0) { unit.Hp--; remaining--; damage++; }
-                if (unit.Hp == 0) Remove(unit, Removal.Death);
+                while (remaining > 0 && unit.Hp > 0)
+                {
+                    remaining--;
+                    budgetUsed++;
+                    // 炸弹上下文：归属 Boss 阵营、没有来源单位（不冒充标记施加者），根类型为 Bomb。
+                    var result = ResolveDirectDamage(unit, 1, new DamageContext(Side.Boss, null, unit.Id, DamageKind.Bomb, bomb: bomb));
+                    bonusDamage = (int)Math.Min(int.MaxValue, (long)bonusDamage + result.BonusDamage);
+                    if (!result.Killed) continue;
+                    // 追加伤害提前击杀后，剩余预算留给原搜索顺序继续寻找其它目标。
+                    killed = true;
+                    break;
+                }
             }
-            steps.Add(new BombBlastStep(cell, unit?.Id ?? 0, damage, unit != null && unit.Hp == 0));
+            steps.Add(new BombBlastStep(cell, unit?.Id ?? 0, budgetUsed, killed, bonusDamage));
         }
 
         /// <summary>
@@ -984,6 +1005,69 @@ namespace Spotlight
             }
             CapturePresentationFrame();
             if (_phase != MatchPhase.Finished) AdvanceTurn();
+        }
+
+        /// <summary>
+        /// 统一的战斗单位直接伤害结算入口。
+        /// 输入：目标单位、本次基础伤害（普通攻击的当前攻击力，炸弹固定为 1）与归属上下文；
+        /// 输出：本组伤害的结构化事实（基础/追加实际扣血、是否死亡、用了哪些已有层）。
+        /// 结算顺序：①固定本次受伤前的标记层 →②扣基础生命 →③若已死亡只做一次 Remove(Death) 并结束
+        /// →④仍存活时按已固定的层依次追加，任一步归零立即结束。
+        /// 为什么必须固定层：本次攻击新挂的层只能从下一次受伤起生效；
+        /// 为什么追加不递归：追加伤害不再经过挂层与恢复行动逻辑，避免无限循环。
+        /// </summary>
+        DamageResult ResolveDirectDamage(UnitState target, int baseDamage, DamageContext context)
+        {
+            if (target == null) return null;
+            // 复制受伤前的层，后续挂层不会回头改变本次结算。
+            var marks = target.DamageMarks;
+            var layers = new DamageMarkLayer[marks.Count];
+            for (var i = 0; i < layers.Length; i++) layers[i] = marks[i];
+
+            var baseApplied = DeductHp(target, baseDamage);
+            var bonusApplied = 0;
+            var killed = target.Hp <= 0;
+            if (killed) Remove(target, Removal.Death);
+            else
+            {
+                foreach (var layer in layers)
+                {
+                    var applied = DeductHp(target, layer.Damage);
+                    // 追加伤害可能让总量超出 int：用宽类型累加后截断，避免回绕成负值。
+                    bonusApplied = (int)Math.Min(int.MaxValue, (long)bonusApplied + applied);
+                    if (target.Hp > 0) continue;
+                    // 追加击杀同样只做一次死亡处理（死亡加攻/标记奖励/兵位计时都只走这里）。
+                    Remove(target, Removal.Death);
+                    killed = true;
+                    break;
+                }
+            }
+            return new DamageResult(context, baseApplied, bonusApplied, killed, layers);
+        }
+
+        /// <summary>
+        /// 家受到伤害的结算。
+        /// 输入：目标家、基础伤害与归属上下文；输出：结构化事实（家不参与伤害标记，追加永远为 0）。
+        /// 为什么不走 ResolveDirectDamage：家不是 UnitState、不会离场，且不能被施加伤害标记；
+        /// 胜负检查仍由攻击分支统一调用。
+        /// </summary>
+        DamageResult ResolveHomeDamage(HomeState home, int damage, DamageContext context)
+        {
+            var applied = Math.Max(0, Math.Min(damage, home.Hp));
+            home.Hp -= applied;
+            return new DamageResult(context, applied, 0, false, Array.Empty<DamageMarkLayer>());
+        }
+
+        /// <summary>
+        /// 扣除单位生命并返回实际扣血量。输入：单位与非负伤害；输出：实际扣掉的生命（不超过剩余生命）。
+        /// 这是唯一修改单位 Hp 的底层步骤：它不触发死亡处理、不发事件，避免同一笔伤害被重复结算。
+        /// </summary>
+        static int DeductHp(UnitState unit, int damage)
+        {
+            if (damage <= 0 || unit.Hp <= 0) return 0;
+            var applied = Math.Min(damage, unit.Hp);
+            unit.Hp -= applied;
+            return applied;
         }
 
         /// <summary>
@@ -1098,7 +1182,7 @@ namespace Spotlight
         /// 输入：类型、文本与主体 ID；输出：无。
         /// 事件同时进入“本次命令结果”和“有界历史日志”，前者供 UI 按序播放，后者供日志面板读取。
         /// </summary>
-        void Emit(string kind, string message, long id = 0, BossBombState bomb = null, BombBlastStep[] blastSteps = null) { var e = new GameEvent(kind, message, id, bomb, blastSteps); _pendingEvents.Add(e); _log.Add(e); if (_log.Count > _logLimit) _log.RemoveAt(0); }
+        void Emit(string kind, string message, long id = 0, BossBombState bomb = null, BombBlastStep[] blastSteps = null, DamageResult damage = null) { var e = new GameEvent(kind, message, id, bomb, blastSteps, damage); _pendingEvents.Add(e); _log.Add(e); if (_log.Count > _logLimit) _log.RemoveAt(0); }
 
         /// <summary>阵营显示名。输入：阵营；输出：中文名称。</summary>
         static string SideName(Side side) => side == Side.Player ? "玩家" : "Boss";
