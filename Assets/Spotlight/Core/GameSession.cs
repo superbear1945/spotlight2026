@@ -313,6 +313,14 @@ namespace Spotlight
                         applied = ResolveHomeDamage(target.Home, damage, new DamageContext(attacker.Owner, attacker.Id, target.Home.Id, DamageKind.DirectAttack));
                     }
                     Emit("attack", $"{Type(attacker).Name} 攻击 {target.Name}，造成 {applied.TotalDamage} 伤害", target.Id, damage: applied);
+                    // 伤害标记：只有“直接攻击战斗单位且目标存活”才挂层。
+                    // 家不挂层；治疗分支已在前面 break；本次追加伤害不递归不挂层。
+                    var markConfig = Type(attacker).DamageMark;
+                    if (markConfig != null && target.Unit != null && !applied.Killed)
+                    {
+                        target.Unit.AddDamageMark(markConfig.DamagePerStack);
+                        Emit("damage-mark", $"{Type(attacker).Name} 使 {target.Name} 获得 1 层伤害标记（当前 {target.Unit.DamageMarkLayers} 层，每层追加 {markConfig.DamagePerStack}）", target.Unit.Id);
+                    }
                     CheckVictory();
                     break;
                 case CommandKind.Swap:

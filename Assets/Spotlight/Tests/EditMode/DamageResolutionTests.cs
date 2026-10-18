@@ -178,5 +178,82 @@ namespace Spotlight.Tests
             Assert.That(g.GetSnapshot().Units.Any(u => u.Id == victim), Is.False);
             Assert.That(g.GetSnapshot().Log.Count(e => e.Kind == "death"), Is.EqualTo(1));
         }
+
+        /// <summary>
+        /// 准备一个“Boss 单位带伤害标记能力”的配置。
+        /// 输入：目标单位生命；输出：炸弹间隔 2、预算 3、Boss 单位 1 攻 1 程且每层 1 点的配置。
+        /// 为什么需要：伤害标记只能由敌方直接攻击施加，炸弹测试必须先让 Boss 单位打两下。
+        /// </summary>
+        static ConfigDocument MarkingBombDocument(int victimHp)
+        {
+            var d = Document();
+            d.rules[0].bossBombInterval = 2;
+            d.rules[0].bossBombDamage = 3;
+            d.rules[0].bossBombColumn = 5;
+            d.cards.Single(c => c.id == "miner").hp = victimHp;
+            var boss = d.cards.Single(c => c.id == "boss");
+            boss.hp = 30;
+            boss.atk = 1;
+            boss.range = 1;
+            boss.damageMarkComponent = true;
+            boss.damageMarkDamagePerStack = 1;
+            return d;
+        }
+
+        /// <summary>
+        /// 让 Boss 单位攻击指定目标两次并布置炸弹，然后在第三回合玩家开始时引爆。
+        /// 输入：对局、目标格与受害者 ID；输出：爆炸事件。
+        /// 时间线：玩家 1 部署；Boss 1 部署并攻击；玩家 2 布炸弹；Boss 2 再攻击；玩家 3 爆炸。
+        /// </summary>
+        static GameEvent MarkTwiceThenExplode(GameSession g, Cell bombCell, long victim)
+        {
+            End(g);
+            Do(g, new GameCommand(CommandKind.BossDeploy, Side.Boss, target: new Cell(bombCell.Row, bombCell.Col + 1)));
+            var boss = g.GetSnapshot().Units.Single(u => u.Owner == Side.Boss);
+            Do(g, new GameCommand(CommandKind.Attack, Side.Boss, boss.Id, targetId: victim));
+            End(g);
+            Do(g, new GameCommand(CommandKind.DeployBossBomb, Side.Boss, target: bombCell));
+            End(g);
+            Do(g, new GameCommand(CommandKind.Attack, Side.Boss, boss.Id, targetId: victim));
+            End(g);
+            return End(g).Events.Single(e => e.Kind == "bomb-explode");
+        }
+
+        /// <summary>
+        /// 10 血、2 层标记、3 点预算：每轮 1 基础 + 2 追加 = 3，三轮共 9，剩 1 血；预算只消耗 3。
+        /// </summary>
+        [Test]
+        public void BombBonusDoesNotConsumeBudget()
+        {
+            var d = MarkingBombDocument(13);
+            var g = Start(d);
+            var victim = Put(g, "miner", new Cell(2, 4));
+            var blast = MarkTwiceThenExplode(g, new Cell(2, 4), victim);
+            Assert.That(g.GetSnapshot().Units.Single(u => u.Id == victim).Hp, Is.EqualTo(1));
+            var step = blast.BlastSteps.Single();
+            Assert.That(step.Damage, Is.EqualTo(3), "预算只按基础扣血消耗");
+            Assert.That(step.BonusDamage, Is.EqualTo(6), "两 层在每轮各追加 1 点");
+            Assert.That(step.TotalDamage, Is.EqualTo(9));
+        }
+
+        /// <summary>
+        /// 4 血、2 层标记、3 点预算：第二轮基础伤害击杀，后续不再追加，剩余 1 点预算继续搜索下一个单位。
+        /// </summary>
+        [Test]
+        public void BonusKillStopsAndRemainingBudgetContinuesSearching()
+        {
+            var d = MarkingBombDocument(7);
+            var g = Start(d);
+            var victim = Put(g, "miner", new Cell(2, 4));
+            var next = Put(g, "miner", new Cell(3, 4));
+            var blast = MarkTwiceThenExplode(g, new Cell(2, 4), victim);
+            var killed = blast.BlastSteps.First(s => s.UnitId == victim);
+            Assert.That(killed.Damage, Is.EqualTo(2), "基础伤害击杀后不再消耗预算");
+            Assert.That(killed.BonusDamage, Is.EqualTo(2), "第一轮追加 2 点，第二轮基础伤害直接击杀");
+            Assert.That(killed.Killed, Is.True);
+            var followUp = blast.BlastSteps.Single(s => s.UnitId == next);
+            Assert.That(followUp.Damage, Is.EqualTo(1), "剩余预算按原搜索顺序继续寻找目标");
+            Assert.That(g.GetSnapshot().Units.Single(u => u.Id == next).Hp, Is.EqualTo(6), "跟随单位只受到 1 点基础伤害");
+        }
     }
 }

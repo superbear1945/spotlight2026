@@ -134,6 +134,44 @@ namespace Spotlight
         int GainResource { get; }
     }
 
+    /// <summary>
+    /// 四邻空格限制配置（后羿-II综合舰）。
+    /// 输入：Excel 的 adjacentClearanceMinEmpty；输出：规则内核读取的最少空邻格数（1～4）。
+    /// 为什么需要独立接口：阈值必须来自配置而不是代码常量；规则内核只依赖接口，
+    /// 因此 SO、行对象与测试夹具都能作为配置来源。
+    /// 契约：只描述“部署、移动与互换前后都必须满足的空格数量”，
+    /// 不保存具体格子、不描述棋盘外如何计数——那属于规则实现。
+    /// </summary>
+    public interface IAdjacentClearanceConfig
+    {
+        /// <summary>上下左右四个方向中至少需要为空的数量（1～4）；斜角不计，棋盘外按空计算。</summary>
+        int MinEmptyNeighbors { get; }
+    }
+
+    /// <summary>
+    /// 击杀恢复行动（维京长船-2056）。
+    /// 为什么做成空接口：该能力没有任何数值参数，以“非空配置”本身作为启用标识，
+    /// 避免再序列化一个永远为 true 的布尔字段。
+    /// 契约：只表示“本次直接攻击击杀目标后可再次行动”，
+    /// 不描述恢复次数、回合上限或跨回合保存——这些属于规则语义，不是可填数值。
+    /// </summary>
+    public interface IKillActionConfig
+    {
+    }
+
+    /// <summary>
+    /// 伤害标记配置（SNP-EU）。
+    /// 输入：Excel 的 damageMarkDamagePerStack；输出：每层标记在之后每次直接受伤时追加的伤害。
+    /// 为什么与入场标记（IMarkOnEnterConfig）分开：两者行为完全不同——入场标记是“阵亡发资源”，
+    /// 伤害标记是“直接受伤追加伤害”；复用同一接口会让两套机制互相污染。
+    /// 契约：只描述每层追加值；一次直接攻击新增一层是机制语义，不是可配置项。
+    /// </summary>
+    public interface IDamageMarkConfig
+    {
+        /// <summary>每层标记在之后每次直接受伤时追加的伤害值（正整数）。</summary>
+        int DamagePerStack { get; }
+    }
+
     // 注意：以下所有 public 字段名都是 Excel 的正式列名；只读接口属性不参与列映射，
     // 因此新增列时必须同时在本类和编辑器表结构中登记，否则会被“未定义列”校验拦截。
     /// <summary>
@@ -220,6 +258,16 @@ namespace Spotlight
         public bool leaveAfterDeploy;
         /// <summary>即时卡结算时立即获得的资源；leaveAfterDeploy 为 false 时必须为 0，为 true 时必须为正整数。</summary>
         public int deployGainResource;
+        /// <summary>是否启用四邻空格限制能力；为 false 时 adjacentClearanceMinEmpty 必须为 0。</summary>
+        public bool adjacentClearanceComponent;
+        /// <summary>四邻中至少需要为空的格数（1～4）；启用能力时必须在该范围内，禁用时必须为 0。</summary>
+        public int adjacentClearanceMinEmpty;
+        /// <summary>是否启用击杀恢复行动（仅攻击类卡可启用）；该能力没有数值参数。</summary>
+        public bool killActionComponent;
+        /// <summary>是否在直接攻击后施加伤害标记（仅攻击类卡可启用）；为 false 时 damageMarkDamagePerStack 必须为 0。</summary>
+        public bool damageMarkComponent;
+        /// <summary>每层伤害标记在之后每次直接受伤时追加的伤害（正整数）；启用能力时必须为正整数。</summary>
+        public int damageMarkDamagePerStack;
 
         /// <inheritdoc />
         public int Hp => hp;
@@ -455,13 +503,21 @@ namespace Spotlight
         public bool AttacksAlliesAsHeal { get; }
         /// <summary>即时卡效果；为 null 表示该卡部署后留在场上。</summary>
         public IInstantEffectConfig Instant { get; }
+        /// <summary>四邻空格限制能力；为 null 表示没有该能力。</summary>
+        public IAdjacentClearanceConfig AdjacentClearance { get; }
+        /// <summary>击杀恢复行动能力；为 null 表示没有该能力（非空即启用）。</summary>
+        public IKillActionConfig KillAction { get; }
+        /// <summary>伤害标记能力；为 null 表示没有该能力。</summary>
+        public IDamageMarkConfig DamageMark { get; }
 
         /// <summary>
         /// 由一行已校验数据构造共享描述。
         /// 输入：row 提供标识与开关，combat/resource/teleport 提供各能力数值（可为 null）；
         /// 输出：供 GameConfiguration 索引的不可变对象。
+        /// 新能力参数追加在末尾，既有调用点与测试夹具不需修改。
         /// </summary>
-        public CardArchetype(CardRow row, ICombatConfig combat, IResourceConfig resource, ITeleportConfig teleport, IDeploymentPenaltyConfig deploymentPenalty = null, IMarkOnEnterConfig markOnEnter = null, IDeathGrowthConfig deathGrowth = null, IInstantEffectConfig instant = null)
+        public CardArchetype(CardRow row, ICombatConfig combat, IResourceConfig resource, ITeleportConfig teleport, IDeploymentPenaltyConfig deploymentPenalty = null, IMarkOnEnterConfig markOnEnter = null, IDeathGrowthConfig deathGrowth = null, IInstantEffectConfig instant = null,
+            IAdjacentClearanceConfig adjacentClearance = null, IKillActionConfig killAction = null, IDamageMarkConfig damageMark = null)
         {
             Id = row.id;
             Name = row.name?.Trim();
@@ -483,6 +539,9 @@ namespace Spotlight
             DeployRequireAdjacentCount = row.deployRequireAdjacentCount;
             AttacksAlliesAsHeal = row.attacksAlliesAsHeal;
             Instant = instant;
+            AdjacentClearance = adjacentClearance;
+            KillAction = killAction;
+            DamageMark = damageMark;
         }
 
         /// <summary>
@@ -501,7 +560,10 @@ namespace Spotlight
                 row.deploymentPenaltyComponent ? new DeploymentPenaltyValues(row.deploymentAttackReduction) : null,
                 row.markOnEnterComponent ? new MarkOnEnterValues(row.markOnEnterRadius, row.markRewardResource) : null,
                 row.deathGrowthComponent ? new DeathGrowthValues(row.deathGrowthPerKill, row.deathGrowthLimit) : null,
-                row.leaveAfterDeploy ? new InstantEffectValues(row.deployGainResource) : null);
+                row.leaveAfterDeploy ? new InstantEffectValues(row.deployGainResource) : null,
+                row.adjacentClearanceComponent ? new AdjacentClearanceValues(row.adjacentClearanceMinEmpty) : null,
+                row.killActionComponent ? new KillActionValues() : null,
+                row.damageMarkComponent ? new DamageMarkValues(row.damageMarkDamagePerStack) : null);
         }
     }
 
@@ -627,6 +689,44 @@ namespace Spotlight
         public InstantEffectValues(int gainResource)
         {
             GainResource = gainResource;
+        }
+    }
+
+    /// <summary>
+    /// 四邻空格限制数值的不可变副本。输入：最少空邻格数；输出：实现 IAdjacentClearanceConfig 的只读对象。
+    /// </summary>
+    sealed class AdjacentClearanceValues : IAdjacentClearanceConfig
+    {
+        /// <inheritdoc />
+        public int MinEmptyNeighbors { get; }
+
+        /// <summary>复制空格阈值。输入：1～4 的最少空邻格数；输出：与草稿脱钩的只读副本。</summary>
+        public AdjacentClearanceValues(int minEmptyNeighbors)
+        {
+            MinEmptyNeighbors = minEmptyNeighbors;
+        }
+    }
+
+    /// <summary>
+    /// 击杀恢复行动的不可变标记。输入：无；输出：实现 IKillActionConfig 的只读对象。
+    /// 为什么没有字段：能力本身没有参数，存在与否就是开关。
+    /// </summary>
+    sealed class KillActionValues : IKillActionConfig
+    {
+    }
+
+    /// <summary>
+    /// 伤害标记数值的不可变副本。输入：每层追加伤害；输出：实现 IDamageMarkConfig 的只读对象。
+    /// </summary>
+    sealed class DamageMarkValues : IDamageMarkConfig
+    {
+        /// <inheritdoc />
+        public int DamagePerStack { get; }
+
+        /// <summary>复制每层追加伤害。输入：正整数；输出：与草稿脱钩的只读副本。</summary>
+        public DamageMarkValues(int damagePerStack)
+        {
+            DamagePerStack = damagePerStack;
         }
     }
 
@@ -917,6 +1017,13 @@ namespace Spotlight
             if (list.Any(c => c.MarkOnEnter != null && (c.MarkOnEnter.Radius < 1 || c.MarkOnEnter.Reward < 1))) errors.Add("入场标记配置非法：启用时半径与奖励必须为正整数");
             if (list.Any(c => c.DeathGrowth != null && (c.DeathGrowth.PerKill < 1 || c.DeathGrowth.Limit < 1))) errors.Add("死亡加攻配置非法：启用时加成与次数上限必须为正整数");
             if (list.Any(c => c.Instant != null && c.Instant.GainResource < 1)) errors.Add("即时卡配置非法：结算资源必须为正整数");
+            // 新能力的组合路径防守：SO 被手工改动或旧 JSON 残留都可能绕过文档校验。
+            if (list.Any(c => c.AdjacentClearance != null && (c.AdjacentClearance.MinEmptyNeighbors < 1 || c.AdjacentClearance.MinEmptyNeighbors > 4)))
+                errors.Add("四邻空格限制配置非法：启用时最少空格数必须在 1～4 之间");
+            if (list.Any(c => c.KillAction != null && c.Category != CardCategory.Attack))
+                errors.Add("击杀恢复行动配置非法：仅攻击类卡可启用");
+            if (list.Any(c => c.DamageMark != null && (c.DamageMark.DamagePerStack < 1 || c.Category != CardCategory.Attack)))
+                errors.Add("伤害标记配置非法：启用时每层追加伤害必须为正整数，且仅攻击类卡可启用");
             // 即时卡只在玩家手牌路径生效；Boss 卡种/刷怪卡指向即时卡会让补兵与生成逻辑面对“已移除的单位”。
             if (list.SingleOrDefault(c => c.Id == rules.BossCardType)?.Instant != null) errors.Add("Boss 卡种不能是即时卡");
             if (list.SingleOrDefault(c => c.Id == rules.BossSpawnerCardType)?.Instant != null) errors.Add("刷怪卡卡种不能是即时卡");
@@ -1027,6 +1134,17 @@ namespace Spotlight
                 if (c.deployGainResource < 0) errors.Add(p + "：deployGainResource 不得为负");
                 if (!c.leaveAfterDeploy && c.deployGainResource != 0) errors.Add(p + "：未启用 leaveAfterDeploy 时 deployGainResource 必须为 0");
                 if (c.leaveAfterDeploy && c.deployGainResource < 1) errors.Add(p + "：启用 leaveAfterDeploy 时 deployGainResource 必须为正整数");
+                // 四邻空格限制：关闭时必须为 0，启用时必须是 1～4（四个方向全部为空即 4）。
+                // 允许 0 作为关闭值以外的任何值都会被沉默地当成“没有要求”，因此必须显式拦截。
+                if (c.adjacentClearanceMinEmpty < 0 || c.adjacentClearanceMinEmpty > 4) errors.Add(p + "：adjacentClearanceMinEmpty 必须在 0～4 之间");
+                if (!c.adjacentClearanceComponent && c.adjacentClearanceMinEmpty != 0) errors.Add(p + "：未启用 adjacentClearanceComponent 时 adjacentClearanceMinEmpty 必须为 0");
+                if (c.adjacentClearanceComponent && (c.adjacentClearanceMinEmpty < 1 || c.adjacentClearanceMinEmpty > 4)) errors.Add(p + "：启用 adjacentClearanceComponent 时 adjacentClearanceMinEmpty 必须为 1～4");
+                // 击杀恢复行动与伤害标记都只能挂在攻击类卡上，与 attacksAlliesAsHeal 的分类约束一致。
+                if (c.killActionComponent && c.category != "attack") errors.Add(p + "：killActionComponent 仅攻击卡可启用");
+                if (c.damageMarkDamagePerStack < 0) errors.Add(p + "：damageMarkDamagePerStack 不得为负");
+                if (!c.damageMarkComponent && c.damageMarkDamagePerStack != 0) errors.Add(p + "：未启用 damageMarkComponent 时 damageMarkDamagePerStack 必须为 0");
+                if (c.damageMarkComponent && c.damageMarkDamagePerStack < 1) errors.Add(p + "：启用 damageMarkComponent 时 damageMarkDamagePerStack 必须为正整数");
+                if (c.damageMarkComponent && c.category != "attack") errors.Add(p + "：damageMarkComponent 仅攻击卡可启用");
                 if (c.deployRequireAdjacentCount < 0) errors.Add(p + "：deployRequireAdjacentCount 不得为负");
                 // 邻域要求与分类必须成对出现：数量大于 0 时分类必须合法，分类非空时数量必须大于 0。
                 // 为什么不允许“填了分类但数量为 0”：那会被当成“无要求”而悄悄通过，属于最危险的一类静默笔误。

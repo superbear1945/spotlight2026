@@ -55,6 +55,12 @@ namespace Spotlight
         [SerializeField] DeathGrowthConfigSO _deathGrowth;
         /// <summary>即时卡效果配置；为 null 表示该卡部署后留在场上。</summary>
         [SerializeField] InstantEffectConfigSO _instant;
+        /// <summary>四邻空格限制配置；为 null 表示没有这项能力。</summary>
+        [SerializeField] AdjacentClearanceConfigSO _adjacentClearance;
+        /// <summary>击杀恢复行动配置；为 null 表示没有这项能力。</summary>
+        [SerializeField] KillActionConfigSO _killAction;
+        /// <summary>伤害标记配置；为 null 表示没有这项能力。</summary>
+        [SerializeField] DamageMarkConfigSO _damageMark;
         /// <summary>卡牌 Prefab，由外观模板生成；手牌与棋盘共用同一模板。</summary>
         [SerializeField] Card _prefab;
         /// <summary>源工作簿文件名，用于 Inspector 提示与校验报告。</summary>
@@ -102,6 +108,12 @@ namespace Spotlight
         public DeathGrowthConfigSO DeathGrowth => _deathGrowth;
         /// <summary>即时卡效果配置 SO（可能为 null）。</summary>
         public InstantEffectConfigSO Instant => _instant;
+        /// <summary>四邻空格限制配置 SO（可能为 null）。</summary>
+        public AdjacentClearanceConfigSO AdjacentClearance => _adjacentClearance;
+        /// <summary>击杀恢复行动配置 SO（可能为 null）。</summary>
+        public KillActionConfigSO KillAction => _killAction;
+        /// <summary>伤害标记配置 SO（可能为 null）。</summary>
+        public DamageMarkConfigSO DamageMark => _damageMark;
         /// <summary>卡牌 Prefab，UI 实例化手牌与棋盘单位时使用。</summary>
         public Card Prefab => _prefab;
         /// <inheritdoc />
@@ -150,7 +162,12 @@ namespace Spotlight
                 deathGrowthLimit = _deathGrowth != null ? _deathGrowth.Limit : 0,
                 leaveAfterDeploy = _instant != null,
                 deployGainResource = _instant != null ? _instant.GainResource : 0,
-                attacksAlliesAsHeal = _attacksAlliesAsHeal
+                attacksAlliesAsHeal = _attacksAlliesAsHeal,
+                adjacentClearanceComponent = _adjacentClearance != null,
+                adjacentClearanceMinEmpty = _adjacentClearance != null ? _adjacentClearance.MinEmptyNeighbors : 0,
+                killActionComponent = _killAction != null,
+                damageMarkComponent = _damageMark != null,
+                damageMarkDamagePerStack = _damageMark != null ? _damageMark.DamagePerStack : 0
             };
         }
 
@@ -161,7 +178,7 @@ namespace Spotlight
         public CardArchetype ToArchetype()
         {
             var row = ToCardRow();
-            return new CardArchetype(row, _combat, _resource, _teleport, _deploymentPenalty, _markOnEnter, _deathGrowth, _instant);
+            return new CardArchetype(row, _combat, _resource, _teleport, _deploymentPenalty, _markOnEnter, _deathGrowth, _instant, _adjacentClearance, _killAction, _damageMark);
         }
 
         /// <summary>
@@ -170,7 +187,8 @@ namespace Spotlight
         /// 说明：只允许编辑器编译器调用；运行时不修改已发布资产。
         /// 一次性减攻配置为 null 时引用被清空，因此 SO 与 Excel 行始终一致（禁用即无能力）。
         /// </summary>
-        public void EditorApply(CardRow row, CombatConfigSO combat, ResourceConfigSO resource, TeleportConfigSO teleport, DeploymentPenaltyConfigSO deploymentPenalty, Card prefab, string sourceWorkbook, string sourceSheet, MarkOnEnterConfigSO markOnEnter = null, DeathGrowthConfigSO deathGrowth = null, InstantEffectConfigSO instant = null)
+        public void EditorApply(CardRow row, CombatConfigSO combat, ResourceConfigSO resource, TeleportConfigSO teleport, DeploymentPenaltyConfigSO deploymentPenalty, Card prefab, string sourceWorkbook, string sourceSheet, MarkOnEnterConfigSO markOnEnter = null, DeathGrowthConfigSO deathGrowth = null, InstantEffectConfigSO instant = null,
+            AdjacentClearanceConfigSO adjacentClearance = null, KillActionConfigSO killAction = null, DamageMarkConfigSO damageMark = null)
         {
             _id = row.id;
             _name = row.name.Trim();
@@ -192,6 +210,9 @@ namespace Spotlight
             _markOnEnter = markOnEnter;
             _deathGrowth = deathGrowth;
             _instant = instant;
+            _adjacentClearance = adjacentClearance;
+            _killAction = killAction;
+            _damageMark = damageMark;
             _prefab = prefab;
             _sourceWorkbook = sourceWorkbook;
             _sourceSheet = sourceSheet;
