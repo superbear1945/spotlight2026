@@ -1,5 +1,18 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-7929756795551771592
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e0eddae0ac4af343a98e9885812bea1, type: 3}
+  m_Name: bossSpawner_Spawn
+  m_EditorClassIdentifier: 
+  _spawnCardType: bossCombat
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -32,6 +45,7 @@ MonoBehaviour:
   _markOnEnter: {fileID: 0}
   _deathGrowth: {fileID: 0}
   _instant: {fileID: 0}
+  _spawn: {fileID: -7929756795551771592}
   _prefab: {fileID: 5457677980275941708, guid: d0095c90a9e3e7e4d8710b3dba24d3cd, type: 3}
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
   _sourceSheet: Cards
@@ -51,3 +65,5 @@ MonoBehaviour:
   _attack: 0
   _range: 0
   _moveDistance: 0
+  _canAttackResources: 1
+  _canSwap: 0

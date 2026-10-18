@@ -48,7 +48,12 @@ namespace Spotlight.Tests
         {
             var list = (cards ?? Pool()).ToList();
             list.Add(Card("bossCombat", "attack", "none", 3, 1, 1, 1, 0, 0, false));
-            list.Add(Card("bossSpawner", "special", "none", 1, 0, 0, 0, 0, 0, false));
+            var spawner = Card("bossSpawner", "special", "none", 1, 0, 0, 0, 0, 0, false);
+            spawner.spawnComponent = true; spawner.spawnCardType = "bossCombat"; spawner.canSwap = false;
+            list.Add(spawner);
+            var ship = Card("warship", "attack", "none", 15, 2, 1, 1, 0, 0, false);
+            ship.spawnComponent = true; ship.spawnCardType = "bossCombat"; ship.canAttackResources = false;
+            list.Add(ship);
             return new ConfigDocument
             {
                 schemaVersion = 2,
@@ -64,8 +69,7 @@ namespace Spotlight.Tests
                         adjacentSwap = true, lineBlocking = false, bossBombInterval = 10, bossBombDamage = 3,
                         bossBombColumn = 5, bossSpawnerAttackThreshold = 12, bossSpawnerCountFromColumn = 4,
                         bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5,
-                        bossSpawnerCardType = "bossSpawner", bossSpawnerSpawnCardType = "bossCombat",
-                        drawPileSize = size, tierRatioBasic = ratioBasic, tierRatioIntermediate = ratioIntermediate,
+                        bossSpawnerCardType = "bossSpawner", bossPhaseTwoHp = 1, bossWarshipColumn = 1, bossWarshipCardType = "warship", drawPileSize = size, tierRatioBasic = ratioBasic, tierRatioIntermediate = ratioIntermediate,
                         tierRatioAdvanced = ratioAdvanced, maxTypesBasic = maxBasic,
                         maxTypesIntermediate = maxIntermediate, maxTypesAdvanced = maxAdvanced
                     }

@@ -727,6 +727,8 @@ namespace Spotlight
             if (_presentingTurn || _modalOpen || _session == null) return null;
             var before = _session.GetSnapshot();
             var result = _session.Execute(command);
+            if (result.Success && before.BossPhase != _session.GetSnapshot().BossPhase)
+                _selection = new Selection(SelectionKind.None);
             if (!result.Success)
             {
                 Show(result.Error);

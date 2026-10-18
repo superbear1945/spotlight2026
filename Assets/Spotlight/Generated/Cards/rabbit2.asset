@@ -16,6 +16,8 @@ MonoBehaviour:
   _attack: 1
   _range: 2
   _moveDistance: 1
+  _canAttackResources: 1
+  _canSwap: 1
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -48,6 +50,7 @@ MonoBehaviour:
   _markOnEnter: {fileID: 0}
   _deathGrowth: {fileID: 0}
   _instant: {fileID: 0}
+  _spawn: {fileID: 0}
   _prefab: {fileID: 4120874686476434148, guid: b52673757889084458844d7129b693e8, type: 3}
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
   _sourceSheet: Cards

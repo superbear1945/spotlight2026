@@ -31,7 +31,8 @@ namespace Spotlight.Tests
                     new CardRow { tier = "basic", id = "miner", name = "矿机", category = "resource", hp = 4, produce = 1, moveDistance = 0, resourceComponent = true, viewKey = "default" },
                     new CardRow { tier = "basic", id = "soldier", name = "士兵", category = "attack", hp = 5, atk = 2, range = 1, moveDistance = 2, viewKey = "default" },
                     new CardRow { tier = "none", id = "boss", name = "敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
-                    new CardRow { tier="none", id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" },
+                    new CardRow { tier = "none", id = "spawner", name="刷怪卡", category="special", hp=1, viewKey="default" , canSwap = false, spawnComponent = true, spawnCardType = "boss" },
+                    new CardRow { tier = "none", id = "warship", name="战舰", category="attack", hp=15, atk=2, range=1, moveDistance=1, canAttackResources=false, spawnComponent=true, spawnCardType="boss", viewKey="default" },
                     // 以下两张仅用于满足“初级/中级/高级每阶级至少一张可携带卡种”的配置校验，不参与任何断言。
                     new CardRow { tier = "intermediate", id = "fillerIntermediate", name = "夹具中级卡", category = "resource", hp = 1, resourceComponent = true, produce = 0, viewKey = "default" },
                     new CardRow { tier = "advanced", id = "fillerAdvanced", name = "夹具高级卡", category = "resource", hp = 1, resourceComponent = true, produce = 0, viewKey = "default" }
@@ -41,7 +42,7 @@ namespace Spotlight.Tests
                     new RulesRow
                     {
                         drawPileSize = 24, tierRatioBasic = 70, tierRatioIntermediate = 20, tierRatioAdvanced = 10, maxTypesBasic = 5, maxTypesIntermediate = 3, maxTypesAdvanced = 2,
-                        bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossSpawnerSpawnCardType = "boss", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 20, bossPlays = 1, drawCount = 6, handLimit = 30,
+                        bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossPhaseTwoHp = 1, bossWarshipColumn = 1, bossWarshipCardType = "warship", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 20, bossPlays = 1, drawCount = 6, handLimit = 30,
                         initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss",
                         playerControlsBoss = true, summoningSickness = false, adjacentSwap = true
                     }

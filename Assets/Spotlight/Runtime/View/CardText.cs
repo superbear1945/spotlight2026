@@ -124,6 +124,10 @@ namespace Spotlight
             if (arch.DeployCost > 0) sb.AppendLine().Append("部署消耗：").Append(arch.DeployCost).Append(" 资源");
             if (arch.DeployRequireAdjacentCount > 0)
                 sb.AppendLine().Append("部署要求：四邻至少 ").Append(arch.DeployRequireAdjacentCount).Append(" 个").Append(CategoryLabel(ParseCategory(arch.DeployRequireAdjacentCategory))).Append("单位");
+            if (arch.Spawn != null) sb.AppendLine().Append("刷怪：下个所属阵营回合起，每回合八邻生成一架战机；Boss 来源满格时可顶替玩家单位（含资源卡），家和 Boss 单位不可顶替，无位置则暂停。");
+            if (arch.Combat != null && !arch.Combat.CanAttackResources) sb.AppendLine().Append("不能直接攻击资源卡，可以攻击敌方的家。");
+            if (arch.Combat != null && !arch.Combat.CanSwap)
+                sb.AppendLine().Append(arch.Combat.Attack == 0 && arch.Combat.MoveDistance == 0 ? "不能攻击、移动或互换。" : "不能参与互换。");
             if (arch.RequiresUpgrade) sb.AppendLine().Append("覆盖升级自：").Append(arch.UpgradeFrom);
             if (arch.Teleport != null && arch.Teleport.PermitsAttackDeploy) sb.AppendLine().Append("扩展：允许己方攻击卡部署在四邻");
             if (arch.DeploymentPenalty != null)
@@ -166,6 +170,10 @@ namespace Spotlight
             if (arch.DeployCost > 0) sb.AppendLine().Append("部署消耗：").Append(arch.DeployCost).Append(" 资源");
             if (arch.DeployRequireAdjacentCount > 0)
                 sb.AppendLine().Append("部署要求：四邻至少 ").Append(arch.DeployRequireAdjacentCount).Append(" 个").Append(CategoryLabel(ParseCategory(arch.DeployRequireAdjacentCategory))).Append("单位");
+            if (arch.Spawn != null) sb.AppendLine().Append("刷怪：下个所属阵营回合起，每回合八邻生成一架战机；Boss 来源满格时可顶替玩家单位（含资源卡），家和 Boss 单位不可顶替，无位置则暂停。");
+            if (!unit.CanAttackResources) sb.AppendLine().Append("不能直接攻击资源卡，可以攻击敌方的家。");
+            if (!unit.CanSwap)
+                sb.AppendLine().Append(unit.Attack == 0 && unit.MoveDistance == 0 ? "不能攻击、移动或互换。" : "不能参与互换。");
             if (arch.RequiresUpgrade) sb.AppendLine().Append("覆盖升级自：").Append(arch.UpgradeFrom);
             if (arch.Teleport != null && arch.Teleport.PermitsAttackDeploy) sb.AppendLine().Append("扩展：允许己方攻击卡部署在四邻");
             if (unit.DeploymentAttackReduction > 0)

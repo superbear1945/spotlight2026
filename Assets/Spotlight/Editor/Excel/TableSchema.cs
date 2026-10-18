@@ -109,7 +109,11 @@ namespace Spotlight.EditorTools
                 new ColumnDefinition("attacksAlliesAsHeal", ColumnType.Boolean, true, "是否允许攻击友方单位并把对友方的结算改为治疗（生命 + 当前攻击，受生命上限限流），默认 false。只允许攻击类卡启用；满血也允许白打并消耗行动。"),
                 new ColumnDefinition("leaveAfterDeploy", ColumnType.Boolean, true, "是否“部署即结算、结算即退场”（即时卡），默认 false。启用后该卡在场时间视为 0：不参与一次性减攻与入场标记，结算完 deployGainResource 后立即离场（原因为 Consumed，不触发补兵/死亡加攻/标记奖励）。Boss 卡种与刷怪卡卡种不得指向即时卡。"),
                 new ColumnDefinition("deployGainResource", ColumnType.Integer, true, "即时卡结算时立即获得的资源，默认 0，正整数。启用 leaveAfterDeploy 时必须为正整数，禁用时必须为 0。"),
-                new ColumnDefinition("tier", ColumnType.Text, true, "卡牌阶级，独立于 category：basic=初级，intermediate=中级，advanced=高级；Boss 专用卡填 none（不适用），不可加入玩家卡组。必须显式填写；仅用于卡组张数统计，暂不限制携带数量与部署回合。")
+                new ColumnDefinition("tier", ColumnType.Text, true, "卡牌阶级，独立于 category：basic=初级，intermediate=中级，advanced=高级；Boss 专用卡填 none（不适用），不可加入玩家卡组。必须显式填写；仅用于卡组张数统计，暂不限制携带数量与部署回合。"),
+                new ColumnDefinition("canAttackResources", ColumnType.Boolean, true, "是否允许直接攻击资源单位，默认 true；战舰默认 false，仍可攻击敌方家。"),
+                new ColumnDefinition("canSwap", ColumnType.Boolean, true, "是否允许参与互换，默认 true；固定刷怪笼默认 false，资源分类始终不可互换。"),
+                new ColumnDefinition("spawnComponent", ColumnType.Boolean, true, "是否启用刷怪组件，默认 false；启用后从下个所属阵营回合开始八邻生成一架战机。"),
+                new ColumnDefinition("spawnCardType", ColumnType.Text, false, "生成战机卡种，默认空；启用刷怪时须引用攻击类卡种，普通刷怪笼与战舰默认 bossCombat。原 Rules.bossSpawnerSpawnCardType 请迁移到对应 Cards 行。")
             }),
             new TableDefinition("Rules", new[]
             {
@@ -138,7 +142,9 @@ namespace Spotlight.EditorTools
                 new ColumnDefinition("bossSpawnerUnitThreshold", ColumnType.Integer, true, "前线玩家攻击类单位数量下限，默认 2，正整数。仅统计 category=attack，不以攻击力是否非零判断。与总攻击力条件同时满足才触发。"),
                 new ColumnDefinition("bossSpawnerDeployFromColumn", ColumnType.Integer, true, "刷怪卡部署起始列，默认 5，正整数。从玩家一侧第 1 列起算，包含本列及之后的空格；超过棋盘宽度或没有空格则跳过当次机会，不累计。"),
                 new ColumnDefinition("bossSpawnerCardType", ColumnType.Text, true, "刷怪卡卡种 ID，默认 bossSpawner，须引用已注册特殊卡。生命可配置为正整数，攻击/射程/移动为 0，无资源和传送能力。场上最多一张，不能移动或互换，部署后下一个 Boss 回合开始生成。"),
-                new ColumnDefinition("bossSpawnerSpawnCardType", ColumnType.Text, true, "生成战机卡种 ID，默认 bossCombat，须引用已注册攻击类卡种。每个 Boss 回合在八邻随机空格生成一架；满格随机顶替玩家单位，无目标则暂停，下回合重试。遵守召唤失调，不占固定兵位。"),
+                new ColumnDefinition("bossPhaseTwoHp", ColumnType.Integer, true, "二阶段锁血阈值，默认 20，须大于 0 且小于 Boss 初始生命。越过阈值的伤害截断到此值并立即部署两艘战舰。"),
+                new ColumnDefinition("bossWarshipColumn", ColumnType.Integer, true, "战舰部署列，默认 8，从玩家一侧起算并随阵营镜像，必须在棋盘内；首选格被占时寻找最近空格。"),
+                new ColumnDefinition("bossWarshipCardType", ColumnType.Text, true, "阶段战舰卡种，默认 bossWarship，须具有战斗与刷怪能力且不能攻击资源卡；两艘均阵亡后进入三阶段。"),
                 new ColumnDefinition("drawPileSize", ColumnType.Integer, true, "玩家抽牌堆总张数，默认 24，必须至少 3。开局按此数量生成卡牌记录；不再由 Deck 表逐卡种配置（Deck 表已废除）。"),
                 new ColumnDefinition("tierRatioBasic", ColumnType.Integer, true, "初级卡在抽牌堆中的占比百分比，默认 70，必须至少 1。三阶级比例之和必须为 100，不支持 0%。"),
                 new ColumnDefinition("tierRatioIntermediate", ColumnType.Integer, true, "中级卡在抽牌堆中的占比百分比，默认 20，必须至少 1。"),
@@ -232,7 +238,10 @@ namespace Spotlight.EditorTools
                 }
                 if (table.Find(header) == null)
                 {
-                    issues.Add(new ConfigIssue(file, table.SheetName, 1, column + 1, "未定义列：" + header));
+                    var migration = header == "bossSpawnerSpawnCardType"
+                        ? "；请将值迁移至原刷怪笼 Cards 行的 spawnCardType，启用 spawnComponent 后删除旧列，详见 docs/使用说明.md"
+                        : string.Empty;
+                    issues.Add(new ConfigIssue(file, table.SheetName, 1, column + 1, "未定义列：" + header + migration));
                     ok = false;
                     continue;
                 }
@@ -247,9 +256,10 @@ namespace Spotlight.EditorTools
 
             foreach (var definition in table.Columns)
             {
-                if (!definition.Required) continue;
+                // 刷怪引用允许禁用行留空，但列本身必须存在，旧表不能隐式迁移。
+                if (!definition.Required && !(table.SheetName == "Cards" && definition.Name == "spawnCardType")) continue;
                 if (headerIndex.ContainsKey(definition.Name)) continue;
-                issues.Add(new ConfigIssue(file, table.SheetName, 1, 0, "缺失必需列：" + definition.Name));
+                issues.Add(new ConfigIssue(file, table.SheetName, 1, 0, "缺失必需列：" + definition.Name + "；请按当前默认工作簿补齐，迁移步骤见 docs/使用说明.md"));
                 ok = false;
             }
             return ok;
@@ -278,7 +288,8 @@ namespace Spotlight.EditorTools
                 {
                     if (!headerIndex.TryGetValue(definition.Name, out var column)) continue;
                     var raw = (cells[row, column] ?? string.Empty).Trim();
-                    if (raw.Length == 0 && definition.Required && definition.Type == ColumnType.Text)
+                    if (raw.Length == 0 && definition.Required && (definition.Type == ColumnType.Text ||
+                        definition.Name == "canAttackResources" || definition.Name == "canSwap" || definition.Name == "spawnComponent"))
                     {
                         issues.Add(new ConfigIssue(file, table.SheetName, row + 1, column + 1, $"必需列为空：{definition.Name}"));
                         rowOk = false;

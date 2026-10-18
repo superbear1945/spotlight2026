@@ -63,7 +63,7 @@ namespace Spotlight.Tests
             // 但配置校验仍要求“每阶级至少一种卡”与三比例合法，写死可以不受 Excel 当前取值影响。
             r.drawPileSize = 24; r.tierRatioBasic = 70; r.tierRatioIntermediate = 20; r.tierRatioAdvanced = 10;
             r.maxTypesBasic = 5; r.maxTypesIntermediate = 3; r.maxTypesAdvanced = 2;
-            var fighter = d.cards.Single(c => c.id == r.bossSpawnerSpawnCardType); fighter.atk = 0; fighter.moveDistance = 0;
+            var fighter = d.cards.Single(c => c.id == d.cards.Single(s => s.id == r.bossSpawnerCardType).spawnCardType); fighter.atk = 0; fighter.moveDistance = 0;
             d.cards.Single(c => c.id == "blade1").atk = 6;
             d.presentation[0].moveSeconds = 0.02f; d.presentation[0].feedbackSeconds = 0.02f;
             // 第二个参数 false：60 张的夹具牌堆不等于 drawPileSize（24），走测试夹具专供的豁免路径。

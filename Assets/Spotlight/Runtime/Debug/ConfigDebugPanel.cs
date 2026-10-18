@@ -454,6 +454,16 @@ namespace Spotlight
                 box.Add(ConfigFieldBuilder.Grid(ConfigFieldBuilder.Number("结算时获得资源", () => card.deployGainResource, value => { card.deployGainResource = value; Changed(); }, 1)));
                 box.Add(ConfigFieldBuilder.Note("在场时间视为 0：不参与一次性减攻与入场标记，退场原因记为“结算后离场”，不触发补兵、死亡加攻或标记奖励。Boss 卡种与刷怪卡卡种不能是即时卡。"));
             }
+            box.Add(ConfigFieldBuilder.Toggle("允许直接攻击资源卡", () => card.canAttackResources, value => { card.canAttackResources = value; Changed(); }));
+            box.Add(ConfigFieldBuilder.Toggle("允许互换", () => card.canSwap, value => { card.canSwap = value; Changed(); }));
+            box.Add(ConfigFieldBuilder.Toggle("每回合生成战机", () => card.spawnComponent, value =>
+            {
+                card.spawnComponent = value;
+                card.spawnCardType = value ? _draft.Document.rules[0].bossCardType : string.Empty;
+                ChangedStructure();
+            }));
+            if (card.spawnComponent)
+                box.Add(ConfigFieldBuilder.Grid(ConfigFieldBuilder.Choice("生成战机卡种", CardOptions(_draft.Document, "attack", card.spawnCardType), () => card.spawnCardType, value => { card.spawnCardType = value; Changed(); })));
 
             // 一次性部署减攻：与 Excel 的 deploymentPenaltyComponent / deploymentAttackReduction 一一对应。
             // 两个字段必须同时生效：启用必须有正整数减攻量，禁用则减攻量归零，否则校验会阻止应用。
@@ -531,9 +541,17 @@ namespace Spotlight
                 ConfigFieldBuilder.Number("攻击单位数量下限（默认 2）", () => rules.bossSpawnerUnitThreshold, value => { rules.bossSpawnerUnitThreshold = value; Changed(); }, 1),
                 ConfigFieldBuilder.Number("刷怪卡部署起始列（默认 5）", () => rules.bossSpawnerDeployFromColumn, value => { rules.bossSpawnerDeployFromColumn = value; Changed(); }, 1),
                 ConfigFieldBuilder.Choice("刷怪卡卡种", CardOptions(document, "special", rules.bossSpawnerCardType), () => rules.bossSpawnerCardType, value => { rules.bossSpawnerCardType = value; ChangedStructure(); }),
-                ConfigFieldBuilder.Choice("生成战机卡种", CardOptions(document, "attack", rules.bossSpawnerSpawnCardType), () => rules.bossSpawnerSpawnCardType, value => { rules.bossSpawnerSpawnCardType = value; Changed(); })));
+                ConfigFieldBuilder.Number("二阶段锁血阈值（默认 20）", () => rules.bossPhaseTwoHp, value => { rules.bossPhaseTwoHp = value; Changed(); }, 1),
+                ConfigFieldBuilder.Number("战舰部署列（默认 8，玩家一侧起算）", () => rules.bossWarshipColumn, value => { rules.bossWarshipColumn = value; Changed(); }, 1),
+                ConfigFieldBuilder.Choice("战舰卡种", CardOptions(document, "attack", rules.bossWarshipCardType), () => rules.bossWarshipCardType, value => { rules.bossWarshipCardType = value; ChangedStructure(); })));
             var spawner = _draft.FindCard(rules.bossSpawnerCardType);
-            if (spawner != null) content.Add(ConfigFieldBuilder.Number("刷怪卡生命（默认 1）", () => spawner.hp, value => { spawner.hp = value; Changed(); }, 1));
+            if (spawner != null)
+            {
+                content.Add(ConfigFieldBuilder.Number("刷怪卡生命（默认 1）", () => spawner.hp, value => { spawner.hp = value; Changed(); }, 1));
+                content.Add(ConfigFieldBuilder.Choice("刷怪卡生成战机卡种", CardOptions(document, "attack", spawner.spawnCardType), () => spawner.spawnCardType, value => { spawner.spawnCardType = value; Changed(); }));
+            }
+            var warship = _draft.FindCard(rules.bossWarshipCardType);
+            if (warship != null) content.Add(BuildCardBox(warship));
             content.Add(ConfigFieldBuilder.Note("每个 Boss 回合开始仅检查一次。总攻击力包含全部玩家单位，数量只统计攻击类；列号从玩家一侧起算并包含本列，超过棋盘宽度则范围为空。刷怪卡同时最多一张，固定不动，从下个 Boss 回合起持续在八邻生成战机；满格优先顶替玩家单位，无可用位置暂停，下回合重试。技能不消耗普通放牌次数。"));
             content.Add(ConfigFieldBuilder.Grid(
                 ConfigFieldBuilder.Number("炸弹部署间隔（回合）", () => rules.bossBombInterval, value => { rules.bossBombInterval = value; Changed(); }, 1),
