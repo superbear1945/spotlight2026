@@ -93,10 +93,11 @@ namespace Spotlight.Tests
             var d = Document();
             d.rules[0].bossBombInterval = 1; // 第 1 回合即可布置炸弹
             var g = Start(d);
-            Do(g, new GameCommand(CommandKind.DeployBossBomb, Side.Boss, target: new Cell(1, 5)));
-            Put(g, "miner", new Cell(0, 4));
-            Put(g, "miner", new Cell(0, 6));
-            Assert.That(DeployCells(g, "soldier"), Does.Contain(new Cell(0, 5)), "边缘 1 空 + 炸弹格不占用 = 2 空");
+            // 炸弹只能布置在配置列的换算位置（默认第 5 显示列 → 内部第 4 列）。
+            Do(g, new GameCommand(CommandKind.DeployBossBomb, Side.Boss, target: new Cell(1, 4)));
+            Put(g, "miner", new Cell(0, 3));
+            Put(g, "miner", new Cell(0, 5));
+            Assert.That(DeployCells(g, "soldier"), Does.Contain(new Cell(0, 4)), "边缘 1 空 + 炸弹格不占用 = 2 空");
             Put(g, "miner", new Cell(0, 1));
             Put(g, "miner", new Cell(1, 0));
             Assert.That(DeployCells(g, "soldier"), Does.Contain(new Cell(0, 0)), "角落自带 2 空");
