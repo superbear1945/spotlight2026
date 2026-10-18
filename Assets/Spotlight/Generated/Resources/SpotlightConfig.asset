@@ -101,6 +101,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9825d805fe2068b43b90b56ec0765baf, type: 2}
   - {fileID: 11400000, guid: 2a0f7b5f60c6f6e4abcc2ba781e9dc47, type: 2}
   - {fileID: 11400000, guid: 1f97a516bb8cce94784a1d64b53775e8, type: 2}
+  - {fileID: 11400000, guid: 14472cbb5721f8647853a9ba1aed0022, type: 2}
+  - {fileID: 11400000, guid: fa37c9cdd43e7be4e94d2741213edf3b, type: 2}
+  - {fileID: 11400000, guid: 1d584f604a7e6e44b8f25f2cb319f87e, type: 2}
+  - {fileID: 11400000, guid: 948c01bac6f874c49923c990ec5c1bb9, type: 2}
+  - {fileID: 11400000, guid: a815185a622cddb498f2a7bf12d3bfd6, type: 2}
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceHash: a2dc2feabe4d51515a3628771994f39cceb8f650918b981d9ff915b78ae6ac3c
-  _compiledAtUtc: 2026-10-18T14:22:26.1116297Z
+  _sourceHash: 97e816292fae43ec8b625eac4cbaf606eaeb102924a3e44db8ba17b171f03fb0
+  _compiledAtUtc: 2026-10-18T15:21:24.0563572Z

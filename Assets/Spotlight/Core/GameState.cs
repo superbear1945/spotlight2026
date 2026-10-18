@@ -130,11 +130,55 @@ namespace Spotlight
         /// <summary>部署时从战斗配置复制的互换权限。</summary>
         public bool CanSwap { get; internal set; }
 
+        /// <summary>
+        /// 永久伤害标记的层集合（与“入场标记 MarkedBy”是两种不同机制）。
+        /// 每层保存施加时的追加伤害副本，因此来源离场、跨回合或调试改配置都不会改变已有层。
+        /// 字段刻意不是 List 引用共享：Copy 时必须复制集合，否则旧快照会被后续挂层改写。
+        /// </summary>
+        List<DamageMarkLayer> _damageMarks = new List<DamageMarkLayer>();
+
+        /// <summary>当前伤害标记层数；0 表示没有标记。</summary>
+        public int DamageMarkLayers => _damageMarks.Count;
+
+        /// <summary>本次直接受伤将追加的总伤害（各层数值之和，宽类型累加后截断为 int）。</summary>
+        public int DamageMarkBonus
+        {
+            get
+            {
+                long total = 0;
+                for (var i = 0; i < _damageMarks.Count; i++) total += _damageMarks[i].Damage;
+                return total > int.MaxValue ? int.MaxValue : (int)total;
+            }
+        }
+
+        /// <summary>
+        /// 只读的层集合副本。
+        /// 输入：无；输出：当前层的只读视图。
+        /// 为什么返回只读视图：界面与快照只需要展示层数与数值，可写集合必须留在规则内核内部。
+        /// </summary>
+        public IReadOnlyList<DamageMarkLayer> DamageMarks => _damageMarks.AsReadOnly();
+
+        /// <summary>
+        /// 追加一层伤害标记。
+        /// 输入：施加时从来源配置复制的每层追加伤害；输出：无。
+        /// 只在一次直接攻击完成后由规则内核调用；炸弹、治疗与追加伤害都不会挂层。
+        /// </summary>
+        internal void AddDamageMark(int damage) => _damageMarks.Add(new DamageMarkLayer(damage));
+
         /// <summary>是否本回合仍可行动：未行动且维持费已付；能力和目标限制在具体命令中校验。</summary>
         public bool CanAct => !Acted && UpkeepPaid;
 
-        /// <summary>浅拷贝，供 GetSnapshot 输出与真实对局解耦。</summary>
-        internal UnitState Copy() => (UnitState)MemberwiseClone();
+        /// <summary>
+        /// 深拷贝，供 GetSnapshot 输出与真实对局解耦。
+        /// 伤害标记层集合必须逐层复制：MemberwiseClone 会共享同一个 List，
+        /// 后续挂层就会把已经交付给界面的旧快照一起改掉。
+        /// </summary>
+        internal UnitState Copy()
+        {
+            var copy = (UnitState)MemberwiseClone();
+            copy._damageMarks = new List<DamageMarkLayer>(_damageMarks);
+            return copy;
+        }
     }
 
     /// <summary>
@@ -216,14 +260,24 @@ namespace Spotlight
         public Cell Position { get; }
         /// <summary>受伤单位 ID，空格或忽略对象时为 0。</summary>
         public long UnitId { get; }
-        /// <summary>此格实际消耗的伤害。</summary>
+        /// <summary>
+        /// 此格实际消耗的炸弹预算（每轮基础 1 点）。
+        /// 为什么保留旧语义：炸弹的搜索与“剩余预算”完全按它推进；追加伤害不扣预算。
+        /// </summary>
         public int Damage { get; }
+        /// <summary>此格由目标伤害标记追加扣掉的生命值；没有标记时为 0，且不消耗预算。</summary>
+        public int BonusDamage { get; }
+        /// <summary>此格实际扣掉的总生命值 = 预算消耗 + 追加伤害。</summary>
+        public int TotalDamage => Damage + BonusDamage;
         /// <summary>该单位是否因本次爆炸阵亡。</summary>
         public bool Killed { get; }
 
-        /// <summary>保存单格结算。输入：坐标与伤害结果；输出：不可变路径步骤。</summary>
-        public BombBlastStep(Cell position, long unitId, int damage, bool killed)
-        { Position = position; UnitId = unitId; Damage = damage; Killed = killed; }
+        /// <summary>
+        /// 保存单格结算。输入：坐标、受伤单位、消耗的预算、是否阵亡与可选追加伤害；输出：不可变路径步骤。
+        /// bonusDamage 默认 0，保证没有伤害标记时步骤与旧行为完全一致。
+        /// </summary>
+        public BombBlastStep(Cell position, long unitId, int damage, bool killed, int bonusDamage = 0)
+        { Position = position; UnitId = unitId; Damage = damage; Killed = killed; BonusDamage = bonusDamage < 0 ? 0 : bonusDamage; }
     }
 
     /// <summary>回合阶段：正常行动、超限弃牌、已结束。</summary>
@@ -329,11 +383,21 @@ namespace Spotlight
         public BossBombState Bomb { get; }
         /// <summary>爆炸实际访问顺序与伤害结果；复制数组防止外部改变事件。</summary>
         public IReadOnlyList<BombBlastStep> BlastSteps { get; }
+        /// <summary>
+        /// 本次事件的结构化伤害结果；没有伤害的事件为 null。
+        /// 为什么挂在事件上：表现层与日志不得从中文文本或快照差反推伤害归属，
+        /// 击杀恢复行动也必须读取“这次攻击”的结果而不是“本次命令发生过死亡”。
+        /// </summary>
+        public DamageResult Damage { get; }
 
-        /// <summary>构造事件。输入：类型、文本、主体及可选炸弹路径；输出：拥有独立只读路径的事件。</summary>
-        public GameEvent(string kind, string message, long subjectId = 0, BossBombState bomb = null, BombBlastStep[] blastSteps = null)
+        /// <summary>
+        /// 构造事件。输入：类型、文本、主体以及可选的炸弹路径与结构化伤害结果；
+        /// 输出：拥有独立只读路径与不可变伤害事实的事件。
+        /// damage 追加在参数末尾，旧调用点无需修改。
+        /// </summary>
+        public GameEvent(string kind, string message, long subjectId = 0, BossBombState bomb = null, BombBlastStep[] blastSteps = null, DamageResult damage = null)
         {
-            Kind = kind; Message = message; SubjectId = subjectId; Bomb = bomb;
+            Kind = kind; Message = message; SubjectId = subjectId; Bomb = bomb; Damage = damage;
             BlastSteps = Array.AsReadOnly(blastSteps == null ? Array.Empty<BombBlastStep>() : (BombBlastStep[])blastSteps.Clone());
         }
     }

@@ -62,7 +62,7 @@ Assets/Spotlight/
 
 生成产物（只读，禁止手工编辑；需要修改请改 Excel 后重新编译）：
 
-- `Generated/Cards/<id>.asset`：卡种定义 SO，能力组件配置作为子资产保存（`<id>_Combat` / `_Resource` / `_Teleport` / `_DeploymentPenalty` / `_Spawn`，未启用的能力不生成子资产）。
+- `Generated/Cards/<id>.asset`：卡种定义 SO，能力组件配置作为子资产保存（`<id>_Combat` / `_Resource` / `_Teleport` / `_DeploymentPenalty` / `_MarkOnEnter` / `_DeathGrowth` / `_Instant` / `_Spawn` / `_AdjacentClearance` / `_KillAction` / `_DamageMark`，未启用的能力不生成子资产）。
 - `Generated/Cards/<id>.prefab`：卡种 Prefab，只保存组件组合与 SO 引用，不重复存储数值。
 - `Generated/Resources/SpotlightConfig.asset`：主配置资产，运行时通过 `Resources/SpotlightConfig` 加载。
 - `Generated/ConfigManifest.asset`：编译清单，记录源工作簿路径、SHA256 摘要、编译时间与全部产出路径。
@@ -80,28 +80,30 @@ Assets/Spotlight/
 
 - `Side`：`Player` / `Boss`；`CardCategory`：`Resource` / `Attack` / `Special`。
 - `CardTier`：独立卡牌阶级 `Basic`（初级）/ `Intermediate`（中级）/ `Advanced`（高级）；`None` 为 Boss 专用不适用状态，`Invalid` 仅用于报告缺失或非法配置。`Cards.tier` 必填，通过 `CardTiers.Parse` 严格转换；`none` 卡种不出现在携带选择里，因此也不能进入抽牌堆。阶级按张数统计（3 张同种初级卡计作 3 张初级卡）；每局能携带几个**卡种**由 `Rules` 的 `maxTypes*` 控制，不引入卡组包分类，也不按阶级限制部署回合。
-- 只读配置接口：`ICombatConfig` / `IResourceConfig` / `ITeleportConfig` / `ISpawnConfig` —— **规则内核依赖接口，不依赖 ScriptableObject**。
+- 只读配置接口：`ICombatConfig` / `IResourceConfig` / `ITeleportConfig` / `IDeploymentPenaltyConfig` / `IMarkOnEnterConfig` / `IDeathGrowthConfig` / `IInstantEffectConfig` / `ISpawnConfig` / `IAdjacentClearanceConfig` / `IKillActionConfig` / `IDamageMarkConfig` —— **规则内核依赖接口，不依赖 ScriptableObject**。后三者分别是“四邻空格限制”“击杀恢复行动”（空标记接口，非空即启用）与“伤害标记”。
 - 表行类型：`CardRow` / `RulesRow` / `HomeRow` / `BossSlotRow` / `PresentationRow`（`DeckRow` 与 `Deck` 工作表已废除）。
 - `RulesRow` 包含抽牌堆规则的 7 列：`drawPileSize`（抽牌堆总张数，默认 24，≥ 3）、`tierRatioBasic` / `tierRatioIntermediate` / `tierRatioAdvanced`（三阶级比例，默认 70 / 20 / 10，各自 ≥ 1 且合计必须为 100，不支持 0%）、`maxTypesBasic` / `maxTypesIntermediate` / `maxTypesAdvanced`（每局最多携带的三阶级**卡种数量**，默认 5 / 3 / 2，各自 ≥ 1）。
 - 配置聚合：`ConfigDocument`（Excel 中间态，`schemaVersion = 2`）→ `GameConfiguration`（运行态，含 `MatchConfig` / `DeckConfig` / `PresentationConfig` / `CardArchetype` / `CardOrder`（按 `Cards` 表顺序的卡种清单）/ `Deck`（由选卡结果生成的最终抽牌堆清单，元素为 `DeckEntry`）/ `SpawnSlot`）。
+- `CardArchetype` 新增只读属性 `AdjacentClearance` / `KillAction` / `DamageMark`（未启用为 null）；Excel、SO 与调试 JSON 三条路径都必须往返一致。
 - 抽牌堆构成（`Core/DeckSelection.cs`，纯 C#，可 EditMode 直测）：
   - `DeckConfig`：`Rules` 抽牌堆 7 列的张数 / 三比例 / 三上限，并给出 `EffectiveMaxTypes(tier, poolTypeCount) = min(配置上限, 该阶级卡种数)`。
   - `DeckComposition`：构图**唯一实现** —— ①每阶级 `floor(张数 × 比例 / 100)`；②每阶级至少 1 张；③合计不足时缺额全部给初级，超出（只可能由第 ② 步抬升造成）时从张数最多的阶级扣、平手按高级→中级→初级、每阶级保底 1 张；④把每阶级张数均分给该阶级已选卡种，余数按 `Cards` 表顺序发给靠前卡种，因此每个被选卡种至少 1 张。配置校验、选卡预览与正式开局共用它，界面数字不会与真实抽牌堆分叉。
   - `DeckSelectionState`：开局前的携带选择状态（已选卡种、每阶级计数与有效上限、实时张数预览、默认选卡回退），只存在于本次运行会话，不做持久化。
 - 可携带卡种池不做静态配置：池子 = `Cards` 表里 `tier != none` 的全部卡种；每阶级至少选 1 种、最多选到有效上限。
-- `ConfigValidation.Validate(ConfigDocument)`：唯一业务校验入口，返回全部错误列表，不抛异常。抽牌堆规则由 `ValidateDeckRules` 共用校验：三比例各自 ≥ 1 且合计 100、每个阶级至少有一个可携带卡种，且按比例算出的每阶级张数不少于该阶级有效携带上限（保证玩家勾满时每个被选卡种都能抽到）。
+- `ConfigValidation.Validate(ConfigDocument)`：唯一业务校验入口，返回全部错误列表，不抛异常。新能力同样在此校验：空格阈值必须在 0～4（关闭时为 0、启用时为 1～4），击杀恢复与伤害标记只允许攻击类卡启用，伤害标记关闭时每层数值必须为 0、启用时为正整数；`GameConfiguration.ValidateComposition` 对 SO 组装路径执行同等检查。抽牌堆规则由 `ValidateDeckRules` 共用校验：三比例各自 ≥ 1 且合计 100、每个阶级至少有一个可携带卡种，且按比例算出的每阶级张数不少于该阶级有效携带上限（保证玩家勾满时每个被选卡种都能抽到）。
 
 对局状态与命令（`Core/GameState.cs`）：
 
 - `Cell`：整数坐标值类型（第 0 行在底部），仅做曼哈顿距离；不用 `Vector2Int`。
 - 三套身份：`CardRecord`（抽牌堆/手牌/墓地中的卡牌记录）、`UnitState`（在场的可变单位）、`HomeState`（独立的家）。**三者身份不可混用**；家 ID 为负数（玩家 -1、Boss -2），单位 ID 为正数。
-- `UnitState` 只保存来源卡牌的值副本（`SourceCardId` / `TypeId` / `Owner`），**不引用 `CardRecord`**。玩家卡在成功部署时进入墓地，单位阵亡或被覆盖升级不再重复回收，因此“抽牌堆 + 手牌 + 墓地”的卡牌总数恒定，同一张卡可以反复部署出多个互相独立的单位。
+- `UnitState` 只保存来源卡牌的值副本（`SourceCardId` / `TypeId` / `Owner`），**不引用 `CardRecord`**；永久伤害标记保存在 `DamageMarks`（每层是施加时的数值副本，`Copy()` 必须深拷贝），对外只暴露层数与下次受伤追加总量。玩家卡在成功部署时进入墓地，单位阵亡或被覆盖升级不再重复回收，因此“抽牌堆 + 手牌 + 墓地”的卡牌总数恒定，同一张卡可以反复部署出多个互相独立的单位。
 - 场上战斗属性（当前生命 `Hp`、生命上限 `MaxHp`、当前攻击 `Attack`、射程 `Range`、移动距离 `MoveDistance` 与一次性部署减攻状态 `DeploymentPenaltyPending` / `DeploymentAttackReduction`）只存在于 `UnitState`：部署时从只读卡种配置初始化，之后由规则代码修改；伤害、合法动作、AI 与刷怪条件一律读当前值，不得回读卡种配置。
 - 名词与机制的完整定义见 `docs/游戏内名词.md`。
 - `GameCommand`：不可变操作请求，含 `CommandKind`（Deploy / BossDeploy / Move / MoveHome / Attack / Swap / Withdraw / Discard / EndTurn）、`Actor`、`SubjectId`、`Target`、`TargetId`、`SkipDeployment`。**Target 视为不可信输入，执行时必须复验**。
 - `Selection` / `SelectionKind`：界面选择上下文，显式区分手牌与单位身份。
 - `LegalActions`：规则层算出的合法目标（`Deploy` / `Move` / `Attack` / `Swap` / `CanWithdraw`）。**UI 不得自行推导合法性，高亮仅提示**。
-- `GameEvent`：已发生的领域事件（`Kind` / `Message` / `SubjectId`），仅用于日志与表现，**动画不得回写结算结果**。
+- `GameEvent`：已发生的领域事件（`Kind` / `Message` / `SubjectId`，以及可选的炸弹信息、爆炸步骤与结构化 `DamageResult`），仅用于日志与表现，**动画不得回写结算结果**。
+- 统一伤害结算：`Core/DamageResolution.cs` 定义 `DamageKind`（`DirectAttack` / `Bomb` / `MarkBonus`）、`DamageContext`（来源阵营/单位、目标、本笔与根类型、炸弹信息）、`DamageMarkLayer` 与 `DamageResult`（基础/追加实际扣血、是否死亡、受伤前层副本）。`GameSession.ResolveDirectDamage` 是普通攻击与炸弹共用的唯一扣血入口：先扣基础、死亡即只做一次 `Remove(Death)`，仍存活再按受伤前层依次追加；炸弹每轮 1 点基础扣血消耗 1 点预算，追加伤害不耗预算。
 - `CommandResult`：成功状态、失败原因与有序事件；失败时状态未被修改。
 - `GameSnapshot`：独立只读快照（回合、行动方、阶段、资源、手牌/牌堆/墓地、单位与家副本、兵位状态、日志），持有旧快照不会受后续命令影响。
 - `IRandomSource` / `SeededRandom`：洗牌随机源，固定种子保证测试可复现，避免依赖 `UnityEngine.Random` 全局状态。
@@ -115,8 +117,8 @@ Assets/Spotlight/
 
 ### 4.2 运行层（`Spotlight.Runtime`）
 
-- 卡牌视图：`Card : MonoBehaviour`，配合 `CombatComponent` / `ResourceComponent` / `TeleportComponent` / `DeploymentPenaltyComponent` / `SpawnComponent` 五个能力组件；**同一个 `Card` 承载所有卡种，不为卡种建子类**。
-- 配置资产：`CardDefinitionSO` / `CombatConfigSO` / `ResourceConfigSO` / `TeleportConfigSO` / `SpawnConfigSO` / `SpotlightConfigAsset` / `ConfigManifest`，均实现只读接口；`GeneratedConfigAttribute` 标记生成产物。
+- 卡牌视图：`Card : MonoBehaviour`，配合 `CombatComponent` / `ResourceComponent` / `TeleportComponent` / `DeploymentPenaltyComponent` / `SpawnComponent` 五个能力组件；**同一个 `Card` 承载所有卡种，不为卡种建子类**。四邻空格限制、击杀恢复行动与伤害标记是纯规则能力，只有 SO 子资产、没有 MonoBehaviour，视图读取快照与卡种定义显示。
+- 配置资产：`CardDefinitionSO` / `CombatConfigSO` / `ResourceConfigSO` / `TeleportConfigSO` / `SpawnConfigSO` / `AdjacentClearanceConfigSO` / `KillActionConfigSO` / `DamageMarkConfigSO` / `SpotlightConfigAsset` / `ConfigManifest`，均实现只读接口；`GeneratedConfigAttribute` 标记生成产物。
 - 加载入口：`ConfigLoader`（`DefaultResourcePath = "SpotlightConfig"`，`TryCreateConfiguration(...)` 失败返回错误文本，不抛异常）。
 - 视图：`BoardView` / `BoardCellView`（UGUI 棋盘）、`HandView`（UGUI 手牌）、`HudView`（UI Toolkit / UXML）、`DeckSelectionPanel`（UI Toolkit 携带选择面板）、`CardFactory` / `CardText`。
 - 引导与支持：`GameBootstrap`（加载配置 → 创建对局 → 绑定视图）、`DebugSupport.IsDebugAvailable`（调试能力唯一判定点）、`CardFeedback`（DOTween 表现）。
@@ -161,6 +163,10 @@ Assets/Spotlight/
 | 兵位 / 补兵 | `BossSlotRow` / `BossReplacement`，Boss 三个固定兵位独立计时，阵亡后按 `bossRespawnDelay` 补回 |
 | 弃牌阶段 | `MatchPhase.Discard`，手牌超过上限时必须弃至上限才能进入对方回合 |
 | 一次性部署减攻 | `deploymentPenaltyComponent` + `deploymentAttackReduction`；来源单位在场期间一次，使随后同阵营攻击类单位攻击力降低配置值（下限 0），多来源按部署顺序依次触发 |
+| 四邻空格限制 | `adjacentClearanceComponent` + `adjacentClearanceMinEmpty`（1～4）：部署只查目标格，移动查起点与落点最终布局，互换查前后布局且双方能力单位都检查；斜角不计、棋盘外算空、炸弹不占格；被围仍可攻击 |
+| 击杀恢复行动 | `killActionComponent`（仅攻击类，无数值参数）：本次直接攻击（含标记追加）击杀战斗单位后恢复攻击者一次普通行动，可连续触发，但不重开回合、不跨回合保存；炸弹与其它单位击杀不触发 |
+| 伤害标记 | `damageMarkComponent` + `damageMarkDamagePerStack`（仅攻击类）：直接攻击存活战斗单位后加 1 层，永久可叠加、来源离场不失效；本次受伤按受伤前层数追加，追加不递归、不挂层、不耗炸弹预算，家不挂层 |
+| 正式高级卡 | 星门、后羿-II综合舰（`houyi2`，四邻 2 空）、德克萨斯游骑兵（`texasRanger`）、维京长船-2056（`viking2056`，击杀恢复）、SNP-EU（`snpEu`，伤害标记 1 点）、拿破仑-1769（`napoleon1769`）；全部为攻击类/特殊卡，免费部署、有资源配置支付维持费 |
 | 快照 `GameSnapshot` | 规则状态的只读副本，UI/日志/调试统一数据源 |
 | 生成资产 | `Generated/` 下的只读 SO 与 Prefab，禁止手工修改 |
 

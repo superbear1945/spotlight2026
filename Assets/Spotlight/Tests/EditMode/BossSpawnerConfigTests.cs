@@ -106,8 +106,10 @@ namespace Spotlight.Tests
                     // + 2 条 Cards 一次性部署减攻字段说明 + 1 条刷怪卡生命说明
                     // + 3 条 Cards 部署消耗/邻域要求字段说明 + 3 条 Cards 入场标记字段说明
                     // + 3 条 Cards 死亡加攻字段说明 + 1 条 Cards 治疗型攻击字段说明
-                    // + 2 条 Cards 即时卡字段说明 + 1 条 Cards 卡牌阶级字段说明。
-                    Assert.That(count, Is.EqualTo(35));
+                    // + 2 条 Cards 即时卡字段说明 + 1 条 Cards 卡牌阶级字段说明
+                    // + 4 条 Cards 攻击/互换/刷怪字段说明 + 3 条 Rules Boss 阶段字段说明
+                    // + 5 条 Cards 高级卡新能力字段说明（四邻空格限制 2 条、击杀恢复 1 条、伤害标记 2 条）。
+                    Assert.That(count, Is.EqualTo(40));
                     // Deck 表已废除，工作表顺序为 Cards、Rules、Homes、BossSlots、Presentation，
                     // 因此带批注的 Rules 是第 2 张表。
                     Assert.That(zip.GetEntry("xl/worksheets/_rels/sheet2.xml.rels"), Is.Not.Null);

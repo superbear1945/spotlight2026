@@ -465,6 +465,41 @@ namespace Spotlight
             if (card.spawnComponent)
                 box.Add(ConfigFieldBuilder.Grid(ConfigFieldBuilder.Choice("生成战机卡种", CardOptions(_draft.Document, "attack", card.spawnCardType), () => card.spawnCardType, value => { card.spawnCardType = value; Changed(); })));
 
+            // 四邻空格限制：与 Excel 的 adjacentClearanceComponent / adjacentClearanceMinEmpty 一一对应。
+            // 关闭时阈值必须归零，否则集中校验会阻止“应用并重开”。
+            box.Add(ConfigFieldBuilder.Toggle("四邻空格限制：部署与移动/互换前后至少 N 格为空", () => card.adjacentClearanceComponent, value =>
+            {
+                if (!value) card.adjacentClearanceMinEmpty = 0;
+                else if (card.adjacentClearanceMinEmpty < 1) card.adjacentClearanceMinEmpty = 2;
+                ChangedStructure();
+            }));
+            if (card.adjacentClearanceComponent)
+            {
+                box.Add(ConfigFieldBuilder.Grid(ConfigFieldBuilder.Number("四邻最少空格数（1～4）", () => card.adjacentClearanceMinEmpty, value => { card.adjacentClearanceMinEmpty = value; Changed(); }, 1)));
+                box.Add(ConfigFieldBuilder.Note("只统计上下左右四邻，斜角不计，棋盘外按空计算；部署检查目标格，移动与互换同时检查起点与终点的最终布局。被围后仍可攻击，只是不能移动与互换。"));
+            }
+
+            // 击杀恢复行动与伤害标记都只允许攻击类卡启用（与治疗型攻击相同的分类约束）。
+            // 非攻击卡不展示开关；若旧草稿残留非法组合，集中校验会给出错误而不是静默保留。
+            if (card.category == "attack")
+            {
+                box.Add(ConfigFieldBuilder.Toggle("击杀恢复行动：直接攻击击杀后再行动一次", () => card.killActionComponent, value => { card.killActionComponent = value; Changed(); }));
+                box.Add(ConfigFieldBuilder.Note("包括伤害标记追加击杀；可连续触发，但不重开回合（不抽牌、不重复扣维持费），未使用机会不跨回合保存。炸弹与其它单位击杀不会触发。"));
+
+                box.Add(ConfigFieldBuilder.Toggle("伤害标记：直接攻击后使目标获得 1 层", () => card.damageMarkComponent, value =>
+                {
+                    card.damageMarkComponent = value;
+                    if (!value) card.damageMarkDamagePerStack = 0;
+                    else if (card.damageMarkDamagePerStack < 1) card.damageMarkDamagePerStack = 1;
+                    ChangedStructure();
+                }));
+                if (card.damageMarkComponent)
+                {
+                    box.Add(ConfigFieldBuilder.Grid(ConfigFieldBuilder.Number("每层追加伤害", () => card.damageMarkDamagePerStack, value => { card.damageMarkDamagePerStack = value; Changed(); }, 1)));
+                    box.Add(ConfigFieldBuilder.Note("新层从下一次受伤起生效；普通攻击与炸弹都会触发已有层，追加伤害不递归、不挂新层、不消耗炸弹预算；家不挂层。"));
+                }
+            }
+
             // 一次性部署减攻：与 Excel 的 deploymentPenaltyComponent / deploymentAttackReduction 一一对应。
             // 两个字段必须同时生效：启用必须有正整数减攻量，禁用则减攻量归零，否则校验会阻止应用。
             box.Add(ConfigFieldBuilder.Toggle("在场期间一次：减攻随后上场的一个己方攻击类单位", () => card.deploymentPenaltyComponent, value =>

@@ -65,6 +65,9 @@ MonoBehaviour:
   _deathGrowth: {fileID: 0}
   _instant: {fileID: 0}
   _spawn: {fileID: 0}
+  _adjacentClearance: {fileID: 0}
+  _killAction: {fileID: 0}
+  _damageMark: {fileID: 0}
   _prefab: {fileID: 7662927895243477926, guid: a6ca66a7bf3aafb499d0010f3515a41a, type: 3}
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
   _sourceSheet: Cards

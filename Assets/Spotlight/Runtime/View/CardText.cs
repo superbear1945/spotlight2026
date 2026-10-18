@@ -59,7 +59,10 @@ namespace Spotlight
             if (def == null) return string.Empty;
             if (unit == null) return StatLine(def);
             var row = def.ToCardRow();
-            return StatLine(row, unit.Attack, unit.Range, unit.MoveDistance, unit.MaxHp);
+            var line = StatLine(row, unit.Attack, unit.Range, unit.MoveDistance, unit.MaxHp);
+            // 卡面只放最短提示，完整规则留在详情；层数来自快照，不把标记写进卡种定义。
+            if (unit.DamageMarkLayers > 0) line += " · 标 " + unit.DamageMarkLayers;
+            return line;
         }
 
         /// <summary>
@@ -140,6 +143,7 @@ namespace Spotlight
                 sb.AppendLine().Append("可攻击友方：对友方的攻击改为治疗（生命 + 当前攻击，受生命上限限流）");
             if (arch.Instant != null)
                 sb.AppendLine().Append("即时卡：部署后立即结算（获得 ").Append(arch.Instant.GainResource).Append(" 资源）并离场");
+            AppendNewAbilities(sb, arch);
             return sb.ToString();
         }
 
@@ -185,7 +189,26 @@ namespace Spotlight
                 sb.AppendLine().Append("已被标记：阵亡时给").Append(unit.MarkedBy.Value == Side.Player ? "玩家" : "Boss").Append(" ").Append(unit.MarkReward).Append(" 资源");
             if (unit.DeathGrowthLimit > 0)
                 sb.AppendLine().Append("死亡加攻：已触发 ").Append(unit.DeathGrowthTriggers).Append('/').Append(unit.DeathGrowthLimit).Append("（每次 +").Append(unit.DeathGrowthPerKill).Append(" 攻击）");
+            AppendNewAbilities(sb, arch);
+            // 目标身上的伤害标记是永久状态：来源离场、跨回合、移动与治疗都不会清除。
+            if (unit.DamageMarkLayers > 0)
+                sb.AppendLine().Append("伤害标记：").Append(unit.DamageMarkLayers).Append(" 层，下次直接受伤追加 ").Append(unit.DamageMarkBonus).Append(" 点（不递归）");
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// 追加三种新能力的说明行（手牌详情与单位详情共用）。
+        /// 输入：已写入属性行的 StringBuilder 与卡种描述；输出：无（直接按行追加文本）。
+        /// 为什么抽出来：手牌与单位面板必须显示同一套规则文案，避免两处措辞分叉。
+        /// </summary>
+        static void AppendNewAbilities(StringBuilder sb, CardArchetype arch)
+        {
+            if (arch.AdjacentClearance != null)
+                sb.AppendLine().Append("四邻空格限制：部署、移动及互换前后四邻至少 ").Append(arch.AdjacentClearance.MinEmptyNeighbors).Append(" 格为空（棋盘外算空）");
+            if (arch.KillAction != null)
+                sb.AppendLine().Append("击杀恢复行动：攻击击杀后恢复一次行动（可连续触发，仅本回合有效）");
+            if (arch.DamageMark != null)
+                sb.AppendLine().Append("伤害标记：攻击后施加 1 层，每层在之后每次直接受伤时追加 ").Append(arch.DamageMark.DamagePerStack).Append(" 点（不递归、不挂层）");
         }
 
         /// <summary>

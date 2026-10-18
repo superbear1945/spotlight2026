@@ -221,6 +221,29 @@ namespace Spotlight.EditorTools
             }
             else RemoveSubAsset(assetPath, spawn);
 
+            // 四邻空格限制：纯规则能力，只生成子资产（无 MonoBehaviour 组件）。
+            var clearance = EnsureSubAsset<AdjacentClearanceConfigSO>(assetPath, definition, row.id + "_AdjacentClearance");
+            if (row.adjacentClearanceComponent)
+            {
+                clearance.EditorApply(row.adjacentClearanceMinEmpty);
+                EditorUtility.SetDirty(clearance);
+            }
+            else RemoveSubAsset(assetPath, clearance);
+
+            // 击杀恢复行动：没有数值参数，子资产存在即启用；关闭时必须删除不可残留。
+            var killAction = EnsureSubAsset<KillActionConfigSO>(assetPath, definition, row.id + "_KillAction");
+            if (row.killActionComponent) killAction.EditorApply();
+            else RemoveSubAsset(assetPath, killAction);
+
+            // 伤害标记：纯规则能力，只生成子资产（无 MonoBehaviour 组件）。
+            var damageMark = EnsureSubAsset<DamageMarkConfigSO>(assetPath, definition, row.id + "_DamageMark");
+            if (row.damageMarkComponent)
+            {
+                damageMark.EditorApply(row.damageMarkDamagePerStack);
+                EditorUtility.SetDirty(damageMark);
+            }
+            else RemoveSubAsset(assetPath, damageMark);
+
             var prefabPath = CardPrefabPath(row.id);
             var instance = template != null ? (GameObject)PrefabUtility.InstantiatePrefab(template) : ViewTemplateBuilder.BuildTemplateObject();
             instance.name = row.id;
@@ -257,7 +280,8 @@ namespace Spotlight.EditorTools
                 return null;
             }
 
-            definition.EditorApply(row, combat, row.resourceComponent ? resource : null, row.teleportComponent ? teleport : null, row.deploymentPenaltyComponent ? penalty : null, prefabCard, sourceWorkbook, "Cards", row.markOnEnterComponent ? mark : null, row.deathGrowthComponent ? growth : null, row.leaveAfterDeploy ? instant : null, spawn: row.spawnComponent ? spawn : null);
+            definition.EditorApply(row, combat, row.resourceComponent ? resource : null, row.teleportComponent ? teleport : null, row.deploymentPenaltyComponent ? penalty : null, prefabCard, sourceWorkbook, "Cards", row.markOnEnterComponent ? mark : null, row.deathGrowthComponent ? growth : null, row.leaveAfterDeploy ? instant : null,
+                row.spawnComponent ? spawn : null, row.adjacentClearanceComponent ? clearance : null, row.killActionComponent ? killAction : null, row.damageMarkComponent ? damageMark : null);
             EditorUtility.SetDirty(definition);
             return definition;
         }

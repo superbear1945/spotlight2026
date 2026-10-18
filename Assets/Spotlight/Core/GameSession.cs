@@ -265,6 +265,9 @@ namespace Spotlight
                     if (!Available(mover)) return "该单位本回合不能行动";
                     var path = Paths(mover.Position);
                     if (c.Target == mover.Position || !path.TryGetValue(c.Target, out var movePath) || movePath.Count > mover.MoveDistance) return "不在合法移动范围";
+                    // 空格限制只检查起点与原布局、落点与最终布局；路径中间格不检查。
+                    var moveError = MovementError(mover, c.Target);
+                    if (moveError != null) return moveError;
                     var origin = mover.Position;
                     mover.Position = c.Target;
                     mover.Acted = true;
@@ -304,22 +307,37 @@ namespace Spotlight
                     }
                     // 只扣目标生命：不存在反击、连锁或动画回调产生的补充伤害。
                     // 伤害读取攻击者的当前攻击力（部署时从配置初始化、可被一次性减攻降低），不重读卡种配置。
+                    // 统一伤害入口会把“基础伤害”与“已有伤害标记的追加伤害”一起结算，并只触发一次死亡处理。
                     attacker.Acted = true;
                     var damage = attacker.Attack;
+                    DamageResult applied;
                     if (target.Unit != null)
                     {
-                        damage = Math.Min(damage, target.Unit.Hp);
-                        target.Unit.Hp = Math.Max(0, target.Unit.Hp - damage);
-                        if (target.Unit.Hp == 0) Remove(target.Unit, Removal.Death);
+                        applied = ResolveDirectDamage(target.Unit, damage, new DamageContext(attacker.Owner, attacker.Id, target.Unit.Id, DamageKind.DirectAttack));
                     }
                     else
                     {
-                        var beforeHp = target.Home.Hp;
+                        // 家沿用 Boss 阶段一的血量下限：进入二阶段前的最后一击不会把家打到下限以下。
                         var floor = target.Home.Owner == Side.Boss && _bossPhases.Phase == BossPhase.PhaseOne ? Rules.BossPhaseTwoHp : 0;
-                        target.Home.Hp = Math.Max(floor, beforeHp - damage);
-                        damage = beforeHp - target.Home.Hp;
+                        applied = ResolveHomeDamage(target.Home, damage, new DamageContext(attacker.Owner, attacker.Id, target.Home.Id, DamageKind.DirectAttack), floor);
                     }
-                    Emit("attack", $"{Type(attacker).Name} 攻击 {target.Name}，造成 {damage} 伤害", target.Id);
+                    Emit("attack", $"{Type(attacker).Name} 攻击 {target.Name}，造成 {applied.TotalDamage} 伤害", target.Id, damage: applied);
+                    // 伤害标记：只有“直接攻击战斗单位且目标存活”才挂层。
+                    // 家不挂层；治疗分支已在前面 break；本次追加伤害不递归不挂层。
+                    var markConfig = Type(attacker).DamageMark;
+                    if (markConfig != null && target.Unit != null && !applied.Killed)
+                    {
+                        target.Unit.AddDamageMark(markConfig.DamagePerStack);
+                        Emit("damage-mark", $"{Type(attacker).Name} 使 {target.Name} 获得 1 层伤害标记（当前 {target.Unit.DamageMarkLayers} 层，每层追加 {markConfig.DamagePerStack}）", target.Unit.Id);
+                    }
+                    // 击杀恢复行动：只认本次攻击（包括标记追加）造成的击杀，而不是“本次命令发生过死亡”；
+                    // 炸弹与其它单位的击杀不经过本分支，因此不会误恢复。
+                    if (applied.Killed && target.Unit != null && Type(attacker).KillAction != null && _units.Contains(attacker))
+                    {
+                        attacker.Acted = false;
+                        Emit("action-restored", $"{Type(attacker).Name} 击杀 {target.Name}，恢复一次行动（仅本回合有效）", attacker.Id);
+                    }
+                    // Boss 阶段转换只看本次整组伤害后的家血量；阶段二家受保护，攻击家的目标筛选已由 CanTarget 拦住。
                     _bossPhases.AfterResolution(this);
                     CheckVictory();
                     break;
@@ -327,6 +345,9 @@ namespace Spotlight
                     var a = _units.FirstOrDefault(u => u.Id == c.SubjectId);
                     var b = _units.FirstOrDefault(u => u.Id == c.TargetId);
                     if (!Rules.AdjacentSwap || !Swappable(a) || !Swappable(b) || a == b || a.Position.Distance(b.Position) != 1) return "双方必须为相邻且可行动的己方非资源单位";
+                    // 互换需要检查“交换前”与“交换后”两份布局，且双方中所有具有该能力的单位都要满足。
+                    var swapError = SwapError(a, b);
+                    if (swapError != null) return swapError;
                     // 互换独立于移动距离：零移动的非资源单位也能参加，双方同时消耗行动机会。
                     var old = a.Position;
                     a.Position = b.Position;
@@ -413,7 +434,7 @@ namespace Spotlight
                 actions.CanWithdraw = _activeSide == Side.Player && u != null && u.Owner == Side.Player;
                 if (Available(u))
                 {
-                    actions.Move = Paths(u.Position).Where(p => p.Value.Count > 0 && p.Value.Count <= u.MoveDistance).Select(p => p.Key).ToArray();
+                    actions.Move = Paths(u.Position).Where(p => p.Value.Count > 0 && p.Value.Count <= u.MoveDistance && MovementError(u, p.Key) == null).Select(p => p.Key).ToArray();
                     var attackCells = Targets(_activeSide).Where(t => CanTarget(u, t) && CanAttack(u, u.Position, t.Position)).Select(t => t.Position).ToList();
                     // 具备“攻击友方即治疗”的单位，合法目标额外包含己方单位（不含自己）。
                     // 这些格同时进入 Attack（点击链路与敌方目标一致）与 Heal（视图据此染成治疗色）。
@@ -429,7 +450,7 @@ namespace Spotlight
                     actions.Attack = attackCells.ToArray();
                     // 资源卡既不发起互换也不作为互换目标，因此它选中时没有互换高亮，
                     // 点击相邻己方卡牌会落到“切换选中对象”这条分支上（与关闭 adjacentSwap 时的行为一致）。
-                    if (Rules.AdjacentSwap && Swappable(u)) actions.Swap = _units.Where(v => v != u && Swappable(v) && u.Position.Distance(v.Position) == 1).Select(v => v.Position).ToArray();
+                    if (Rules.AdjacentSwap && Swappable(u)) actions.Swap = _units.Where(v => v != u && Swappable(v) && u.Position.Distance(v.Position) == 1 && SwapError(u, v) == null).Select(v => v.Position).ToArray();
                 }
             }
             return actions;
@@ -452,6 +473,10 @@ namespace Spotlight
             if (type.DeployHomeOnly && !InHomeRegion(owner, p)) return "必须部署在己方区域";
             if (type.Category == CardCategory.Attack && !InHomeRegion(owner, p) && !_units.Any(u => u.Owner == owner && Type(u).Teleport?.PermitsAttackDeploy == true && u.Position.Distance(p) == 1)) return "攻击卡需要己方区域或己方星门四邻";
             if (type.AvoidAdjacentSameType && _units.Any(u => u.TypeId == type.Id && u.Position.Distance(p) == 1)) return "不能与同卡种单位四邻部署";
+            // 四邻空格限制：部署按“新单位已经占用目标格”的最终布局计算，
+            // 棋盘外四个方向直接计为空，斜角不计，炸弹不占格。
+            var clearance = ClearanceError(type, p, cell => cell == p || Occupied(cell));
+            if (clearance != null) return clearance;
             // 邻域部署要求：统计目标格四邻（上下左右）中指定分类的在场单位数量。
             // 不区分阵营（敌方同类单位同样计数），家不是单位因此不参与统计。
             if (type.DeployRequireAdjacentCount > 0)
@@ -893,7 +918,7 @@ namespace Spotlight
             {
                 var remaining = bomb.Damage;
                 var steps = new List<BombBlastStep>();
-                ResolveBombCell(bomb.Position, ref remaining, steps);
+                ResolveBombCell(bomb.Position, ref remaining, steps, bomb);
                 var horizontal = Rules.PlayerOnLeft ? 1 : -1;
                 var directions = new[] { new Cell(1, 0), new Cell(0, horizontal), new Cell(-1, 0), new Cell(0, -horizontal) };
                 for (var distance = 1; distance < Math.Max(Rules.Rows, Rules.Columns) && remaining > 0; distance++)
@@ -901,27 +926,44 @@ namespace Spotlight
                     {
                         if (remaining == 0) break;
                         var cell = new Cell(bomb.Position.Row + direction.Row * distance, bomb.Position.Col + direction.Col * distance);
-                        if (Inside(cell)) ResolveBombCell(cell, ref remaining, steps);
+                        if (Inside(cell)) ResolveBombCell(cell, ref remaining, steps, bomb);
                     }
                 _bossBombs.Remove(bomb);
-                Emit("bomb-explode", $"炸弹在 {bomb.Position} 爆炸，造成 {bomb.Damage - remaining} 点伤害", bomb: bomb, blastSteps: steps.ToArray());
+                // 预算消耗与总扣血必须分开记录：伤害标记追加的伤害不消耗预算，
+                // 因此“初始预算 - 剩余预算”只代表预算消耗，不能再被当成实际总伤害。
+                var budgetUsed = bomb.Damage - remaining;
+                var totalDamage = steps.Sum(s => s.TotalDamage);
+                Emit("bomb-explode", $"炸弹在 {bomb.Position} 爆炸，消耗预算 {budgetUsed}，实际造成 {totalDamage} 点伤害", bomb: bomb, blastSteps: steps.ToArray());
             }
         }
 
         /// <summary>
-        /// 结算单格炸弹伤害。输入：格子、共享剩余预算、路径记录；输出：更新预算与路径。
+        /// 结算单格炸弹伤害。输入：格子、共享剩余预算、路径记录与所属炸弹；输出：更新预算、路径与追加伤害。
+        /// 每轮先把 1 点预算换成 1 点基础伤害，再交给统一伤害入口；追加伤害只扣生命、不扣预算。
         /// 阵亡沿用 Remove，玩家来源卡早已进入墓地，此处不重复回收；空格同样记录以复现搜索动画。
         /// </summary>
-        void ResolveBombCell(Cell cell, ref int remaining, List<BombBlastStep> steps)
+        void ResolveBombCell(Cell cell, ref int remaining, List<BombBlastStep> steps, BossBombState bomb)
         {
             var unit = _units.FirstOrDefault(u => u.Owner == Side.Player && u.Position == cell);
-            var damage = 0;
+            var budgetUsed = 0;
+            var bonusDamage = 0;
+            var killed = false;
             if (unit != null)
             {
-                while (remaining > 0 && unit.Hp > 0) { unit.Hp--; remaining--; damage++; }
-                if (unit.Hp == 0) Remove(unit, Removal.Death);
+                while (remaining > 0 && unit.Hp > 0)
+                {
+                    remaining--;
+                    budgetUsed++;
+                    // 炸弹上下文：归属 Boss 阵营、没有来源单位（不冒充标记施加者），根类型为 Bomb。
+                    var result = ResolveDirectDamage(unit, 1, new DamageContext(Side.Boss, null, unit.Id, DamageKind.Bomb, bomb: bomb));
+                    bonusDamage = (int)Math.Min(int.MaxValue, (long)bonusDamage + result.BonusDamage);
+                    if (!result.Killed) continue;
+                    // 追加伤害提前击杀后，剩余预算留给原搜索顺序继续寻找其它目标。
+                    killed = true;
+                    break;
+                }
             }
-            steps.Add(new BombBlastStep(cell, unit?.Id ?? 0, damage, unit != null && unit.Hp == 0));
+            steps.Add(new BombBlastStep(cell, unit?.Id ?? 0, budgetUsed, killed, bonusDamage));
         }
 
         /// <summary>
@@ -973,9 +1015,13 @@ namespace Spotlight
         /// 输入：行动单位与候选目标；输出：越小越优先。
         /// 规则：可一击摧毁的玩家家 → 可一击击杀的普通单位 → 玩家家 → 攻击卡 → 资源卡 → 特殊卡。
         /// 已确认“特殊卡在非致死优先级中排在资源卡之后”。当前攻击力取单位快照值，
-        /// 因此被一次性减攻降为 0 的单位不会再把目标判定为“可一击击杀”。
+        /// 可击杀预测包含目标既有的伤害标记追加（与真实结算一致），但不会挂新层或扣血。
         /// </summary>
-        int AttackPriority(UnitState u, Target t) => t.Hp <= u.Attack ? (t.Home != null ? 0 : 1) : 2 + TargetKind(t);
+        int AttackPriority(UnitState u, Target t)
+        {
+            var predicted = (long)u.Attack + (t.Unit != null ? t.Unit.DamageMarkBonus : 0);
+            return t.Hp <= predicted ? (t.Home != null ? 0 : 1) : 2 + TargetKind(t);
+        }
 
         /// <summary>
         /// 执行一个完整的 Boss 回合。
@@ -983,7 +1029,8 @@ namespace Spotlight
         /// 前置：BeginTurn 已恢复 Boss 行动并补兵；炸弹统一在玩家回合开始时处理。
         /// 顺序：按部署顺序逐个行动 → 自动结束回合；每个单位基于爆炸后的最新棋盘决策。
         /// 每次行动只做一件事：能攻击就攻击，否则沿最短可通行路径移动到最近合法攻击位置；
-        /// 抵达射程也不追加攻击（移动消耗整次行动）。胜负确定后立即停止后续行动。
+        /// 只有“击杀恢复行动”清空 Acted 后才会重新决策，其余情况（未击杀、移动、待机）都结束该单位本回合循环。
+        /// 胜负确定后立即停止后续行动。
         /// </summary>
         void RunBoss()
         {
@@ -991,29 +1038,113 @@ namespace Spotlight
             foreach (var u in _units.Where(u => u.Owner == Side.Boss).OrderBy(u => u.DeploymentOrder).ToArray())
             {
                 if (_phase == MatchPhase.Finished) return;
-                if (!u.CanAct) continue;
-                var target = Targets(Side.Boss).Where(t => CanTarget(u, t))
-                    .Where(t => CanAttack(u, u.Position, t.Position))
-                    .OrderBy(t => AttackPriority(u, t))
-                    .ThenBy(t => t.Hp)
-                    .ThenBy(t => t.Position.Row)
-                    .ThenBy(t => t.Position.Col)
-                    .FirstOrDefault();
-                if (target != null) { ExecuteCommand(new GameCommand(CommandKind.Attack, Side.Boss, u.Id, targetId: target.Id), true); continue; }
-                if (u.Attack <= 0 || u.Range <= 0 || u.MoveDistance <= 0) { Emit("wait", $"{Type(u).Name} 待机", u.Id); continue; }
-                var paths = Paths(u.Position);
-                var best = Targets(Side.Boss).Where(t => CanTarget(u, t))
-                    .SelectMany(t => paths.Where(p => p.Value.Count > 0 && CanAttack(u, p.Key, t.Position)).Select(p => new { Target = t, Path = p.Value }))
-                    .OrderBy(x => x.Path.Count)
-                    .ThenBy(x => TargetKind(x.Target))
-                    .ThenBy(x => x.Target.Position.Row)
-                    .ThenBy(x => x.Target.Position.Col)
-                    .FirstOrDefault();
-                if (best != null) ExecuteCommand(new GameCommand(CommandKind.Move, Side.Boss, u.Id, best.Path[Math.Min(u.MoveDistance, best.Path.Count) - 1]), true);
-                else Emit("wait", $"{Type(u).Name} 无可通行路径，待机", u.Id);
+                // 击杀恢复行动会让单位重新可行动，因此必须在最新状态上循环决策；
+                // 每轮都重新查询目标、占位与路径，不缓存上一次结果。
+                while (u.CanAct && _units.Contains(u))
+                {
+                    if (_phase == MatchPhase.Finished) return;
+                    var target = Targets(Side.Boss).Where(t => CanTarget(u, t))
+                        .Where(t => CanAttack(u, u.Position, t.Position))
+                        .OrderBy(t => AttackPriority(u, t))
+                        .ThenBy(t => t.Hp)
+                        .ThenBy(t => t.Position.Row)
+                        .ThenBy(t => t.Position.Col)
+                        .FirstOrDefault();
+                    if (target != null)
+                    {
+                        // 命令失败必须退出循环，避免在异常配置下反复尝试同一失败命令而卡死。
+                        if (ExecuteCommand(new GameCommand(CommandKind.Attack, Side.Boss, u.Id, targetId: target.Id), true) != null) break;
+                        continue;
+                    }
+                    if (u.Attack <= 0 || u.Range <= 0 || u.MoveDistance <= 0) { Emit("wait", $"{Type(u).Name} 待机", u.Id); break; }
+                    var paths = Paths(u.Position);
+                    var best = Targets(Side.Boss).Where(t => CanTarget(u, t))
+                        .SelectMany(t => paths.Where(p => p.Value.Count > 0 && CanAttack(u, p.Key, t.Position)).Select(p => new { Target = t, Path = p.Value }))
+                        .OrderBy(x => x.Path.Count)
+                        .ThenBy(x => TargetKind(x.Target))
+                        .ThenBy(x => x.Target.Position.Row)
+                        .ThenBy(x => x.Target.Position.Col)
+                        .FirstOrDefault();
+                    if (best != null)
+                    {
+                        // 最远可达落点不一定合法（四邻空格限制）：从最远处向回退，找到第一个合法落点。
+                        // 远处攻击位置合法并不代表本回合实际走到的中间落点合法。
+                        var steps = Math.Min(u.MoveDistance, best.Path.Count);
+                        while (steps > 0 && MovementError(u, best.Path[steps - 1]) != null) steps--;
+                        if (steps > 0) ExecuteCommand(new GameCommand(CommandKind.Move, Side.Boss, u.Id, best.Path[steps - 1]), true);
+                        else Emit("wait", $"{Type(u).Name} 没有满足空格限制的落点，待机", u.Id);
+                    }
+                    else Emit("wait", $"{Type(u).Name} 无可通行路径，待机", u.Id);
+                    break;
+                }
             }
             CapturePresentationFrame();
             if (_phase != MatchPhase.Finished) AdvanceTurn();
+        }
+
+        /// <summary>
+        /// 统一的战斗单位直接伤害结算入口。
+        /// 输入：目标单位、本次基础伤害（普通攻击的当前攻击力，炸弹固定为 1）与归属上下文；
+        /// 输出：本组伤害的结构化事实（基础/追加实际扣血、是否死亡、用了哪些已有层）。
+        /// 结算顺序：①固定本次受伤前的标记层 →②扣基础生命 →③若已死亡只做一次 Remove(Death) 并结束
+        /// →④仍存活时按已固定的层依次追加，任一步归零立即结束。
+        /// 为什么必须固定层：本次攻击新挂的层只能从下一次受伤起生效；
+        /// 为什么追加不递归：追加伤害不再经过挂层与恢复行动逻辑，避免无限循环。
+        /// </summary>
+        DamageResult ResolveDirectDamage(UnitState target, int baseDamage, DamageContext context)
+        {
+            if (target == null) return null;
+            // 复制受伤前的层，后续挂层不会回头改变本次结算。
+            var marks = target.DamageMarks;
+            var layers = new DamageMarkLayer[marks.Count];
+            for (var i = 0; i < layers.Length; i++) layers[i] = marks[i];
+
+            var baseApplied = DeductHp(target, baseDamage);
+            var bonusApplied = 0;
+            var killed = target.Hp <= 0;
+            if (killed) Remove(target, Removal.Death);
+            else
+            {
+                foreach (var layer in layers)
+                {
+                    var applied = DeductHp(target, layer.Damage);
+                    // 追加伤害可能让总量超出 int：用宽类型累加后截断，避免回绕成负值。
+                    bonusApplied = (int)Math.Min(int.MaxValue, (long)bonusApplied + applied);
+                    if (target.Hp > 0) continue;
+                    // 追加击杀同样只做一次死亡处理（死亡加攻/标记奖励/兵位计时都只走这里）。
+                    Remove(target, Removal.Death);
+                    killed = true;
+                    break;
+                }
+            }
+            return new DamageResult(context, baseApplied, bonusApplied, killed, layers);
+        }
+
+        /// <summary>
+        /// 家受到伤害的结算。
+        /// 输入：目标家、基础伤害与归属上下文；输出：结构化事实（家不参与伤害标记，追加永远为 0）。
+        /// 为什么不走 ResolveDirectDamage：家不是 UnitState、不会离场，且不能被施加伤害标记；
+        /// 胜负检查仍由攻击分支统一调用。
+        /// </summary>
+        DamageResult ResolveHomeDamage(HomeState home, int damage, DamageContext context, int floor = 0)
+        {
+            // floor 用于 Boss 阶段一的血量下限：实际扣血按“原生命 - 扣血后生命”计算，不会把下限差额算成伤害。
+            var before = home.Hp;
+            home.Hp = Math.Max(floor, before - damage);
+            var applied = Math.Max(0, before - home.Hp);
+            return new DamageResult(context, applied, 0, false, Array.Empty<DamageMarkLayer>());
+        }
+
+        /// <summary>
+        /// 扣除单位生命并返回实际扣血量。输入：单位与非负伤害；输出：实际扣掉的生命（不超过剩余生命）。
+        /// 这是唯一修改单位 Hp 的底层步骤：它不触发死亡处理、不发事件，避免同一笔伤害被重复结算。
+        /// </summary>
+        static int DeductHp(UnitState unit, int damage)
+        {
+            if (damage <= 0 || unit.Hp <= 0) return 0;
+            var applied = Math.Min(damage, unit.Hp);
+            unit.Hp -= applied;
+            return applied;
         }
 
         /// <summary>
@@ -1107,6 +1238,69 @@ namespace Spotlight
         /// <summary>判断坐标是否被家或单位占用。输入：坐标；输出：是否占用。</summary>
         bool Occupied(Cell p) => _homes.Any(h => h.Position == p) || _units.Any(u => u.Position == p);
 
+        /// <summary>
+        /// 统计中心格四邻（上下左右）中为空的格数。
+        /// 输入：中心格与占位查询；输出：0～4 的空格数量。
+        /// 规则：四个方向必须完整枚举；棋盘外直接计为空（因此边缘贡献 1、角落贡献 2）；斜角不计。
+        /// 为什么抽成查询委托：部署、移动、互换需要不同的“最终布局”，又不允许真的修改状态去试算。
+        /// </summary>
+        int CountEmptyOrthogonalNeighbors(Cell center, Func<Cell, bool> occupied)
+        {
+            var empty = 0;
+            foreach (var direction in _directions)
+            {
+                var neighbor = new Cell(center.Row + direction.Row, center.Col + direction.Col);
+                if (!Inside(neighbor)) { empty++; continue; }
+                if (!occupied(neighbor)) empty++;
+            }
+            return empty;
+        }
+
+        /// <summary>
+        /// 检查一个位置是否满足卡种的四邻空格限制。
+        /// 输入：卡种、位置与占位查询；输出：null 表示无能力或满足，否则为玩家可读原因。
+        /// 无该能力时直接返回 null，因此普通卡仍走原有规则（调用方无需分支）。
+        /// </summary>
+        string ClearanceError(CardArchetype type, Cell center, Func<Cell, bool> occupied)
+        {
+            var ability = type?.AdjacentClearance;
+            if (ability == null) return null;
+            var empty = CountEmptyOrthogonalNeighbors(center, occupied);
+            return empty >= ability.MinEmptyNeighbors ? null : $"四邻至少需要 {ability.MinEmptyNeighbors} 格为空（当前 {empty}）";
+        }
+
+        /// <summary>
+        /// 移动的空格限制校验。
+        /// 输入：移动单位与目标格；输出：null 表示合法，否则为失败原因。
+        /// 起点按原布局检查；落点按“旧格已腾空、新格已被移动者占用”的最终布局检查；路径中间格不参与。
+        /// 不采用“先改坐标、失败再改回”的试算，避免失败命令污染位置、行动或事件。
+        /// </summary>
+        string MovementError(UnitState mover, Cell target)
+        {
+            var type = Type(mover);
+            if (type.AdjacentClearance == null) return null;
+            var origin = ClearanceError(type, mover.Position, Occupied);
+            if (origin != null) return "当前位置不满足四邻空格限制：" + origin;
+            var destination = ClearanceError(type, target, cell => cell == mover.Position ? false : cell == target || Occupied(cell));
+            return destination == null ? null : "落点不满足四邻空格限制：" + destination;
+        }
+
+        /// <summary>
+        /// 互换的空格限制校验。
+        /// 输入：互换双方；输出：null 表示合法，否则为失败原因。
+        /// 互换前后两个格始终各有一个单位（只是人换了位置），因此最终布局不能把两个原位置都当空；
+        /// 双方中所有具有该能力的单位都必须在交换前、交换后的位置上分别满足要求。
+        /// </summary>
+        string SwapError(UnitState a, UnitState b)
+        {
+            var before = ClearanceError(Type(a), a.Position, Occupied) ?? ClearanceError(Type(b), b.Position, Occupied);
+            if (before != null) return "互换前布局不满足四邻空格限制：" + before;
+            // 交换只改变“谁在哪个格”，占位模式不变：两个位置都仍然被占用。
+            bool FinalOccupied(Cell cell) => cell == a.Position || cell == b.Position || Occupied(cell);
+            var after = ClearanceError(Type(a), b.Position, FinalOccupied) ?? ClearanceError(Type(b), a.Position, FinalOccupied);
+            return after == null ? null : "互换后布局不满足四邻空格限制：" + after;
+        }
+
         /// <summary>按内部行列顺序枚举全部格，用于部署高亮与补兵候选。</summary>
         IEnumerable<Cell> Cells() { for (var r = 0; r < Rules.Rows; r++) for (var c = 0; c < Rules.Columns; c++) yield return new Cell(r, c); }
 
@@ -1128,7 +1322,7 @@ namespace Spotlight
         /// 输入：类型、文本与主体 ID；输出：无。
         /// 事件同时进入“本次命令结果”和“有界历史日志”，前者供 UI 按序播放，后者供日志面板读取。
         /// </summary>
-        void Emit(string kind, string message, long id = 0, BossBombState bomb = null, BombBlastStep[] blastSteps = null) { var e = new GameEvent(kind, message, id, bomb, blastSteps); _pendingEvents.Add(e); _log.Add(e); if (_log.Count > _logLimit) _log.RemoveAt(0); }
+        void Emit(string kind, string message, long id = 0, BossBombState bomb = null, BombBlastStep[] blastSteps = null, DamageResult damage = null) { var e = new GameEvent(kind, message, id, bomb, blastSteps, damage); _pendingEvents.Add(e); _log.Add(e); if (_log.Count > _logLimit) _log.RemoveAt(0); }
 
         /// <summary>阵营显示名。输入：阵营；输出：中文名称。</summary>
         static string SideName(Side side) => side == Side.Player ? "玩家" : "Boss";
