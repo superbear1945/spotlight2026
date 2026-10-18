@@ -34,6 +34,22 @@ namespace Spotlight.Tests
         const float CenterTolerance = 0.5f;
 
         /// <summary>
+        /// 让本类用例加载场景后直接进入对局（跳过“携带选择”面板）。
+        /// 输入：无；输出：无。
+        /// 为什么需要：正式启动流程会先弹出携带选择模态面板，它挡住棋盘与手牌，
+        /// 而本类只验证对局内的棋盘/选中/计数契约；选卡流程本身由 DeckSelectionPlayModeTests 覆盖。
+        /// </summary>
+        [OneTimeSetUp]
+        public void SuppressDeckSelectionOnStart() => GameBootstrap.SuppressDeckSelectionOnStart = true;
+
+        /// <summary>
+        /// 恢复正式启动行为。输入：无；输出：无。
+        /// 为什么需要：PlayMode 用例在同一进程里顺序执行，静态开关必须还原，否则会让后面的用例看不到选卡界面。
+        /// </summary>
+        [OneTimeTearDown]
+        public void RestoreDeckSelectionOnStart() => GameBootstrap.SuppressDeckSelectionOnStart = false;
+
+        /// <summary>
         /// 移动单位后，卡牌必须挂到目标格、在配置的动画时长内回到格心，并且不会停在旧格。
         /// 输入：无；输出：NUnit 断言结果。
         /// </summary>
@@ -163,7 +179,7 @@ namespace Spotlight.Tests
             var board = context.Board;
 
             // 这条用例只验证“点击棋子能命中它所在的格子”，不需要移动能力。
-            // 为什么不再要求可移动：开局只抽 3 张，而正式卡组 26 张里移 0 的卡占一半（资源卡/星铆-1/战时储备），
+            // 为什么不再要求可移动：开局只抽 3 张，而默认抽牌堆 24 张里移 0 的卡占一半（资源卡/星铆-1/战时储备），
             // 一旦 3 张都是移 0 的卡就会“没有部署成功任何己方单位”而偶发失败（CI 上曾命中）。
             Assert.That(TryDeploy(bootstrap, session, context.Hand, requireMoveDistance: false), Is.True, "初始手牌里没有可部署的卡");
             yield return WaitSeconds(SettleSeconds);
@@ -401,20 +417,45 @@ namespace Spotlight.Tests
             var hud = Object.FindObjectOfType<HudView>();
             Assert.That(hud, Is.Not.Null, "场景缺少 HudView");
             var grave = hud.Root.Q<Label>("grave-count");
-            var draw = hud.Root.Q<Label>("draw-count");
+            // 抽牌堆总数已拆成三行“高级 / 中级 / 初级”（由快照抽牌堆逐张查卡种阶级统计），不再有单个总数标签。
+            var drawBasic = hud.Root.Q<Label>("draw-count-basic");
+            var drawIntermediate = hud.Root.Q<Label>("draw-count-intermediate");
+            var drawAdvanced = hud.Root.Q<Label>("draw-count-advanced");
             Assert.That(grave, Is.Not.Null, "UXML 缺少 grave-count");
-            Assert.That(draw, Is.Not.Null, "UXML 缺少 draw-count");
+            Assert.That(drawBasic, Is.Not.Null, "UXML 缺少 draw-count-basic");
+            Assert.That(drawIntermediate, Is.Not.Null, "UXML 缺少 draw-count-intermediate");
+            Assert.That(drawAdvanced, Is.Not.Null, "UXML 缺少 draw-count-advanced");
 
             var start = context.Session.GetSnapshot();
             Assert.That(grave.text, Is.EqualTo(start.Graveyard.Count.ToString()), "墓地计数与快照不一致");
-            Assert.That(draw.text, Is.EqualTo(start.DrawPile.Count.ToString()), "抽牌堆计数与快照不一致");
+            AssertDrawPileCountersMatchSnapshot(context.Session, hud.Root, "开局");
 
             Assert.That(TryDeploy(context.Bootstrap, context.Session, context.Hand, requireMoveDistance: false), Is.True, "初始手牌里没有可部署的卡");
             yield return WaitSeconds(SettleSeconds);
             var after = context.Session.GetSnapshot();
             Assert.That(after.Graveyard.Count, Is.GreaterThan(start.Graveyard.Count), "部署成功后来源卡应进入墓地");
             Assert.That(grave.text, Is.EqualTo(after.Graveyard.Count.ToString()), "部署后墓地计数没有跟随快照");
-            Assert.That(draw.text, Is.EqualTo(after.DrawPile.Count.ToString()), "部署后抽牌堆计数没有跟随快照");
+            AssertDrawPileCountersMatchSnapshot(context.Session, hud.Root, "部署后");
+        }
+
+        /// <summary>
+        /// 断言抽牌堆三行阶级计数与当前快照的抽牌堆一致。
+        /// 输入：对局、HUD 根与步骤说明；输出：NUnit 断言结果。
+        /// 为什么同时断言“逐阶级文本”与“三行合计”：抽牌堆显示从单个总数改成了按阶级三行，
+        /// 只比合计会漏掉“阶级归属算错”，只比单行又看不出总数仍在跟随快照，因此两者都保留。
+        /// </summary>
+        static void AssertDrawPileCountersMatchSnapshot(GameSession session, VisualElement root, string step)
+        {
+            var snapshot = session.GetSnapshot();
+            var configuration = session.Configuration;
+            var expected = new[] { CardTier.Basic, CardTier.Intermediate, CardTier.Advanced }
+                .ToDictionary(tier => tier,
+                    tier => snapshot.DrawPile.Count(card => configuration.FindCard(card.TypeId)?.Tier == tier));
+
+            Assert.That(root.Q<Label>("draw-count-basic").text, Is.EqualTo($"初级 {expected[CardTier.Basic]}"), $"{step}：初级剩余张数与快照不一致");
+            Assert.That(root.Q<Label>("draw-count-intermediate").text, Is.EqualTo($"中级 {expected[CardTier.Intermediate]}"), $"{step}：中级剩余张数与快照不一致");
+            Assert.That(root.Q<Label>("draw-count-advanced").text, Is.EqualTo($"高级 {expected[CardTier.Advanced]}"), $"{step}：高级剩余张数与快照不一致");
+            Assert.That(expected.Values.Sum(), Is.EqualTo(snapshot.DrawPile.Count), $"{step}：三个阶级之和必须等于抽牌堆剩余张数");
         }
 
         /// <summary>
@@ -770,6 +811,9 @@ namespace Spotlight.Tests
         /// 创建移动渲染用例的独立配置，避免随机起手、欠费与 Boss 击杀干扰测试准备。
         /// 输入：已加载正式配置的引导器；输出：仅供本用例重开的配置副本，不修改生成资产。
         /// 保留召唤失调和真实动画时长，用单一卡种牌堆消除洗牌顺序对准备条件的影响。
+        /// 抽牌堆说明：Deck 表已废除，抽牌堆改由“张数 + 阶级比例”生成后由玩家选卡，
+        /// 因此这里用 WithDeck 显式给回原来的 3 张固定牌堆；第二个参数为 false，
+        /// 因为测试夹具的 3 张牌堆本来就不等于 drawPileSize，不能按配置值校验总张数。
         /// </summary>
         static GameConfiguration CreateMovementConfiguration(GameBootstrap bootstrap)
         {
@@ -781,14 +825,22 @@ namespace Spotlight.Tests
             rules.handLimit = 10;
             rules.summoningSickness = true;
             rules.bossBombInterval = 1000;
-            document.deck = new[] { new DeckRow { cardType = "blade1", count = 3 } };
+            // 抽牌堆构成规则显式写进夹具：配置校验仍要求“每个阶级至少一种卡”与比例合法，
+            // 写死可以既不依赖 Excel 当前取值，也不受生成资产是否已重新编译影响。
+            rules.drawPileSize = 24;
+            rules.tierRatioBasic = 70;
+            rules.tierRatioIntermediate = 20;
+            rules.tierRatioAdvanced = 10;
+            rules.maxTypesBasic = 5;
+            rules.maxTypesIntermediate = 3;
+            rules.maxTypesAdvanced = 2;
             var fighter = document.cards.Single(c => c.id == "blade1");
             fighter.moveDistance = 1;
             fighter.upkeep = 0;
             var boss = document.cards.Single(c => c.id == rules.bossCardType);
             boss.atk = 0;
             boss.moveDistance = 0;
-            return new GameConfiguration(document);
+            return new GameConfiguration(document).WithDeck(new[] { new DeckEntry("blade1", 3) }, false);
         }
 
         /// <summary>

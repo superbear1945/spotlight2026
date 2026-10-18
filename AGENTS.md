@@ -6,6 +6,7 @@ Spotlight 是一款基于卡牌的战棋对局游戏（首版为 Windows 桌面�
 
 - 棋盘默认 5 行 × 10 列，双方各有“家”，摧毁敌方家即获胜。
 - 卡牌分资源卡 / 攻击卡 / 特殊卡，可部署、移动、攻击、互换、覆盖升级；星门提供四邻部署扩展。
+- 抽牌堆由 `Rules` 的抽牌堆张数 + 三阶级比例生成，携带哪些卡种由玩家每次启动时的“携带选择（选卡）”决定；工作簿不再有 `Deck` 表。
 - Boss 默认由 AI 控制，也可切换为玩家手动模式。
 - 所有数值来自 Excel 编译生成的**只读配置资产**，规则代码不按具体卡名分支。
 - 详细规则见 `docs/玩法.md`，实现设计见 `docs/最初版本实现方案.md`，运行步骤见 `docs/使用说明.md`。
@@ -29,6 +30,7 @@ Spotlight 是一款基于卡牌的战棋对局游戏（首版为 Windows 桌面�
 - 以上第三方依赖均以本地副本随工程提交，不通过包管理器安装；升级版本需同步更新本文件与 `docs/使用说明.md`。
 - 规则内核（`Spotlight.Core`）必须 `noEngineReferences: true`，不得引用 `UnityEngine`。
 - 汉字显示依赖生成的字体资产与 PanelSettings，新增界面文本前先确认字体资产已生成。
+- 工作簿固定 5 张表（`Cards` / `Rules` / `Homes` / `BossSlots` / `Presentation`）。`Deck` 工作表已废除：抽牌堆改由 `Rules` 的 `drawPileSize` + 三阶级比例生成，携带卡种由玩家开局时选择；工作簿里残留 `Deck` 表会被读取阶段直接报错并给出删除提示。
 
 ## 2. 命名空间与程序集
 
@@ -77,11 +79,17 @@ Assets/Spotlight/
 配置契约（`Core/Configuration.cs`）：
 
 - `Side`：`Player` / `Boss`；`CardCategory`：`Resource` / `Attack` / `Special`。
-- `CardTier`：独立卡牌阶级 `Basic`（初级）/ `Intermediate`（中级）/ `Advanced`（高级）；`None` 为 Boss 专用不适用状态，`Invalid` 仅用于报告缺失或非法配置。`Cards.tier` 必填，通过 `CardTiers.Parse` 严格转换；`none` 卡种不能以正数数量进入玩家卡组。阶级按张数统计，暂不设携带上限或部署回合限制，不引入卡组包分类。
+- `CardTier`：独立卡牌阶级 `Basic`（初级）/ `Intermediate`（中级）/ `Advanced`（高级）；`None` 为 Boss 专用不适用状态，`Invalid` 仅用于报告缺失或非法配置。`Cards.tier` 必填，通过 `CardTiers.Parse` 严格转换；`none` 卡种不出现在携带选择里，因此也不能进入抽牌堆。阶级按张数统计（3 张同种初级卡计作 3 张初级卡）；每局能携带几个**卡种**由 `Rules` 的 `maxTypes*` 控制，不引入卡组包分类，也不按阶级限制部署回合。
 - 只读配置接口：`ICombatConfig` / `IResourceConfig` / `ITeleportConfig` —— **规则内核依赖接口，不依赖 ScriptableObject**。
-- 表行类型：`CardRow` / `DeckRow` / `RulesRow` / `HomeRow` / `BossSlotRow` / `PresentationRow`。
-- 配置聚合：`ConfigDocument`（Excel 中间态）→ `GameConfiguration`（运行态，含 `MatchConfig` / `PresentationConfig` / `CardArchetype` / `DeckEntry` / `SpawnSlot`）。
-- `ConfigValidation.Validate(ConfigDocument)`：唯一业务校验入口，返回全部错误列表，不抛异常。
+- 表行类型：`CardRow` / `RulesRow` / `HomeRow` / `BossSlotRow` / `PresentationRow`（`DeckRow` 与 `Deck` 工作表已废除）。
+- `RulesRow` 在 `bossSpawnerSpawnCardType` 之后追加抽牌堆规则的 7 列：`drawPileSize`（抽牌堆总张数，默认 24，≥ 3）、`tierRatioBasic` / `tierRatioIntermediate` / `tierRatioAdvanced`（三阶级比例，默认 70 / 20 / 10，各自 ≥ 1 且合计必须为 100，不支持 0%）、`maxTypesBasic` / `maxTypesIntermediate` / `maxTypesAdvanced`（每局最多携带的三阶级**卡种数量**，默认 5 / 3 / 2，各自 ≥ 1）。
+- 配置聚合：`ConfigDocument`（Excel 中间态，`schemaVersion = 2`）→ `GameConfiguration`（运行态，含 `MatchConfig` / `DeckConfig` / `PresentationConfig` / `CardArchetype` / `CardOrder`（按 `Cards` 表顺序的卡种清单）/ `Deck`（由选卡结果生成的最终抽牌堆清单，元素为 `DeckEntry`）/ `SpawnSlot`）。
+- 抽牌堆构成（`Core/DeckSelection.cs`，纯 C#，可 EditMode 直测）：
+  - `DeckConfig`：`Rules` 抽牌堆 7 列的张数 / 三比例 / 三上限，并给出 `EffectiveMaxTypes(tier, poolTypeCount) = min(配置上限, 该阶级卡种数)`。
+  - `DeckComposition`：构图**唯一实现** —— ①每阶级 `floor(张数 × 比例 / 100)`；②每阶级至少 1 张；③合计不足时缺额全部给初级，超出（只可能由第 ② 步抬升造成）时从张数最多的阶级扣、平手按高级→中级→初级、每阶级保底 1 张；④把每阶级张数均分给该阶级已选卡种，余数按 `Cards` 表顺序发给靠前卡种，因此每个被选卡种至少 1 张。配置校验、选卡预览与正式开局共用它，界面数字不会与真实抽牌堆分叉。
+  - `DeckSelectionState`：开局前的携带选择状态（已选卡种、每阶级计数与有效上限、实时张数预览、默认选卡回退），只存在于本次运行会话，不做持久化。
+- 可携带卡种池不做静态配置：池子 = `Cards` 表里 `tier != none` 的全部卡种；每阶级至少选 1 种、最多选到有效上限。
+- `ConfigValidation.Validate(ConfigDocument)`：唯一业务校验入口，返回全部错误列表，不抛异常。抽牌堆规则由 `ValidateDeckRules` 共用校验：三比例各自 ≥ 1 且合计 100、每个阶级至少有一个可携带卡种，且按比例算出的每阶级张数不少于该阶级有效携带上限（保证玩家勾满时每个被选卡种都能抽到）。
 
 对局状态与命令（`Core/GameState.cs`）：
 
@@ -110,9 +118,9 @@ Assets/Spotlight/
 - 卡牌视图：`Card : MonoBehaviour`，配合 `CombatComponent` / `ResourceComponent` / `TeleportComponent` / `DeploymentPenaltyComponent` 四个能力组件；**同一个 `Card` 承载所有卡种，不为卡种建子类**。
 - 配置资产：`CardDefinitionSO` / `CombatConfigSO` / `ResourceConfigSO` / `TeleportConfigSO` / `SpotlightConfigAsset` / `ConfigManifest`，均实现只读接口；`GeneratedConfigAttribute` 标记生成产物。
 - 加载入口：`ConfigLoader`（`DefaultResourcePath = "SpotlightConfig"`，`TryCreateConfiguration(...)` 失败返回错误文本，不抛异常）。
-- 视图：`BoardView` / `BoardCellView`（UGUI 棋盘）、`HandView`（UGUI 手牌）、`HudView`（UI Toolkit / UXML）、`CardFactory` / `CardText`。
+- 视图：`BoardView` / `BoardCellView`（UGUI 棋盘）、`HandView`（UGUI 手牌）、`HudView`（UI Toolkit / UXML）、`DeckSelectionPanel`（UI Toolkit 携带选择面板）、`CardFactory` / `CardText`。
 - 引导与支持：`GameBootstrap`（加载配置 → 创建对局 → 绑定视图）、`DebugSupport.IsDebugAvailable`（调试能力唯一判定点）、`CardFeedback`（DOTween 表现）。
-- 调试面板（仅编辑器与 Development Build）：`ConfigDebugPanel` / `ConfigFieldBuilder` / `DebugConfigDraft`（含 `LegacyJsonMigration` / `JsonShapeValidator`），**调试改动只存在于本次运行会话**。
+- 调试面板（仅编辑器与 Development Build）：`ConfigDebugPanel` / `ConfigFieldBuilder` / `DebugConfigDraft`（含 `LegacyJsonMigration` / `JsonShapeValidator`），**调试改动只存在于本次运行会话**。面板里不再有“逐卡种卡组数量”：抽牌堆一侧改为抽牌堆规则 7 项数值 + “调试用强制牌堆”（任一卡种填 > 0 即整体覆盖抽牌堆，全 0 表示按选卡结果生成）。
 
 表现层硬性约定：
 
@@ -120,6 +128,8 @@ Assets/Spotlight/
 - 规则快照变化后，界面位置必须跟随，不得把棋子留在旧格（DOTween 需 `SetTarget` + `OnComplete/OnKill`，`Kill` 用 `DOKill(true)`）。
 - `Card.OnDestroy` 只停止自身补间（不补完），避免访问已销毁的 `RectTransform`。
 - HUD 由同一个 `Spotlight.uxml` 承载两套视图：**战斗界面**（左右详情区、墓地/抽牌堆计数、齿轮、结束回合）默认显示；**原有面板**（对局日志、Boss 状态、选中详情）移入齿轮菜单，点齿轮切换视图并暂停（复用 `SetModalOpen` 的“界面遮罩 + 规则层输入闸门”）。新增界面元素要明确属于哪一套，避免菜单里点不到按钮或被遮罩压住。
+- 开局前必经携带选择：`GameBootstrap` 加载配置后先显示 `DeckSelectionPanel`，确认后才创建对局；开局入口没有“取消”按钮。齿轮菜单里的「选卡」复用同一面板，进入前先弹二次确认（确认后当前对局重开）。
+- 抽牌堆计数按阶级分三行实时显示（高级 / 中级 / 初级，按快照中抽牌堆卡牌的阶级统计，抽牌递减、墓地洗回后回涨）；墓地仍只显示总数。
 
 ### 4.3 编辑器工具（`Spotlight.EditorTools`）
 
@@ -129,10 +139,16 @@ Assets/Spotlight/
 
 ## 5. 关键名词表
 
-> 完整机制名词（卡组、抽牌堆、手牌、墓地、卡牌记录、战斗单位等）以 `docs/游戏内名词.md` 为唯一来源；下表只列代码类型与高频术语。
+> 完整机制名词（抽牌堆、携带选择、手牌、墓地、卡牌记录、战斗单位等）以 `docs/游戏内名词.md` 为唯一来源；下表只列代码类型与高频术语。
 
 | 名词 | 含义 |
 |---|---|
+| 抽牌堆 `GameSnapshot.DrawPile` | 本次对局的卡牌来源，由携带选择 + 抽牌堆规则生成；HUD 按阶级分三行显示剩余张数。**不得称为“牌库”** |
+| 携带选择（选卡）`DeckSelectionState` | 开局前勾选本次携带的卡种（每阶级至少 1 种、最多到有效上限），确认后生成抽牌堆开局；菜单「选卡」会先二次确认再重开对局；结果不持久化 |
+| 抽牌堆规则 `DeckConfig` / `DeckComposition` | `Rules` 的张数 + 三阶级比例 + 三阶级携带上限 7 列，以及把比例换算成张数、再分给已选卡种的唯一算法 |
+| 有效携带上限 `DeckConfig.EffectiveMaxTypes` | `min(配置上限, 该阶级卡种数)`；该阶级可选卡种池不足时，界面按它判断能否继续勾选 |
+| 强制牌堆 | 调试面板的“调试用强制牌堆”：任一卡种填 > 0 即整体覆盖抽牌堆（与选卡结果无关），仅本次运行会话有效，不写入任何资产 |
+| 卡组 | 已废除的旧配置概念（`Deck` 工作表 / `DeckRow`）。现行口径是“携带选择 → 抽牌堆”，运行时来源一律叫抽牌堆 |
 | 卡牌记录 `CardRecord` | 仅含实例 ID / 卡种 ID / 阵营，在抽牌堆、手牌、墓地间流转，是唯一会被洗回和再次抽到的身份 |
 | 战斗单位 `UnitState` | 一次部署产生的可变实体，只保存来源卡的值副本（`SourceCardId` / `TypeId` / `Owner`），不引用 `CardRecord`；同一张卡可反复部署出多个互相独立的单位，伤势不回流卡牌 |
 | 家 `HomeState` | 独立实体，不进入抽牌堆、不参与互换、无攻击力，可被攻击与移动 |
@@ -154,9 +170,12 @@ Excel 配置编译（菜单 `Tools/Spotlight/*`，按顺序）：
 
 1. `生成默认工作簿` → 2. `验证配置`（只校验不写资产，失败一次性列出全部问题）→ 3. `编译全部配置`（校验通过才发布，失败保留上一套产物并回滚）→ 4. `生成中文字体资产` → 5. `生成演示场景`。
 
+- 工作簿固定 5 张表（`Cards` / `Rules` / `Homes` / `BossSlots` / `Presentation`）；`Deck` 表已废除，残留会被读取阶段报错，删除该表即可继续。
+- 携带哪些卡种**不是配置项**：可携带卡种池 = `Cards` 里 `tier != none` 的全部卡种，由玩家每次开局时选卡决定；策划只填抽牌堆张数、三阶级比例与三阶级携带上限。
+- 新增卡种不需要登记任何“卡组”表，卡种会自动进入对应阶级的可选池；若某阶级首次出现，注意该阶级的携带上限与比例是否仍满足“分到的张数 ≥ 有效上限”。
 - `编译全部配置` 采用稳定 ID 更新已有资产并保留 GUID；改名不破坏关联。
 - 运行与构建门禁由 `ConfigBuildGate` 拦截：配置缺失或非法时禁止进入 Play / 构建，并给出可读错误。
-- 调试配置面板仅通过“关闭”或成功“应用并重开”退出；“应用并重开”失败时保留原对局与面板。
+- 调试配置面板仅通过“关闭”或成功“应用并重开”退出；“应用并重开”失败时保留原对局与面板。调试面板的“调试用强制牌堆”只覆盖本次运行会话的抽牌堆；“应用并重开”导致当前选卡变非法时静默回退默认选卡（每阶级按有效上限取满、`Cards` 表顺序）。
 - 正式数据单元格禁止公式；编译器检查未定义列、重复表头、缺失列、公式、错误单元格、重复 ID、空/重名、非法分类、非法引用等。
 - 架构图（`docs/diagrams/01-modules` / `02-cards` / `03-dataflow` / `04-turnflow` / `05-card-lifecycle`）修改后需按 `docs/diagrams/README.md` 重新渲染 SVG 及其导出产物（PNG/HTML/drawio），并由 CI 校验。
 

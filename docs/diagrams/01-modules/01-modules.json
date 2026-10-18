@@ -17,8 +17,8 @@
     { "id": "c-tests", "x": 440, "y": 520, "width": 340, "height": 150, "label": "Spotlight.Tests.EditMode", "subtitle": "EditMode 行为与配置测试", "preserve_case": true }
   ],
   "nodes": [
-    { "id": "n-core", "kind": "double_rect", "x": 90, "y": 204, "width": 280, "height": 64, "label": "规则内核与配置契约", "sublabel": "Configuration · GameSession", "fill": "#eff6ff", "stroke": "#2563eb", "flat": true },
-    { "id": "n-runtime", "kind": "double_rect", "x": 470, "y": 204, "width": 280, "height": 64, "label": "运行层与视图", "sublabel": "Card · 三个组件 · UI · 调试面板", "fill": "#faf5ff", "stroke": "#7c3aed", "flat": true },
+    { "id": "n-core", "kind": "double_rect", "x": 90, "y": 204, "width": 280, "height": 64, "label": "规则内核与配置契约", "sublabel": "Configuration · DeckSelection", "fill": "#eff6ff", "stroke": "#2563eb", "flat": true },
+    { "id": "n-runtime", "kind": "double_rect", "x": 470, "y": 204, "width": 280, "height": 64, "label": "运行层与视图", "sublabel": "Card · 组件 · UI（选卡） · 调试面板", "fill": "#faf5ff", "stroke": "#7c3aed", "flat": true },
     { "id": "n-editor", "kind": "double_rect", "x": 850, "y": 204, "width": 280, "height": 64, "label": "编辑器工具", "sublabel": "Excel 编译 · 工作簿 · 构建门禁", "fill": "#fff7ed", "stroke": "#f97316", "flat": true },
     { "id": "n-excel", "kind": "cylinder", "x": 1230, "y": 204, "width": 280, "height": 64, "label": "ExcelDataReader 3.9.0", "sublabel": "仅编辑器引用，不进正式包", "fill": "#f0fdfa", "stroke": "#0d9488" },
     { "id": "n-dotween", "kind": "rect", "x": 1230, "y": 340, "width": 280, "height": 64, "label": "DOTween Free 1.2.765", "sublabel": "运行时表现反馈与清理", "fill": "#fef2f2", "stroke": "#dc2626", "flat": true },

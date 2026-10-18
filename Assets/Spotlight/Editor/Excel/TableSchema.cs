@@ -71,7 +71,7 @@ namespace Spotlight.EditorTools
     public static class TableSchema
     {
         /// <summary>工作簿必须包含的工作表，顺序即默认生成顺序。</summary>
-        public static readonly string[] RequiredSheets = { "Cards", "Deck", "Rules", "Homes", "BossSlots", "Presentation" };
+        public static readonly string[] RequiredSheets = { "Cards", "Rules", "Homes", "BossSlots", "Presentation" };
 
         /// <summary>全部表声明。</summary>
         public static readonly IReadOnlyList<TableDefinition> All = new[]
@@ -111,11 +111,6 @@ namespace Spotlight.EditorTools
                 new ColumnDefinition("deployGainResource", ColumnType.Integer, true, "即时卡结算时立即获得的资源，默认 0，正整数。启用 leaveAfterDeploy 时必须为正整数，禁用时必须为 0。"),
                 new ColumnDefinition("tier", ColumnType.Text, true, "卡牌阶级，独立于 category：basic=初级，intermediate=中级，advanced=高级；Boss 专用卡填 none（不适用），不可加入玩家卡组。必须显式填写；仅用于卡组张数统计，暂不限制携带数量与部署回合。")
             }),
-            new TableDefinition("Deck", new[]
-            {
-                new ColumnDefinition("cardType", ColumnType.Text, true),
-                new ColumnDefinition("count", ColumnType.Integer, true)
-            }),
             new TableDefinition("Rules", new[]
             {
                 new ColumnDefinition("rows", ColumnType.Integer, true),
@@ -143,7 +138,14 @@ namespace Spotlight.EditorTools
                 new ColumnDefinition("bossSpawnerUnitThreshold", ColumnType.Integer, true, "前线玩家攻击类单位数量下限，默认 2，正整数。仅统计 category=attack，不以攻击力是否非零判断。与总攻击力条件同时满足才触发。"),
                 new ColumnDefinition("bossSpawnerDeployFromColumn", ColumnType.Integer, true, "刷怪卡部署起始列，默认 5，正整数。从玩家一侧第 1 列起算，包含本列及之后的空格；超过棋盘宽度或没有空格则跳过当次机会，不累计。"),
                 new ColumnDefinition("bossSpawnerCardType", ColumnType.Text, true, "刷怪卡卡种 ID，默认 bossSpawner，须引用已注册特殊卡。生命可配置为正整数，攻击/射程/移动为 0，无资源和传送能力。场上最多一张，不能移动或互换，部署后下一个 Boss 回合开始生成。"),
-                new ColumnDefinition("bossSpawnerSpawnCardType", ColumnType.Text, true, "生成战机卡种 ID，默认 bossCombat，须引用已注册攻击类卡种。每个 Boss 回合在八邻随机空格生成一架；满格随机顶替玩家单位，无目标则暂停，下回合重试。遵守召唤失调，不占固定兵位。")
+                new ColumnDefinition("bossSpawnerSpawnCardType", ColumnType.Text, true, "生成战机卡种 ID，默认 bossCombat，须引用已注册攻击类卡种。每个 Boss 回合在八邻随机空格生成一架；满格随机顶替玩家单位，无目标则暂停，下回合重试。遵守召唤失调，不占固定兵位。"),
+                new ColumnDefinition("drawPileSize", ColumnType.Integer, true, "玩家抽牌堆总张数，默认 24，必须至少 3。开局按此数量生成卡牌记录；不再由 Deck 表逐卡种配置（Deck 表已废除）。"),
+                new ColumnDefinition("tierRatioBasic", ColumnType.Integer, true, "初级卡在抽牌堆中的占比百分比，默认 70，必须至少 1。三阶级比例之和必须为 100，不支持 0%。"),
+                new ColumnDefinition("tierRatioIntermediate", ColumnType.Integer, true, "中级卡在抽牌堆中的占比百分比，默认 20，必须至少 1。"),
+                new ColumnDefinition("tierRatioAdvanced", ColumnType.Integer, true, "高级卡在抽牌堆中的占比百分比，默认 10，必须至少 1。"),
+                new ColumnDefinition("maxTypesBasic", ColumnType.Integer, true, "玩家每局最多携带的初级卡种数量，默认 5，必须至少 1。实际可用上限 = min(本值, 初级卡种数)。"),
+                new ColumnDefinition("maxTypesIntermediate", ColumnType.Integer, true, "玩家每局最多携带的中级卡种数量，默认 3，必须至少 1。"),
+                new ColumnDefinition("maxTypesAdvanced", ColumnType.Integer, true, "玩家每局最多携带的高级卡种数量，默认 2，必须至少 1；卡池不足时按 min(本值, 卡种数) 生效。")
             }),
             new TableDefinition("Homes", new[]
             {

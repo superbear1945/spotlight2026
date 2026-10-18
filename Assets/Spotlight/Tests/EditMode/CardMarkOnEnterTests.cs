@@ -9,16 +9,26 @@ namespace Spotlight.Tests
     /// <summary>覆盖标记产生、永久保留、不叠加、阵亡发放、非死亡不发放与配置校验。</summary>
     public class CardMarkOnEnterTests
     {
-        /// <summary>在标准夹具上追加一个卡种并加入卡组。</summary>
-        static ConfigDocument With(ConfigDocument document, CardRow card, int count = 4)
+        /// <summary>
+        /// 在标准夹具上追加一个卡种（只改 Cards 表）。
+        /// 输入：待改文档与卡行；输出：同一个文档（便于链式调整 Rules）。
+        /// 为什么不再在这里登记张数：Deck 表已废除，追加的卡种通过 Start 的 DeckEntry 参数进入抽牌堆。
+        /// </summary>
+        static ConfigDocument With(ConfigDocument document, CardRow card)
         {
             document.cards = document.cards.Concat(new[] { card }).ToArray();
-            document.deck = document.deck.Concat(new[] { new DeckRow { cardType = card.id, count = count } }).ToArray();
             return document;
         }
 
-        /// <summary>用固定种子创建对局，保证抽牌顺序可复现。</summary>
-        static GameSession Start(ConfigDocument document) => new GameSession(new GameConfiguration(document), new SeededRandom(42), 100);
+        /// <summary>
+        /// 用固定种子创建对局，并把本用例追加的卡种写进抽牌堆。
+        /// 输入：文档与追加的抽牌堆条目；输出：可执行公开命令的对局。
+        /// 为什么需要：抽牌堆已不能写在文档里，必须在建局时用 WithDeck 显式覆盖；
+        /// 默认牌堆来自 GameSessionTests.DefaultDeck()（与原 4/4/4/4 夹具一致）。
+        /// </summary>
+        static GameSession Start(ConfigDocument document, params DeckEntry[] extra) => new GameSession(
+            new GameConfiguration(document).WithDeck(GameSessionTests.DefaultDeck().Concat(extra), false),
+            new SeededRandom(42), 100);
 
         /// <summary>部署指定卡种并断言成功。</summary>
         static UnitState Deploy(GameSession game, string typeId, int row, int column)
@@ -44,7 +54,7 @@ namespace Spotlight.Tests
         {
             var document = With(GameSessionTests.Document(), Collector());
             document.cards.Single(c => c.id == "miner").hp = 1; // 只为让一次 1 点伤害就能击杀
-            var game = Start(document);
+            var game = Start(document, new DeckEntry("collector", 4));
             source = Deploy(game, "collector", 0, 8);
             target = Deploy(game, "miner", 0, 9);
             return game;
@@ -101,7 +111,7 @@ namespace Spotlight.Tests
         public void OverlappingSourcesMarkOnlyOnce()
         {
             var document = With(GameSessionTests.Document(), Collector());
-            var game = Start(document);
+            var game = Start(document, new DeckEntry("collector", 4));
             Deploy(game, "collector", 0, 1);
             var target = Deploy(game, "miner", 0, 0);
             Deploy(game, "collector", 1, 0);

@@ -161,14 +161,21 @@ namespace Spotlight.Tests
             Assert.That(ConfigValidation.Validate(document).Any(e => e.Contains("upgradeFrom")), Is.True);
         }
 
+        /// <summary>
+        /// 改名不应破坏任何引用：覆盖升级仍按卡种 ID 关联，且抽牌堆规则数值不受影响。
+        /// 输入：默认工作簿文档（改名）；输出：校验通过与引用断言。
+        /// 为什么不再断言 Deck 行：Deck 表已废除，抽牌堆改由 Rules 的 drawPileSize + 三阶级比例生成。
+        /// </summary>
         [Test]
-        public void RenamingCardKeepsUpgradeAndDeckReferences()
+        public void RenamingCardKeepsUpgradeReferenceAndDrawPileRules()
         {
             var document = DefaultDocument();
             document.cards.First(c => c.id == "ge1").name = "改名后的开采机";
             Assert.That(ConfigValidation.Validate(document), Is.Empty);
             Assert.That(document.cards.First(c => c.requiresUpgrade).upgradeFrom, Is.EqualTo("ge1"));
-            Assert.That(document.deck.Any(e => e.cardType == "ge1"), Is.True);
+            Assert.That(document.rules[0].drawPileSize, Is.EqualTo(24));
+            Assert.That(new[] { document.rules[0].tierRatioBasic, document.rules[0].tierRatioIntermediate, document.rules[0].tierRatioAdvanced }, Is.EqualTo(new[] { 70, 20, 10 }));
+            Assert.That(new[] { document.rules[0].maxTypesBasic, document.rules[0].maxTypesIntermediate, document.rules[0].maxTypesAdvanced }, Is.EqualTo(new[] { 5, 3, 2 }));
         }
 
         [Test]
@@ -180,9 +187,14 @@ namespace Spotlight.Tests
             var first = ConfigCompiler.Compile(path, false);
             Assert.That(first.Success, Is.True, string.Join("\n", first.Issues));
             Assert.That(first.Document, Is.Not.Null);
-            // 默认工作簿：9 个既有卡种 + 开普勒-I/II、星铆-1、后羿、星棹-1、力场-I、比目鱼、战时储备 共 17 行；Deck 仍为 26 张（新卡不进初始卡组）。
+            // 默认工作簿：9 个既有卡种 + 开普勒-I/II、星铆-1、后羿、星棹-1、力场-I、比目鱼、战时储备 共 17 行；
+            // Deck 表已废除，抽牌堆改由 Rules 的张数与阶级比例生成，不再有“逐卡种张数”。
             Assert.That(first.Document.cards.Length, Is.EqualTo(17));
-            Assert.That(first.Document.deck.Sum(e => e.count), Is.EqualTo(34));
+            Assert.That(first.Document.rules[0].drawPileSize, Is.EqualTo(24));
+            Assert.That(new[] { first.Document.rules[0].tierRatioBasic, first.Document.rules[0].tierRatioIntermediate, first.Document.rules[0].tierRatioAdvanced }, Is.EqualTo(new[] { 70, 20, 10 }));
+            Assert.That(new[] { first.Document.rules[0].maxTypesBasic, first.Document.rules[0].maxTypesIntermediate, first.Document.rules[0].maxTypesAdvanced }, Is.EqualTo(new[] { 5, 3, 2 }));
+            Assert.That(TableSchema.For("Deck"), Is.Null, "Deck 表必须已从表声明中废除");
+            Assert.That(TableSchema.RequiredSheets, Has.No.Member("Deck"));
             Assert.That(first.Document.rules[0].bossBombInterval, Is.EqualTo(10));
             Assert.That(first.Document.rules[0].bossBombDamage, Is.EqualTo(3));
             Assert.That(first.Document.rules[0].bossBombColumn, Is.EqualTo(5));
@@ -198,8 +210,27 @@ namespace Spotlight.Tests
         }
 
         /// <summary>
+        /// Deck 表已废除：工作簿里残留该表时必须明确报错并提示删除，而不是静默忽略或要求逐卡种填张数。
+        /// 输入：仅含 Cards 与 Deck 两张表的临时工作簿；输出：包含“Deck 表已废除”的问题。
+        /// 为什么需要：旧工作簿模板如果不删除 Deck 表就不会被发现，抽牌堆会看起来“改了没生效”。
+        /// </summary>
+        [Test]
+        public void RemovedDeckSheetIsReportedExplicitly()
+        {
+            var path = Path.Combine(_tempDirectory, "legacy-deck.xlsx");
+            DefaultWorkbookWriter.WriteWorkbook(path, new[]
+            {
+                new DefaultWorkbookWriter.SheetSpec { Name = "Cards", Headers = new[] { "id", "tier" }, Rows = new[] { new[] { "a", "basic" } } },
+                new DefaultWorkbookWriter.SheetSpec { Name = "Deck", Headers = new[] { "cardType", "count" }, Rows = new[] { new[] { "a", "1" } } }
+            });
+            var report = ConfigCompiler.Compile(path, false);
+            Assert.That(report.Success, Is.False);
+            Assert.That(report.Issues.Any(i => i.Sheet == "Deck" && i.Reason.Contains("Deck 表已废除")), Is.True, string.Join("\n", report.Issues));
+        }
+
+        /// <summary>
         /// 验证默认表按声明保存原生数字/布尔单元格，而不是看起来像数字的文本。
-        /// 输入：临时默认工作簿；输出：六张表所有数据单元格的 OOXML 类型断言，防止生成器再次把数值写成文本。
+        /// 输入：临时默认工作簿；输出：五张表所有数据单元格的 OOXML 类型断言，防止生成器再次把数值写成文本。
         /// </summary>
         [Test]
         public void DefaultWorkbookStoresNativeCellTypes()
@@ -260,7 +291,7 @@ namespace Spotlight.Tests
             var path = Path.Combine(_tempDirectory, "numeric.xlsx");
             DefaultWorkbookWriter.WriteDefault(path);
             ReplaceWorksheetCell(path, 1, "E2", "n", hp);
-            ReplaceWorksheetCell(path, 6, "E2", "n", "0.125");
+            ReplaceWorksheetCell(path, 5, "E2", "n", "0.125");
             var previousCulture = CultureInfo.CurrentCulture;
             try
             {
@@ -304,7 +335,7 @@ namespace Spotlight.Tests
             var numeric = ConfigCompiler.Compile(path, false);
             Assert.That(numeric.Success, Is.True, string.Join("\n", numeric.Issues));
             ReplaceWorksheetCell(path, 1, "E2", "inlineStr", "1");
-            ReplaceWorksheetCell(path, 6, "E2", "inlineStr", "0.2");
+            ReplaceWorksheetCell(path, 5, "E2", "inlineStr", "0.2");
             var text = ConfigCompiler.Compile(path, false);
             Assert.That(text.Success, Is.True, string.Join("\n", text.Issues));
             Assert.That(UnityEngine.JsonUtility.ToJson(text.Document), Is.EqualTo(UnityEngine.JsonUtility.ToJson(numeric.Document)));

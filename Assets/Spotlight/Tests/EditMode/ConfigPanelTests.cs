@@ -1,6 +1,6 @@
 // 对局配置面板的 EditMode 测试。
-// 覆盖：导入草稿后的表单生成、字段编辑写回草稿、数值夹紧、卡组摘要统计、
-// 校验失败禁用“应用并重开”、空配置的降级表现，以及草稿层的新增卡种与数量设置。
+// 覆盖：导入草稿后的表单生成、字段编辑写回草稿、数值夹紧、抽牌堆摘要统计、
+// 校验失败禁用“应用并重开”、空配置的降级表现，以及草稿层的新增卡种与强制牌堆设置。
 // 测试直接实例化 UXML 并注入草稿，不创建场景、不需要 PanelSettings，也不模拟点击事件。
 using System.Collections.Generic;
 using System.Linq;
@@ -45,7 +45,12 @@ namespace Spotlight.Tests
             _panel = null;
         }
 
-        /// <summary>构造一份最小可用配置文档。输入：无；输出：文档。</summary>
+        /// <summary>
+        /// 构造一份最小可用配置文档。
+        /// 输入：无；输出：文档。
+        /// 说明：Deck 表已废除，抽牌堆改由 Rules 的张数与阶级比例推导；
+        /// 夹具额外放一张初级填充卡，使“把矿机改成中级”后初级阶级仍有可携带卡种（否则新校验会拒绝该改动）。
+        /// </summary>
         internal static ConfigDocument Document()
         {
             return new ConfigDocument
@@ -56,17 +61,13 @@ namespace Spotlight.Tests
                     new CardRow { tier = "intermediate", id = "soldier", name = "士兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, upkeep = 1, resourceComponent = true, viewKey = "default" },
                     new CardRow { tier = "advanced", id = "gate", name = "星门", category = "special", hp = 2, moveDistance = 1, upkeep = 4, resourceComponent = true, teleportComponent = true, permitsAttackDeploy = true, deployHomeOnly = true, avoidAdjacentSameType = true, viewKey = "default" },
                     new CardRow { tier = "none", id = "boss", name = "Boss敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
-                    new CardRow { tier="none", id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" }
-                },
-                deck = new[]
-                {
-                    new DeckRow { cardType = "miner", count = 4 },
-                    new DeckRow { cardType = "soldier", count = 4 },
-                    new DeckRow { cardType = "gate", count = 4 }
+                    new CardRow { tier="none", id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" },
+                    // 仅用于满足“初级至少一种可携带卡种”的校验，不参与任何断言。
+                    new CardRow { tier = "basic", id = "miner2", name = "备用矿机", category = "resource", hp = 1, produce = 0, resourceComponent = true, viewKey = "default" }
                 },
                 rules = new[]
                 {
-                    new RulesRow { bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossSpawnerSpawnCardType = "boss", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 5, bossPlays = 1, drawCount = 5, handLimit = 5, initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss", playerControlsBoss = false, accumulateResources = true, summoningSickness = true, adjacentSwap = true }
+                    new RulesRow { drawPileSize = 24, tierRatioBasic = 70, tierRatioIntermediate = 20, tierRatioAdvanced = 10, maxTypesBasic = 5, maxTypesIntermediate = 3, maxTypesAdvanced = 2, bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossSpawnerSpawnCardType = "boss", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 5, bossPlays = 1, drawCount = 5, handLimit = 5, initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss", playerControlsBoss = false, accumulateResources = true, summoningSickness = true, adjacentSwap = true }
                 },
                 homes = new[] { new HomeRow { owner = "player", hp = 10, produce = 2 }, new HomeRow { owner = "boss", hp = 10, produce = 0 } },
                 bossSlots = new[]
@@ -118,21 +119,52 @@ namespace Spotlight.Tests
             Assert.That(_root.Q<Label>("debug-error").style.display.value, Is.EqualTo(DisplayStyle.None));
         }
 
-        /// <summary>卡组摘要按分类统计。输入：无；输出：无。</summary>
+        /// <summary>
+        /// “抽牌堆”分区固定展示张数、三阶级比例与三阶级携带上限，并对每个卡种给一个调试用强制牌堆输入框；
+        /// 逐卡种“卡组数量”字段已随 Deck 表一起废除。
+        /// 输入：无；输出：无。
+        /// 为什么需要：这些字段是策划唯一能改构牌规则的地方，字段名或数量变动必须在回归里被发现。
+        /// </summary>
         [Test]
-        public void DeckSummaryCountsByCategory()
+        public void DeckSectionExposesDrawPileFieldsInsteadOfCardDeckCounts()
+        {
+            Open(Document());
+            var labels = CollectLabels(_root.Q<VisualElement>("debug-deck"));
+            Assert.That(labels, Does.Contain("抽牌堆张数（默认 24，至少 3）"));
+            Assert.That(labels, Does.Contain("初级比例 %（默认 70）"));
+            Assert.That(labels, Does.Contain("中级比例 %（默认 20）"));
+            Assert.That(labels, Does.Contain("高级比例 %（默认 10）"));
+            Assert.That(labels, Does.Contain("初级携带上限（种）"));
+            Assert.That(labels, Does.Contain("中级携带上限（种）"));
+            Assert.That(labels, Does.Contain("高级携带上限（种）"));
+            Assert.That(labels, Does.Contain("矿机（强制）"), "每个卡种应有一个调试用强制牌堆输入框");
+            Assert.That(_root.Query<Label>().ToList().Any(l => l.text == "卡组数量"), Is.False, "逐卡种卡组数量字段已废除");
+        }
+
+        /// <summary>
+        /// 抽牌堆摘要按“张数 + 三阶级比例”统计（向下取整，缺额全部给初级）。
+        /// 输入：无；输出：无。
+        /// 为什么断言这三个数字：24 张、70/20/10 的默认配置下，向下取整得 16/4/2，缺的 2 张全部给初级，最终 18/4/2。
+        /// </summary>
+        [Test]
+        public void DrawPileSummaryFollowsTierRatios()
         {
             Open(Document());
             var summary = DeckSummary();
-            Assert.That(summary.text, Does.Contain("共 12 张"));
-            Assert.That(summary.text, Does.Contain("资源卡 4 张"));
-            Assert.That(summary.text, Does.Contain("战斗卡 4 张"));
-            Assert.That(summary.text, Does.Contain("特殊卡 4 张"));
+            Assert.That(summary.text, Does.Contain("抽牌堆 24 张"));
+            Assert.That(summary.text, Does.Contain("初级 18 张"));
+            Assert.That(summary.text, Does.Contain("中级 4 张"));
+            Assert.That(summary.text, Does.Contain("高级 2 张"));
         }
 
-        /// <summary>阶级下拉按实际张数刷新摘要并进入新配置，验证编辑、持久化和分类独立性。</summary>
+        /// <summary>
+        /// 阶级下拉写回草稿并进入新配置，验证编辑、持久化和分类独立性。
+        /// 输入：无；输出：无。
+        /// 为何不再断言摘要跟着变：抽牌堆摘要由张数与比例推导，不再按逐卡种张数统计，
+        /// 所以改单个卡种的阶级不应改变摘要（这一点在此显式断言）。
+        /// </summary>
         [Test]
-        public void EditingTierUpdatesSummaryAndConfiguration()
+        public void EditingTierWritesBackAndReachesConfiguration()
         {
             var draft = Open(Document());
             var box = _root.Query<VisualElement>(className: "cfg-card").ToList()
@@ -143,12 +175,17 @@ namespace Spotlight.Tests
             ConfigFieldBuilder.ApplyCurrentValue(field);
             Assert.That(draft.FindCard("miner").tier, Is.EqualTo("intermediate"));
             Assert.That(draft.FindCard("miner").category, Is.EqualTo("resource"));
-            Assert.That(DeckSummary().text, Does.Contain("初级 0 张 / 中级 8 张 / 高级 4 张"));
+            Assert.That(DeckSummary().text, Does.Contain("抽牌堆 24 张"), "抽牌堆摘要由阶级比例推导，不应随单个卡种改阶级而变化");
             Assert.That(draft.TryCreateConfiguration(out var config, out var error), Is.True, error);
             Assert.That(config.Cards["miner"].Tier, Is.EqualTo(CardTier.Intermediate));
         }
 
-        /// <summary>旧 JSON 缺阶级时保留待修正提示，禁止应用；用户选择后可恢复，不静默显示初级。</summary>
+        /// <summary>
+        /// 旧 JSON 缺阶级时保留待修正提示，禁止应用；用户选择后可恢复，不静默显示初级。
+        /// 输入：缺 tier 的文档；输出：下拉值、应用按钮与校验错误断言。
+        /// 说明：原摘要里的“阶级待修正 N 张”已随逐卡种张数统计一起废除，
+        /// 待修正状态改由下拉文案与校验错误（含 tier）同时反映。
+        /// </summary>
         [Test]
         public void MissingTierStaysVisibleUntilExplicitlyRepaired()
         {
@@ -157,11 +194,12 @@ namespace Spotlight.Tests
             var draft = Open(document);
             var field = _root.Query<DropdownField>().ToList().Single(f => f.value.StartsWith("请补齐阶级"));
             Assert.That(_root.Q<Button>("debug-apply-button").enabledSelf, Is.False);
-            Assert.That(DeckSummary().text, Does.Contain("阶级待修正 4 张"));
+            Assert.That(draft.Validate().Any(e => e.Contains("tier")), Is.True, "阶级待修正必须体现在校验错误里");
             field.value = "初级";
             ConfigFieldBuilder.ApplyCurrentValue(field);
             Assert.That(draft.Validate(), Is.Empty);
             Assert.That(_root.Q<Button>("debug-apply-button").enabledSelf, Is.True);
+            Assert.That(DeckSummary().text, Does.Contain("抽牌堆 24 张"));
         }
 
         /// <summary>编辑数字字段会立刻写回草稿。输入：无；输出：无。</summary>
@@ -290,7 +328,7 @@ namespace Spotlight.Tests
             Assert.That(panel.style.display.value, Is.EqualTo(DisplayStyle.None));
         }
 
-        /// <summary>新增卡种使用 custom_分类_序号 命名并默认 0 张。输入：无；输出：无。</summary>
+        /// <summary>新增卡种使用 custom_分类_序号 命名、默认初级且不在强制牌堆里。输入：无；输出：无。</summary>
         [Test]
         public void AddCardTypeUsesStableNamingAndZeroCount()
         {
@@ -299,7 +337,8 @@ namespace Spotlight.Tests
             var added = draft.AddCardType("resource");
             Assert.That(added.id, Is.EqualTo("custom_resource_1"));
             Assert.That(added.name, Is.EqualTo("新资源卡1"));
-            Assert.That(draft.GetDeckCount(added.id), Is.EqualTo(0));
+            Assert.That(added.tier, Is.EqualTo("basic"));
+            Assert.That(draft.GetForcedDeckCount(added.id), Is.EqualTo(0));
 
             var second = draft.AddCardType("resource");
             Assert.That(second.id, Is.EqualTo("custom_resource_2"));
@@ -311,18 +350,29 @@ namespace Spotlight.Tests
             Assert.That(draft.FindCard("custom_attack_1"), Is.SameAs(attack));
         }
 
-        /// <summary>设置卡组数量会补建缺失条目。输入：无；输出：无。</summary>
+        /// <summary>
+        /// 强制牌堆逐键写回：负数夹紧到 0（表示不进牌堆），摘要改按强制牌堆统计。
+        /// 输入：无；输出：无。
+        /// 为什么需要：选卡界面只能勾卡种、不能自定张数，压测用的“30 张同一种”只能走这条调试通道。
+        /// </summary>
         [Test]
-        public void SetDeckCountCreatesMissingEntry()
+        public void ForcedDeckCountOverridesDrawPileSummary()
         {
             var draft = new DebugConfigDraft(null);
             Assert.That(draft.Import(JsonUtility.ToJson(Document()), out _, out _), Is.True);
-            draft.SetDeckCountValue("soldier", 9);
-            Assert.That(draft.GetDeckCount("soldier"), Is.EqualTo(9));
-            draft.SetDeckCountValue("gate", -3);
-            Assert.That(draft.GetDeckCount("gate"), Is.EqualTo(0));
-            var summary = draft.GetDeckSummary();
-            Assert.That(summary.Total, Is.EqualTo(4 + 9 + 0));
+            draft.SetForcedDeckCount("soldier", 9);
+            Assert.That(draft.GetForcedDeckCount("soldier"), Is.EqualTo(9));
+            draft.SetForcedDeckCount("gate", -3);
+            Assert.That(draft.GetForcedDeckCount("gate"), Is.EqualTo(0));
+            Assert.That(draft.HasForcedDeck, Is.True);
+            var pile = draft.GetDrawPileSummary();
+            Assert.That(pile.Total, Is.EqualTo(9), "强制牌堆只有士兵 9 张");
+            Assert.That(pile.Basic, Is.Zero);
+            Assert.That(pile.Intermediate, Is.EqualTo(9));
+            Assert.That(pile.Advanced, Is.Zero);
+            draft.ClearForcedDeck();
+            Assert.That(draft.HasForcedDeck, Is.False);
+            Assert.That(draft.GetDrawPileSummary().Total, Is.EqualTo(24), "清空后恢复按比例推导");
         }
 
         /// <summary>草稿可直接开局，说明面板产出的是可用配置。输入：无；输出：无。</summary>

@@ -24,12 +24,22 @@ namespace Spotlight.Tests
             soldier.atk = 6; soldier.range = 10; soldier.moveDistance = 10;
             var boss = d.cards.Single(c => c.id == "boss");
             boss.atk = 0; boss.moveDistance = 0;
-            d.deck = new[] { new DeckRow { cardType = "soldier", count = 30 }, new DeckRow { cardType = "miner", count = 30 } };
             return d;
         }
 
-        /// <summary>建立独立对局。输入：可选配置与种子；输出：真实规则入口。</summary>
-        internal static GameSession Start(ConfigDocument d = null, int seed = 42) => new GameSession(new GameConfiguration(d ?? Document()), new SeededRandom(seed), 2000);
+        /// <summary>
+        /// 本文件默认抽牌堆：士兵 30 张 + 矿机 30 张，共 60 张（与原 Deck 表夹具完全一致）。
+        /// 输入：无；输出：DeckEntry 清单。
+        /// 为什么需要：用例靠“60 张全部进手牌”构造满盘与弃牌阶段，牌堆张数不能变少。
+        /// </summary>
+        internal static DeckEntry[] Deck() => new[] { new DeckEntry("soldier", 30), new DeckEntry("miner", 30) };
+
+        /// <summary>
+        /// 建立独立对局。输入：可选配置与种子；输出：真实规则入口。
+        /// 说明：抽牌堆已不能写在文档里，统一在这里用 WithDeck 覆盖（requireDrawPileSize=false 表示夹具不凑满张数）。
+        /// </summary>
+        internal static GameSession Start(ConfigDocument d = null, int seed = 42)
+            => new GameSession(new GameConfiguration(d ?? Document()).WithDeck(Deck(), false), new SeededRandom(seed), 2000);
 
         /// <summary>执行公开命令并检查成功。输入：对局和命令；输出：包含阶段快照的结果，失败直接定位原因。</summary>
         internal static CommandResult Do(GameSession game, GameCommand command)

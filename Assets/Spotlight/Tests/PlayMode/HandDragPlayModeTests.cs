@@ -21,6 +21,22 @@ namespace Spotlight.Tests
         BoardView _board;
         GameConfiguration _configuration;
 
+        /// <summary>
+        /// 让本类用例加载场景后直接进入对局（跳过“携带选择”面板）。
+        /// 输入：无；输出：无。
+        /// 为什么需要：正式启动流程会先弹出携带选择模态面板（全屏遮罩会吃掉手牌上的射线），
+        /// 而本类只验证拖动、命中与回位；选卡流程本身由 DeckSelectionPlayModeTests 覆盖。
+        /// </summary>
+        [OneTimeSetUp]
+        public void SuppressDeckSelectionOnStart() => GameBootstrap.SuppressDeckSelectionOnStart = true;
+
+        /// <summary>
+        /// 恢复正式启动行为。输入：无；输出：无。
+        /// 为什么需要：PlayMode 用例在同一进程里顺序执行，静态开关必须还原，否则会让后面的用例看不到选卡界面。
+        /// </summary>
+        [OneTimeTearDown]
+        public void RestoreDeckSelectionOnStart() => GameBootstrap.SuppressDeckSelectionOnStart = false;
+
         /// <summary>加载场景并以固定种子创建五张手牌。输入：显示侧及出牌次数；输出：无 AI 干扰的真实 UI。</summary>
         IEnumerator Load(string side = "left", int plays = 20)
         {
@@ -34,11 +50,20 @@ namespace Spotlight.Tests
             d.rules[0].playerControlsBoss = true; d.rules[0].playerPlays = plays;
             d.rules[0].drawCount = 5; d.rules[0].handLimit = 10; d.rules[0].homeRegionWidth = 2;
             d.rules[0].bossBombInterval = 1000; d.rules[0].bossSpawnerAttackThreshold = 1000;
-            d.deck = new[] { new DeckRow { cardType = "blade1", count = 2 }, new DeckRow { cardType = "ge1", count = 1 },
-                new DeckRow { cardType = "ge12", count = 1 }, new DeckRow { cardType = "gate", count = 1 } };
+            // 抽牌堆构成规则显式写进夹具：Deck 表已废除，抽牌堆由下面的 WithDeck 给定，
+            // 但配置校验仍要求“每阶级至少一种卡”与三比例合法，写死可以不受 Excel 当前取值影响。
+            d.rules[0].drawPileSize = 24; d.rules[0].tierRatioBasic = 70;
+            d.rules[0].tierRatioIntermediate = 20; d.rules[0].tierRatioAdvanced = 10;
+            d.rules[0].maxTypesBasic = 5; d.rules[0].maxTypesIntermediate = 3; d.rules[0].maxTypesAdvanced = 2;
             d.presentation[0].moveSeconds = 0.08f; d.presentation[0].feedbackSeconds = 0.02f;
             typeof(GameBootstrap).GetField("_seed", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(_bootstrap, 7);
-            _configuration = new GameConfiguration(d);
+            // 第二个参数 false：5 张的夹具牌堆不等于 drawPileSize（24），走测试夹具专供的豁免路径。
+            _configuration = new GameConfiguration(d).WithDeck(
+                new[]
+                {
+                    new DeckEntry("blade1", 2), new DeckEntry("ge1", 1),
+                    new DeckEntry("ge12", 1), new DeckEntry("gate", 1)
+                }, false);
             _bootstrap.RestartWith(_configuration);
             yield return null;
             Canvas.ForceUpdateCanvases();
@@ -286,8 +311,12 @@ namespace Spotlight.Tests
             var d = JsonUtility.FromJson<ConfigDocument>(JsonUtility.ToJson(_bootstrap.CurrentAsset.ToDocument()));
             d.rules[0].firstSide = "player"; d.rules[0].drawCount = 5; d.rules[0].handLimit = 1;
             d.rules[0].bossBombInterval = 1000; d.rules[0].playerControlsBoss = true;
-            d.deck = new[] { new DeckRow { cardType = "blade1", count = 5 } };
-            _configuration = new GameConfiguration(d); _bootstrap.RestartWith(_configuration);
+            // 抽牌堆由 WithDeck 给定；比例与上限仍要合法，夹具不依赖 Excel 当前取值。
+            d.rules[0].drawPileSize = 24; d.rules[0].tierRatioBasic = 70;
+            d.rules[0].tierRatioIntermediate = 20; d.rules[0].tierRatioAdvanced = 10;
+            d.rules[0].maxTypesBasic = 5; d.rules[0].maxTypesIntermediate = 3; d.rules[0].maxTypesAdvanced = 2;
+            _configuration = new GameConfiguration(d).WithDeck(new[] { new DeckEntry("blade1", 5) }, false);
+            _bootstrap.RestartWith(_configuration);
             yield return null;
             var card = Hand(); var data = HandDragInput.Begin(card);
             Notify("OnEndTurnRequested");

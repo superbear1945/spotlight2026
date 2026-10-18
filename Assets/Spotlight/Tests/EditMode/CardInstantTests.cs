@@ -9,16 +9,26 @@ namespace Spotlight.Tests
     /// <summary>覆盖资源入账、退场、牌区守恒、不参与入场标记与配置校验。</summary>
     public class CardInstantTests
     {
-        /// <summary>在标准夹具上追加一个卡种并加入卡组。</summary>
-        static ConfigDocument With(ConfigDocument document, CardRow card, int count = 4)
+        /// <summary>
+        /// 在标准夹具上追加一个卡种（只改 Cards 表）。
+        /// 输入：待改文档与卡行；输出：同一个文档（便于链式调整 Rules）。
+        /// 为什么不再在这里登记张数：Deck 表已废除，追加的卡种通过 Start 的 DeckEntry 参数进入抽牌堆。
+        /// </summary>
+        static ConfigDocument With(ConfigDocument document, CardRow card)
         {
             document.cards = document.cards.Concat(new[] { card }).ToArray();
-            document.deck = document.deck.Concat(new[] { new DeckRow { cardType = card.id, count = count } }).ToArray();
             return document;
         }
 
-        /// <summary>用固定种子创建对局，保证抽牌顺序可复现。</summary>
-        static GameSession Start(ConfigDocument document) => new GameSession(new GameConfiguration(document), new SeededRandom(42), 100);
+        /// <summary>
+        /// 用固定种子创建对局，并把本用例追加的卡种写进抽牌堆。
+        /// 输入：文档与追加的抽牌堆条目；输出：可执行公开命令的对局。
+        /// 为什么需要：抽牌堆已不能写在文档里，必须在建局时用 WithDeck 显式覆盖；
+        /// 默认牌堆来自 GameSessionTests.DefaultDeck()（与原 4/4/4/4 夹具一致）。
+        /// </summary>
+        static GameSession Start(ConfigDocument document, params DeckEntry[] extra) => new GameSession(
+            new GameConfiguration(document).WithDeck(GameSessionTests.DefaultDeck().Concat(extra), false),
+            new SeededRandom(42), 100);
 
         /// <summary>战时储备式即时卡：特殊卡，部署后获得 3 资源并立即离场。</summary>
         static CardRow Reserve() => new CardRow
@@ -37,7 +47,7 @@ namespace Spotlight.Tests
         [Test]
         public void InstantCardGrantsResourceAndLeavesBoard()
         {
-            var game = Start(With(GameSessionTests.Document(), Reserve()));
+            var game = Start(With(GameSessionTests.Document(), Reserve()), new DeckEntry("reserve", 4));
             var before = game.GetSnapshot();
             var card = before.Hand.First(c => c.TypeId == "reserve");
 
@@ -59,8 +69,7 @@ namespace Spotlight.Tests
             // 星棹在旁边：即时卡只存在一瞬间，不能留下“被标记”的幽灵状态，也不能多产生一条 mark 事件。
             var document = With(GameSessionTests.Document(), Reserve());
             document.cards = document.cards.Concat(new[] { Collector() }).ToArray();
-            document.deck = document.deck.Concat(new[] { new DeckRow { cardType = "collector", count = 4 } }).ToArray();
-            var game = Start(document);
+            var game = Start(document, new DeckEntry("reserve", 4), new DeckEntry("collector", 4));
             var collectorCard = game.GetSnapshot().Hand.First(c => c.TypeId == "collector");
             Assert.That(game.Execute(new GameCommand(CommandKind.Deploy, Side.Player, collectorCard.Id, new Cell(0, 0))).Success, Is.True);
             var reserveCard = game.GetSnapshot().Hand.First(c => c.TypeId == "reserve");
@@ -75,7 +84,7 @@ namespace Spotlight.Tests
         [Test]
         public void InstantCardDeckTotalStaysConstant()
         {
-            var game = Start(With(GameSessionTests.Document(), Reserve()));
+            var game = Start(With(GameSessionTests.Document(), Reserve()), new DeckEntry("reserve", 4));
             var before = game.GetSnapshot();
             var total = before.Hand.Count + before.DrawPile.Count + before.Graveyard.Count;
             var card = before.Hand.First(c => c.TypeId == "reserve");

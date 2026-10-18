@@ -78,17 +78,16 @@ namespace Spotlight.EditorTools
         /// </summary>
         public static ConfigDocument BuildDocument(string displayFile, WorkbookData data, List<ConfigIssue> issues)
         {
-            var document = new ConfigDocument { schemaVersion = 1 };
+            // schemaVersion = 2：Deck 表废除、Rules 增加抽牌堆 7 列；旧 JSON 由调试面板的迁移提示另行处理。
+            var document = new ConfigDocument { schemaVersion = 2 };
             var cards = data.GetSheet("Cards");
-            var deck = data.GetSheet("Deck");
             var rules = data.GetSheet("Rules");
             var homes = data.GetSheet("Homes");
             var slots = data.GetSheet("BossSlots");
             var presentation = data.GetSheet("Presentation");
-            if (cards == null || deck == null || rules == null || homes == null || slots == null || presentation == null) return null;
+            if (cards == null || rules == null || homes == null || slots == null || presentation == null) return null;
 
             document.cards = Map<CardRow>(displayFile, "Cards", cards, issues);
-            document.deck = Map<DeckRow>(displayFile, "Deck", deck, issues);
             document.rules = Map<RulesRow>(displayFile, "Rules", rules, issues);
             document.homes = Map<HomeRow>(displayFile, "Homes", homes, issues);
             document.bossSlots = Map<BossSlotRow>(displayFile, "BossSlots", slots, issues);
@@ -127,7 +126,6 @@ namespace Spotlight.EditorTools
         {
             if (string.IsNullOrEmpty(message)) return "（业务校验）";
             if (message.StartsWith("Cards", StringComparison.Ordinal)) return "Cards";
-            if (message.StartsWith("Deck", StringComparison.Ordinal)) return "Deck";
             if (message.StartsWith("Rules", StringComparison.Ordinal)) return "Rules";
             if (message.StartsWith("Homes", StringComparison.Ordinal)) return "Homes";
             if (message.StartsWith("BossSlots", StringComparison.Ordinal)) return "BossSlots";

@@ -53,7 +53,9 @@ namespace Spotlight.EditorTools
             // 未声明的工作表：多出来的表通常是复制粘贴后的残留，直接报错以免策划误以为生效。
             foreach (var name in sheets.Keys)
                 if (TableSchema.For(name) == null)
-                    result.Issues.Add(new ConfigIssue(xlsxPath, name, 0, 0, "未声明的工作表（可用表：Cards/Deck/Rules/Homes/BossSlots/Presentation）"));
+                    result.Issues.Add(new ConfigIssue(xlsxPath, name, 0, 0, name == "Deck"
+                        ? "Deck 表已废除（抽牌堆改由 Rules 的 drawPileSize + 三阶级比例生成，携带卡种由玩家开局时选择），请删除该工作表"
+                        : "未声明的工作表（可用表：Cards/Rules/Homes/BossSlots/Presentation）"));
 
             foreach (var required in TableSchema.RequiredSheets)
             {

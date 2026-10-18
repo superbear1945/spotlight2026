@@ -30,7 +30,7 @@
    "width": 480,
    "height": 100,
    "label": "Spotlight.xlsx 默认工作簿",
-   "sublabel": "策划填写；正式单元格禁止公式",
+   "sublabel": "策划填写；Rules 显式填写抽牌堆张数 / 三比例 / 三上限（无 Deck 表）",
    "fill": "#fff7ed",
    "stroke": "#f97316",
    "flat": true
@@ -56,7 +56,7 @@
    "width": 480,
    "height": 100,
    "label": "TableSchema · ConfigValidation",
-   "sublabel": "结构校验与业务校验一次汇总",
+   "sublabel": "结构校验 + 业务校验（含抽牌堆规则）一次汇总",
    "fill": "#ffffff",
    "stroke": "#d1d5db",
    "flat": true
@@ -133,7 +133,7 @@
    "width": 480,
    "height": 100,
    "label": "GameSession 建立对局",
-   "sublabel": "加载有效配置后创建候选对局",
+   "sublabel": "先由选卡结果生成抽牌堆（DeckComposition），再创建候选对局",
    "fill": "#eff6ff",
    "stroke": "#2563eb",
    "flat": true
@@ -159,7 +159,7 @@
    "width": 480,
    "height": 100,
    "label": "UXML / UGUI 界面",
-   "sublabel": "点击选牌到提交命令",
+   "sublabel": "选卡面板确认后开局；点击选牌到提交命令",
    "fill": "#ffffff",
    "stroke": "#d1d5db",
    "flat": true

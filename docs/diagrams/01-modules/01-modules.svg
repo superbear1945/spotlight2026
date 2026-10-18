@@ -88,13 +88,13 @@
   <rect x="90.0" y="204.0" width="280.0" height="64.0" rx="10.0" fill="#eff6ff" stroke="#2563eb" stroke-width="2.0"/>
   <rect x="96.0" y="210.0" width="268.0" height="52.0" rx="7.0" fill="none" stroke="#2563eb" stroke-width="1.2" opacity="0.65"/>
   <text data-text-role="title" data-full-text="规则内核与配置契约" data-text-max-width="248.0" x="230.0" y="236.0" text-anchor="middle" class="node-title" font-size="18">规则内核与配置契约</text>
-  <text data-text-role="subtitle" data-full-text="Configuration · GameSession" data-text-max-width="248.0" x="230.0" y="258.0" text-anchor="middle" class="node-sub" font-size="12">Configuration · GameSession</text>
+  <text data-text-role="subtitle" data-full-text="Configuration · DeckSelection" data-text-max-width="248.0" x="230.0" y="258.0" text-anchor="middle" class="node-sub" font-size="12">Configuration · DeckSelection</text>
   </g>
   <g id="node-n-runtime" data-graph-role="node" data-node-id="n-runtime" data-semantic-role="double_rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="470,204,750,268">
   <rect x="470.0" y="204.0" width="280.0" height="64.0" rx="10.0" fill="#faf5ff" stroke="#7c3aed" stroke-width="2.0"/>
   <rect x="476.0" y="210.0" width="268.0" height="52.0" rx="7.0" fill="none" stroke="#7c3aed" stroke-width="1.2" opacity="0.65"/>
   <text data-text-role="title" data-full-text="运行层与视图" data-text-max-width="248.0" x="610.0" y="236.0" text-anchor="middle" class="node-title" font-size="18">运行层与视图</text>
-  <text data-text-role="subtitle" data-full-text="Card · 三个组件 · UI · 调试面板" data-text-max-width="248.0" x="610.0" y="258.0" text-anchor="middle" class="node-sub" font-size="12">Card · 三个组件 · UI · 调试面板</text>
+  <text data-text-role="subtitle" data-full-text="Card · 组件 · UI（选卡） · 调试面板" data-text-max-width="248.0" x="610.0" y="258.0" text-anchor="middle" class="node-sub" font-size="12">Card · 组件 · UI（选卡） · 调试面板</text>
   </g>
   <g id="node-n-editor" data-graph-role="node" data-node-id="n-editor" data-semantic-role="double_rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="850,204,1130,268">
   <rect x="850.0" y="204.0" width="280.0" height="64.0" rx="10.0" fill="#fff7ed" stroke="#f97316" stroke-width="2.0"/>

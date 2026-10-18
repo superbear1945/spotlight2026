@@ -9,7 +9,10 @@ namespace Spotlight.Tests
     /// <summary>覆盖抽牌堆守恒、回合、部署、移动、家、星门、攻击、补兵和输入权限。</summary>
     public class GameSessionTests
     {
-        /// <summary>构造足够小且可读的隔离配置，方便每个用例只调整与断言相关的参数。</summary>
+        /// <summary>
+        /// 构造足够小且可读的隔离配置，方便每个用例只调整与断言相关的参数。
+        /// 说明：Deck 表已废除，本方法不再登记抽牌堆；用例需要固定牌堆时用 <see cref="DefaultDeck"/> 或自行传入 DeckEntry。
+        /// </summary>
         public static ConfigDocument Document()
         {
             return new ConfigDocument
@@ -22,14 +25,33 @@ namespace Spotlight.Tests
                     new CardRow { tier="none", id="boss", name="敌兵", category="attack", hp=3, atk=1, range=1, moveDistance=1, viewKey="default" },
                     new CardRow { tier="none", id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" }
                 },
-                deck = new[] { new DeckRow {cardType="miner",count=4},new DeckRow {cardType="soldier",count=4},new DeckRow {cardType="gate",count=4},new DeckRow {cardType="upgrade",count=4} },
-                rules = new[] { new RulesRow { bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossSpawnerSpawnCardType = "boss", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows=5,columns=10,homeRegionWidth=2,playerPlays=20,bossPlays=3,drawCount=16,handLimit=30,initialResources=0,bossRespawnDelay=2,playerSide="left",firstSide="player",bossCardType="boss",playerControlsBoss=true,accumulateResources=true,adjacentSwap=true } },
+                rules = new[] { new RulesRow { drawPileSize=24, tierRatioBasic=70, tierRatioIntermediate=20, tierRatioAdvanced=10, maxTypesBasic=5, maxTypesIntermediate=3, maxTypesAdvanced=2, bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossSpawnerSpawnCardType = "boss", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows=5,columns=10,homeRegionWidth=2,playerPlays=20,bossPlays=3,drawCount=16,handLimit=30,initialResources=0,bossRespawnDelay=2,playerSide="left",firstSide="player",bossCardType="boss",playerControlsBoss=true,accumulateResources=true,adjacentSwap=true } },
                 homes = new[] {new HomeRow {owner="player",hp=10,produce=2},new HomeRow {owner="boss",hp=10,produce=0}},
                 bossSlots = new[] {new BossSlotRow {id="a",rowFraction=0,edgeOffset=1},new BossSlotRow {id="b",rowFraction=.5,edgeOffset=1},new BossSlotRow {id="c",rowFraction=1,edgeOffset=1}},
                 presentation = new[] {new PresentationRow {referenceWidth=1920,referenceHeight=1080,fontSize=18,logLimit=100,moveSeconds=.2f,feedbackSeconds=.1f,selectedScale=1.05f,playerColor="#3366FF",bossColor="#FF3333",resourceColor="#33AA66",attackColor="#EE8833",specialColor="#AA55FF",moveColor="#33AAFF",attackTargetColor="#FF3333",swapColor="#AA33FF",deployColor="#33FF99"}}
             };
         }
-        static GameSession Start(ConfigDocument d = null) => new GameSession(new GameConfiguration(d ?? Document()), new SeededRandom(42), 100);
+        /// <summary>
+        /// 本文件默认抽牌堆：矿机/士兵/星门/高级矿机 各 4 张，共 16 张（等价于 Deck 表废除前的夹具卡组）。
+        /// 输入：无；输出：DeckEntry 清单。
+        /// 为什么需要：其它测试文件的夹具复用本夹具，必须能拿到同一份牌堆以保证抽牌顺序不变。
+        /// </summary>
+        public static DeckEntry[] DefaultDeck() => new[]
+        {
+            new DeckEntry("miner", 4), new DeckEntry("soldier", 4), new DeckEntry("gate", 4), new DeckEntry("upgrade", 4)
+        };
+
+        /// <summary>
+        /// 建立对局。输入：可选文档与可选的显式抽牌堆（省略时用 <see cref="DefaultDeck"/>）；输出：固定种子的对局。
+        /// 为什么需要：抽牌堆已改由 WithDeck 显式覆盖，测试不再能通过文档声明卡组；
+        /// requireDrawPileSize=false 表示夹具不要求凑满 drawPileSize（正式配置仍由校验强制）。
+        /// </summary>
+        static GameSession Start(ConfigDocument d = null, params DeckEntry[] deck)
+        {
+            var configuration = new GameConfiguration(d ?? Document());
+            var pile = deck != null && deck.Length > 0 ? deck : DefaultDeck();
+            return new GameSession(configuration.WithDeck(pile, false), new SeededRandom(42), 100);
+        }
         static UnitState Put(GameSession g,string type,int row,int col)
         {
             var card=g.GetSnapshot().Hand.First(x=>x.TypeId==type);
@@ -162,7 +184,7 @@ namespace Spotlight.Tests
         }
         [Test] public void DrawCanShuffleMidDrawAndNeverDuplicateHandOrBoard()
         {
-            var d=Document();d.deck=new[]{new DeckRow{cardType="miner",count=3}};d.rules[0].drawCount=2;d.rules[0].handLimit=1;var g=Start(d);End(g);
+            var d=Document();d.rules[0].drawCount=2;d.rules[0].handLimit=1;var g=Start(d,new DeckEntry("miner",3));End(g);
             var id=g.GetSnapshot().Hand[0].Id;g.Execute(new GameCommand(CommandKind.Discard,Side.Player,id));End(g);var s=g.GetSnapshot();
             Assert.That(s.Hand.Count,Is.EqualTo(3));Assert.That(s.Hand.Select(c=>c.Id).Distinct().Count(),Is.EqualTo(3));Assert.That(s.Graveyard,Is.Empty);Assert.That(s.DrawPile,Is.Empty);
         }
@@ -224,7 +246,7 @@ namespace Spotlight.Tests
         [Test] public void DeployMovesPlayerCardToGraveyardWithoutChangingTotalCount()
         {
             // 部署成功即进入墓地：卡牌从手牌转入墓地，牌堆总数不变，场上单位与墓地卡牌互不影响。
-            var d=Document();d.deck=new[]{new DeckRow{cardType="miner",count=1}};d.rules[0].drawCount=1;var g=Start(d);
+            var d=Document();d.rules[0].drawCount=1;var g=Start(d,new DeckEntry("miner",1));
             var card=g.GetSnapshot().Hand.Single();
             Assert.That(g.Execute(new GameCommand(CommandKind.Deploy,Side.Player,card.Id,new Cell(0,0))).Success,Is.True);
             var s=g.GetSnapshot();
@@ -243,7 +265,7 @@ namespace Spotlight.Tests
         [Test] public void GraveyardShuffleLetsSameCardCreateSecondIndependentUnit()
         {
             // 方案 A：墓地洗回后可再次部署同一张卡，生成第二个满血、独立身份的单位，牌堆总数仍为 1。
-            var d=Document();d.deck=new[]{new DeckRow{cardType="miner",count=1}};d.rules[0].drawCount=1;var g=Start(d);
+            var d=Document();d.rules[0].drawCount=1;var g=Start(d,new DeckEntry("miner",1));
             var first=g.GetSnapshot().Hand.Single();
             Assert.That(g.Execute(new GameCommand(CommandKind.Deploy,Side.Player,first.Id,new Cell(0,0))).Success,Is.True);
             var firstUnit=g.GetSnapshot().Units.Single();

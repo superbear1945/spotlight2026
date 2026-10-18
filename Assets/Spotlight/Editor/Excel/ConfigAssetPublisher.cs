@@ -95,7 +95,7 @@ namespace Spotlight.EditorTools
                 // 回滚：主配置恢复为上一套文档，保证“失败保留上一套有效产物”。
                 // 仅当上一套文档本身完整时才回写，否则（首次编译即失败）保持空资产而不是写入半截数据。
                 if (previousDocument != null && previousDocument.rules != null && previousDocument.rules.Length == 1
-                    && previousDocument.cards != null && previousDocument.deck != null
+                    && previousDocument.cards != null
                     && previousDocument.homes != null && previousDocument.bossSlots != null && previousDocument.presentation != null)
                 {
                     config.EditorApply(previousDocument, previousCards, sourceWorkbook, config.SourceHash ?? string.Empty, config.CompiledAtUtc ?? string.Empty);

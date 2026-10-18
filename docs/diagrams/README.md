@@ -21,7 +21,7 @@ docs/diagrams/
 ├── 02-cards/     （同上 6 个文件，前缀为 02-cards）
 ├── 03-dataflow/  （同上 6 个文件，前缀为 03-dataflow）
 ├── 04-turnflow/  （同上 6 个文件，前缀为 04-turnflow）
-└── 05-card-lifecycle/ （卡牌生命周期与墓地循环；json / svg / png / html / drawio 共 5 个文件）
+└── 05-card-lifecycle/ （卡牌生命周期与墓地循环；与其它图一致，含 layout.json 共 6 个文件）
 ```
 
 文件名保留完整前缀（`02-cards/02-cards.svg`）而不是统一叫 `diagram.svg`，是为了在任何地方看到单个文件时都能立刻知道它属于哪张图，也便于全文检索与 CI 产物归类。
@@ -34,7 +34,7 @@ docs/diagrams/
 | [`02-cards`](02-cards/) | `Card`、四个能力组件（战斗／资源／传送／一次性部署减攻）、四个组件 SO、`CardDefinitionSO` 与 `UnitState` / `CardRecord` / `HomeState` / `GameSession` 的关系 | `er-diagram` |
 | [`03-dataflow`](03-dataflow/) | Excel 编译 → 生成资产（SO + Prefab）→ 配置加载 → GameSession → 快照 → UI，含调试草稿 / JSON 导入导出 / “应用并重开”分支 | `data-flow` |
 | [`04-turnflow`](04-turnflow/) | 玩家回合（恢复行动 → 资源结算 → 维持费 → 抽牌 → 操作）→ 超限弃牌 → Boss 回合（恢复行动 → 补兵 → 按部署顺序行动 → 自动结束）→ 胜负检查 | `flowchart` |
-| [`05-card-lifecycle`](05-card-lifecycle/) | 玩家卡生命周期：成功部署即入墓地 → 抽牌堆耗尽时洗回 → 同一张卡可反复部署出多个独立单位；阵亡/覆盖只移除单位、不重复回收；Boss 使用独立回收区 | `flowchart` |
+| [`05-card-lifecycle`](05-card-lifecycle/) | 玩家卡生命周期：携带选择生成抽牌堆 → 成功部署即入墓地 → 抽牌堆耗尽时洗回 → 同一张卡可反复部署出多个独立单位；阵亡/覆盖只移除单位、不重复回收；Boss 使用独立回收区 | `flowchart` |
 
 ## 3. 生成与检查命令
 
@@ -48,14 +48,16 @@ python "$SKILL/scripts/fireworks.py" render er-diagram  docs/diagrams/02-cards/0
 python "$SKILL/scripts/fireworks.py" render data-flow   docs/diagrams/03-dataflow/03-dataflow.json  docs/diagrams/03-dataflow/03-dataflow.svg  --report docs/diagrams/03-dataflow/03-dataflow.layout.json
 python "$SKILL/scripts/fireworks.py" render flowchart   docs/diagrams/04-turnflow/04-turnflow.json  docs/diagrams/04-turnflow/04-turnflow.svg  --report docs/diagrams/04-turnflow/04-turnflow.layout.json
 
-# 05-card-lifecycle 由当前版本的 generate-from-template.py 生成（该工具不产出 layout.json）：
-# python "$SKILL/scripts/generate-from-template.py" flowchart docs/diagrams/05-card-lifecycle/05-card-lifecycle.svg < docs/diagrams/05-card-lifecycle/05-card-lifecycle.json
-# 再用 spec-to-drawio.py 生成 .drawio；PNG/HTML 见图 05 目录（PNG 为 SVG 的 2 倍尺寸）。
+# 05-card-lifecycle 与 04 一样是 flowchart，用同一条 fireworks.py render 命令生成（会一并产出 layout.json）：
+python "$SKILL/scripts/fireworks.py" render flowchart docs/diagrams/05-card-lifecycle/05-card-lifecycle.json docs/diagrams/05-card-lifecycle/05-card-lifecycle.svg --report docs/diagrams/05-card-lifecycle/05-card-lifecycle.layout.json
+# 注意：本机旧脚本 generate-from-template.py 已无法复现 05（会报 "no collision-free label position for '生成卡牌记录'"），
+# 该图当前由 fireworks.py 生成；改动后请用上面的命令，不要再用旧模板工具。
+# 然后用 spec-to-drawio.py 生成 .drawio；PNG 为 SVG 的 2 倍尺寸。
 
 # 2) 结构、几何与构图检查（5 项全部为 true 才算通过）
 python "$SKILL/scripts/fireworks.py" check docs/diagrams/01-modules/01-modules.svg
 
-# 3) 离线可缩放 HTML
+# 2.5) 离线可缩放 HTML（每张图一条命令，标题与 slug 与既有产物保持一致）
 python "$SKILL/scripts/fireworks.py" export-html docs/diagrams/01-modules/01-modules.svg docs/diagrams/01-modules/01-modules.html --title "Spotlight 模块架构与程序集依赖" --slug spotlight-modules
 
 # 4) draw.io 原生文件（见第 5 节）
@@ -73,10 +75,10 @@ NODE_PATH=/tmp/fw-puppeteer/node_modules \
 FIREWORKS_PYTHON=python \
 FIREWORKS_PUPPETEER_PATH=/tmp/fw-puppeteer/node_modules/puppeteer-core \
 FIREWORKS_CHROME_PATH="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" \
-node "$SKILL/scripts/svg2png.js" docs/diagrams
+for dir in docs/diagrams/*/; do node "$SKILL/scripts/svg2png.js" "$dir"; done
 ```
 
-说明：`svg2png.js` 会递归该目录下每个子目录中的 `.svg` 并生成同名 `.png`（2 倍尺寸），因此一次命令即可刷新全部 PNG。
+说明：本机版本的 `svg2png.js` **只处理传入目录这一层**（不递归子目录），所以要用上面的 for 循环逐个子目录调用；每个 `.svg` 会在同目录生成同名 `.png`（2 倍尺寸）。
 Windows 上 `python3` 是应用商店占位程序，必须用 `python`，所以设置了 `FIREWORKS_PYTHON`。
 
 ## 4. 图纸约定

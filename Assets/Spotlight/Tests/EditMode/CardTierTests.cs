@@ -60,24 +60,28 @@ namespace Spotlight.Tests
             var baseline = new GameConfiguration(document);
             document.cards[0].tier = tier;
             Assert.That(ConfigValidation.Validate(document).Any(e => e.Contains("tier")), Is.True);
+            // requireDrawPileSize: false：基准牌堆不凑满 drawPileSize，失败原因必须仍只是阶级非法。
             var error = Assert.Throws<ArgumentException>(() => new GameConfiguration(baseline.Rules,
                 document.cards.Select(CardArchetype.FromRow), baseline.Deck, baseline.BossSlots,
-                baseline.PlayerHomeHp, baseline.BossHomeHp, baseline.PlayerHomeProduce, baseline.Presentation));
+                baseline.PlayerHomeHp, baseline.BossHomeHp, baseline.PlayerHomeProduce, baseline.Presentation,
+                baseline.DeckConfig, requireDrawPileSize: false));
             Assert.That(error.Message, Does.Contain("tier"));
         }
 
-        /// <summary>不适用卡可注册且数量可为零，但不能携带；文档和 SO 直接组装路径保持同一规则。</summary>
+        /// <summary>
+        /// 不适用卡可注册且数量可为零，但不能携带；文档不再包含 Deck 表，因此该规则只在组合校验路径上把关。
+        /// 输入：无；输出：零张合法、正数拒绝的断言。
+        /// </summary>
         [Test]
         public void NotApplicableCardCannotEnterPlayerDeck()
         {
-            var document = GameSessionTests.Document();
-            document.deck = document.deck.Concat(new[] { new DeckRow { cardType = "boss", count = 0 } }).ToArray();
-            var baseline = new GameConfiguration(document);
-            document.deck.Last().count = 1;
-            Assert.That(ConfigValidation.Validate(document).Any(e => e.Contains("tier=none")), Is.True);
-            var error = Assert.Throws<ArgumentException>(() => new GameConfiguration(baseline.Rules,
-                baseline.Cards.Values, document.deck.Select(e => new DeckEntry(e.cardType, e.count)), baseline.BossSlots,
-                baseline.PlayerHomeHp, baseline.BossHomeHp, baseline.PlayerHomeProduce, baseline.Presentation));
+            var baseline = new GameConfiguration(GameSessionTests.Document());
+            // 数量 0 表示“只注册不携带”，属于合法组合。
+            var zero = baseline.WithDeck(baseline.Deck.Concat(new[] { new DeckEntry("boss", 0) }), false);
+            Assert.That(zero.Deck.Any(e => e.TypeId == "boss"), Is.True);
+            // 数量大于 0 时，tier=none 的卡种不得进入抽牌堆。
+            var error = Assert.Throws<ArgumentException>(() =>
+                baseline.WithDeck(baseline.Deck.Concat(new[] { new DeckEntry("boss", 1) }), false));
             Assert.That(error.Message, Does.Contain("tier=none"));
         }
 
@@ -98,25 +102,37 @@ namespace Spotlight.Tests
             Assert.That(error, Does.Contain("tier"));
         }
 
-        /// <summary>统计按张数而非卡种数，零数量不计；新增临时卡显式初级且不自动加入卡组。</summary>
+        /// <summary>
+        /// 抽牌堆摘要改由“张数 + 阶级比例”推导；强制牌堆按张数统计，零张不计入。
+        /// 输入：调整后的规则与强制牌堆；输出：张数按阶级归属的断言。
+        /// </summary>
         [Test]
-        public void SummaryCountsCopiesAndNewCardsStartAtBasicWithZeroCopies()
+        public void DrawPileSummaryCountsCopiesByTier()
         {
             var document = GameSessionTests.Document();
-            document.deck[0].count = 3;
-            document.deck[1].count = 2;
-            document.deck[2].count = 0;
+            document.rules[0].drawPileSize = 20;
+            document.rules[0].tierRatioBasic = 50;
+            document.rules[0].tierRatioIntermediate = 30;
+            document.rules[0].tierRatioAdvanced = 20;
             var draft = new DebugConfigDraft(null);
             Assert.That(draft.Import(JsonUtility.ToJson(document), out var error, out _), Is.True, error);
-            var summary = draft.GetDeckTierSummary();
-            Assert.That(summary.Basic, Is.EqualTo(5));
-            Assert.That(summary.Intermediate, Is.EqualTo(4));
-            Assert.That(summary.Advanced, Is.Zero);
-            Assert.That(summary.Unclassified, Is.Zero);
+            var summary = draft.GetDrawPileSummary();
+            Assert.That(summary.Total, Is.EqualTo(20));
+            Assert.That(summary.Basic, Is.EqualTo(10));
+            Assert.That(summary.Intermediate, Is.EqualTo(6));
+            Assert.That(summary.Advanced, Is.EqualTo(4));
+            // 强制牌堆整体覆盖抽牌堆：同种卡带多张逐张累计，数量 0 不贡献统计。
+            draft.SetForcedDeckCount("miner", 3);
+            draft.SetForcedDeckCount("gate", 2);
+            draft.SetForcedDeckCount("upgrade", 0);
+            var forced = draft.GetDrawPileSummary();
+            Assert.That(forced.Total, Is.EqualTo(5));
+            Assert.That(forced.Basic, Is.EqualTo(3));
+            Assert.That(forced.Intermediate, Is.Zero);
+            Assert.That(forced.Advanced, Is.EqualTo(2));
             var added = draft.AddCardType("special");
             Assert.That(added.tier, Is.EqualTo("basic"));
-            Assert.That(draft.GetDeckCount(added.id), Is.Zero);
-            Assert.That(draft.GetDeckTierSummary(), Is.EqualTo(summary));
+            Assert.That(draft.GetForcedDeckCount(added.id), Is.Zero);
         }
 
         /// <summary>编译写入、资产反向导出和只读卡种都保留阶级。输入：内存 SO；输出：各阶级往返断言，无正式资产写入。</summary>
@@ -190,7 +206,8 @@ namespace Spotlight.Tests
             var document = GameSessionTests.Document();
             var row = document.cards.Single(c => c.id == "soldier");
             row.tier = tier;
-            var config = new GameConfiguration(document);
+            // 显式覆盖抽牌堆：保持与原 Deck 表夹具（4/4/4/4）完全一致的抽牌顺序，避免抽不到 soldier。
+            var config = new GameConfiguration(document).WithDeck(GameSessionTests.DefaultDeck(), false);
             var session = new GameSession(config, new SeededRandom(42), 100);
             var card = session.GetSnapshot().Hand.First(c => c.TypeId == row.id);
             var targets = session.GetLegalActions(new Selection(SelectionKind.Hand, card.Id)).Deploy;

@@ -43,6 +43,10 @@ namespace Spotlight
         GameSession _session;
         /// <summary>当前生效配置（可能来自调试面板“应用并重开”）。</summary>
         GameConfiguration _configuration;
+        /// <summary>本次运行会话的携带选择；重开与“再来一局”沿用它，只有启动与菜单“选卡”会重新选。</summary>
+        DeckSelectionState _deckSelection;
+        /// <summary>携带选择面板是否打开；打开时不再叠加配置面板用的那层遮罩（否则会盖住选卡面板）。</summary>
+        bool _deckSelectionOpen;
         /// <summary>当前界面选择上下文。</summary>
         Selection _selection;
         /// <summary>上一次播放过选中表现的卡牌视图；用来在选中变化时把上一张牌恢复原状。</summary>
@@ -69,6 +73,16 @@ namespace Spotlight
 
         /// <summary>是否正在展示回合阶段，供运行诊断及帧循环测试读取。</summary>
         public bool IsPresentingTurn => _presentingTurn;
+
+        /// <summary>
+        /// 仅供 PlayMode 测试：为 true 时启动流程跳过携带选择界面，直接用默认选卡开局。
+        /// 为什么需要：大量棋盘/动画用例只关心对局内行为，不应为了跑一帧去点选卡界面；
+        /// 选卡链路本身另有专门的 PlayMode 用例覆盖。正式运行包不暴露该开关，也不会被序列化。
+        /// </summary>
+        public static bool SuppressDeckSelectionOnStart { get; set; }
+
+        /// <summary>本次运行会话的携带选择（供测试与调试读取）。</summary>
+        public DeckSelectionState DeckSelection => _deckSelection;
 
         /// <summary>当前生效的配置资产，供调试面板“恢复默认”使用。</summary>
         public SpotlightConfigAsset CurrentAsset => ConfigLoader.LoadAsset(_configAsset);
@@ -117,7 +131,14 @@ namespace Spotlight
                 return;
             }
             BindViewEvents();
-            StartSession(configuration);
+            _deckSelection = new DeckSelectionState(configuration);
+            if (SuppressDeckSelectionOnStart)
+            {
+                ConfirmDeckSelection();
+                return;
+            }
+            // 每次启动都必须先选卡：抽牌堆的卡种由玩家决定，不再有“所有卡默认进抽牌堆”的配置。
+            OpenDeckSelection(false);
         }
 
         /// <summary>
@@ -157,6 +178,16 @@ namespace Spotlight
                 _hudView.MenuRequested += OnMenuRequested;
                 _hudView.MenuResumeRequested -= OnMenuResumeRequested;
                 _hudView.MenuResumeRequested += OnMenuResumeRequested;
+                _hudView.DeckSelectRequested -= OnMenuDeckSelectRequested;
+                _hudView.DeckSelectRequested += OnMenuDeckSelectRequested;
+                var selector = _hudView.DeckSelectionPanel;
+                if (selector != null)
+                {
+                    selector.Confirmed -= ConfirmDeckSelection;
+                    selector.Confirmed += ConfirmDeckSelection;
+                    selector.Cancelled -= OnDeckSelectionCancelled;
+                    selector.Cancelled += OnDeckSelectionCancelled;
+                }
                 _hudView.RestartRequested -= OnRestartRequested;
                 _hudView.RestartRequested += OnRestartRequested;
                 _hudView.QuitRequested -= OnQuitRequested;
@@ -209,7 +240,85 @@ namespace Spotlight
             _feedback?.KillAll();
             _boardView?.ClearUnits();
             _handView?.Clear();
+            // 配置可能来自调试面板：卡池、上级上限或比例都可能变，选卡状态必须先与新配置对齐，
+            // 否则菜单里再次打开选卡会看到一组对新配置非法的勾选。
+            _deckSelection = ReconcileDeckSelection(configuration);
             StartSession(configuration);
+        }
+
+        /// <summary>
+        /// 把当前选卡对齐到一份新配置。
+        /// 输入：即将生效的配置；输出：可用的选卡状态。
+        /// 行为：尽量保留玩家已选卡种（仍存在、属于玩家阶级、不超新上限），
+        /// 保留后仍非法则回退为默认选卡——对应“调试面板改配置后不要弹选卡界面”的约定。
+        /// </summary>
+        DeckSelectionState ReconcileDeckSelection(GameConfiguration configuration)
+        {
+            if (configuration == null) return null;
+            var fresh = new DeckSelectionState(configuration);
+            if (_deckSelection == null) return fresh;
+            var preserved = new List<string>();
+            foreach (var id in _deckSelection.SelectedTypeIds)
+            {
+                var card = configuration.FindCard(id);
+                if (card != null && DeckComposition.IsPlayerTier(card.Tier)) preserved.Add(id);
+            }
+            return fresh.TryRestore(preserved) ? fresh : new DeckSelectionState(configuration);
+        }
+
+        /// <summary>
+        /// 打开携带选择面板。
+        /// 输入：是否从齿轮菜单进入（菜单入口会先弹二次确认）；
+        /// 输出：无。打开期间与配置面板一样暂停对局：遮罩挡住点击，规则层同时拒绝命令。
+        /// </summary>
+        void OpenDeckSelection(bool fromMenu)
+        {
+            if (_deckSelection == null) return;
+            if (fromMenu) _menuOpen = false;
+            _deckSelectionOpen = true;
+            SetModalOpen(true);
+            _hudView?.DeckSelectionPanel?.Show(_deckSelection, fromMenu);
+        }
+
+        /// <summary>关闭携带选择面板并解除暂停。输入：无；输出：无。</summary>
+        void CloseDeckSelection()
+        {
+            _hudView?.DeckSelectionPanel?.Hide();
+            if (!_deckSelectionOpen) return;
+            _deckSelectionOpen = false;
+            SetModalOpen(false);
+        }
+
+        /// <summary>
+        /// 玩家在选卡面板点“确认”：用当前选卡生成抽牌堆并开局。
+        /// 输入：无；输出：无。生成失败时把原因显示在面板里，不关闭面板、不改变现有对局。
+        /// </summary>
+        void ConfirmDeckSelection()
+        {
+            if (_deckSelection == null) return;
+            if (!_deckSelection.TryBuildConfiguration(out var configuration, out var error))
+            {
+                _hudView?.DeckSelectionPanel?.ShowError(error);
+                return;
+            }
+            CloseDeckSelection();
+            StartSession(configuration);
+        }
+
+        /// <summary>
+        /// 玩家取消选卡（菜单入口的“继续当前对局”或面板里的“取消”）。
+        /// 输入：无；输出：无。开局前不允许取消（面板不显示取消按钮），这里兜底重新打开。
+        /// </summary>
+        void OnDeckSelectionCancelled()
+        {
+            _hudView?.DeckSelectionPanel?.Hide();
+            _deckSelectionOpen = false;
+            if (_session == null)
+            {
+                OpenDeckSelection(false);
+                return;
+            }
+            SetModalOpen(false);
         }
 
         /// <summary>
@@ -225,7 +334,7 @@ namespace Spotlight
             if (!blocked) _menuOpen = false;
             UpdateInputGate();
             // 菜单自带全屏遮罩，此时不再叠加配置面板用的那层遮罩（否则会盖住「继续 / 重开」并吞掉点击）。
-            _hudView?.SetModalVisible(blocked && !_menuOpen);
+            _hudView?.SetModalVisible(blocked && !_menuOpen && !_deckSelectionOpen);
             _hudView?.SetMenuVisible(_menuOpen);
             if (blocked) _selection = new Selection(SelectionKind.None);
             Refresh();
@@ -588,6 +697,12 @@ namespace Spotlight
 
         /// <summary>关闭齿轮菜单并继续对局。输入：无；输出：无。</summary>
         void OnMenuResumeRequested() => SetModalOpen(false);
+
+        /// <summary>
+        /// 菜单里的“选卡”：先弹二次确认，确认后才进入选卡面板（换卡会重开当前对局）。
+        /// 输入：无；输出：无。选卡状态与界面都比对局长寿，因此这里直接复用 _deckSelection。
+        /// </summary>
+        void OnMenuDeckSelectRequested() => OpenDeckSelection(true);
 
         /// <summary>
         /// HUD 请求退出游戏。

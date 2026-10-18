@@ -12,7 +12,10 @@ namespace Spotlight.Tests
     /// <summary>运行时层契约测试。输入：内存构造的配置与 JSON 文本；输出：NUnit 断言结果。</summary>
     public class RuntimeContractTests
     {
-        /// <summary>构造一个最小合法文档，供各用例按需破坏。</summary>
+        /// <summary>
+        /// 构造一个最小合法文档，供各用例按需破坏。
+        /// 说明：Deck 表已废除，抽牌堆改由 Rules 的张数与三阶级比例推导。
+        /// </summary>
         static ConfigDocument Document()
         {
             return new ConfigDocument
@@ -26,8 +29,7 @@ namespace Spotlight.Tests
                     new CardRow { tier = "none", id = "boss", name = "敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
                     new CardRow { tier="none", id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" }
                 },
-                deck = new[] { new DeckRow { cardType = "miner", count = 2 }, new DeckRow { cardType = "soldier", count = 2 } },
-                rules = new[] { new RulesRow { bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossSpawnerSpawnCardType = "boss", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 5, bossPlays = 1, drawCount = 3, handLimit = 5, initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss", playerControlsBoss = false, accumulateResources = true, summoningSickness = true, adjacentSwap = true } },
+                rules = new[] { new RulesRow { drawPileSize = 24, tierRatioBasic = 70, tierRatioIntermediate = 20, tierRatioAdvanced = 10, maxTypesBasic = 5, maxTypesIntermediate = 3, maxTypesAdvanced = 2, bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossSpawnerSpawnCardType = "boss", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 5, bossPlays = 1, drawCount = 3, handLimit = 5, initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss", playerControlsBoss = false, accumulateResources = true, summoningSickness = true, adjacentSwap = true } },
                 homes = new[] { new HomeRow { owner = "player", hp = 10, produce = 2 }, new HomeRow { owner = "boss", hp = 10, produce = 0 } },
                 bossSlots = new[] { new BossSlotRow { id = "a", rowFraction = 0, edgeOffset = 1 }, new BossSlotRow { id = "b", rowFraction = 0.5, edgeOffset = 1 }, new BossSlotRow { id = "c", rowFraction = 1, edgeOffset = 1 } },
                 presentation = new[] { new PresentationRow { referenceWidth = 1920, referenceHeight = 1080, fontSize = 18, logLimit = 50, moveSeconds = 0.2f, feedbackSeconds = 0.1f, selectedScale = 1.05f, playerColor = "#3366FF", bossColor = "#FF3333", resourceColor = "#33AA66", attackColor = "#EE8833", specialColor = "#AA55FF", moveColor = "#33AAFF", attackTargetColor = "#FF3333", swapColor = "#AA33FF", deployColor = "#33FF99" } }
@@ -44,17 +46,21 @@ namespace Spotlight.Tests
             Assert.Throws<System.ArgumentException>(() =>
             {
                 // 家生命与兵位数量非法时，直接组装路径必须拒绝。
-                new GameConfiguration(configuration.Rules, cards, configuration.Deck, configuration.BossSlots, 0, 10, 2, configuration.Presentation);
+                // requireDrawPileSize: false：夹具牌堆不凑满 drawPileSize，失败原因仍必须是家生命非法。
+                new GameConfiguration(configuration.Rules, cards, configuration.Deck, configuration.BossSlots, 0, 10, 2, configuration.Presentation,
+                    configuration.DeckConfig, requireDrawPileSize: false);
             });
 
             // 兵位数量不足时同样被拒绝。
             Assert.Throws<System.ArgumentException>(() =>
             {
-                new GameConfiguration(configuration.Rules, cards, configuration.Deck, configuration.BossSlots.Take(2).ToArray(), 10, 10, 2, configuration.Presentation);
+                new GameConfiguration(configuration.Rules, cards, configuration.Deck, configuration.BossSlots.Take(2).ToArray(), 10, 10, 2, configuration.Presentation,
+                    configuration.DeckConfig, requireDrawPileSize: false);
             });
 
-            // 合法组合可以成功建立。
-            var ok = new GameConfiguration(configuration.Rules, cards, configuration.Deck, configuration.BossSlots, 10, 10, 2, configuration.Presentation);
+            // 合法组合可以成功建立（默认牌堆恰好等于 drawPileSize，因此张数校验也一并通过）。
+            var ok = new GameConfiguration(configuration.Rules, cards, configuration.Deck, configuration.BossSlots, 10, 10, 2, configuration.Presentation,
+                configuration.DeckConfig);
             Assert.That(ok.Cards.Count, Is.EqualTo(document.cards.Length));
         }
 
@@ -95,17 +101,22 @@ namespace Spotlight.Tests
             Assert.That(error, Is.Not.Null.And.Not.Empty);
         }
 
+        /// <summary>
+        /// 旧 JSON 里的废弃字段逐项移除并报告；Deck 表字段也必须作为废弃字段报出。
+        /// 输入：带废弃字段的 JSON；输出：清理后的文本与提示条数断言。
+        /// </summary>
         [Test]
         public void LegacyJsonMigrationRemovesDeprecatedFieldsAndReportsThem()
         {
             var notices = new List<string>();
-            var json = "{\"cost\":12,\"diagonalMove\":true,\"counterAttack\":false,\"chainDeployOnly\":true,\"row\":3,\"col\":4,\"hp\":1}";
+            var json = "{\"cost\":12,\"diagonalMove\":true,\"counterAttack\":false,\"chainDeployOnly\":true,\"row\":3,\"col\":4,\"hp\":1,\"deck\":[{\"cardType\":\"ge1\",\"count\":4}]}";
             var cleaned = LegacyJsonMigration.Strip(json, notices);
             Assert.That(cleaned, Does.Not.Contain("cost"));
             Assert.That(cleaned, Does.Not.Contain("diagonalMove"));
             Assert.That(cleaned, Does.Not.Contain("counterAttack"));
             Assert.That(cleaned, Does.Not.Contain("chainDeployOnly"));
-            Assert.That(notices.Count, Is.EqualTo(5), string.Join("\n", notices));
+            Assert.That(cleaned, Does.Not.Contain("deck"));
+            Assert.That(notices.Count, Is.EqualTo(6), string.Join("\n", notices));
             // 清理后的文本仍是合法 JSON。
             Assert.That(JsonUtility.FromJson<CardRow>(cleaned), Is.Not.Null);
         }
