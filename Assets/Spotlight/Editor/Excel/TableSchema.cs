@@ -118,7 +118,8 @@ namespace Spotlight.EditorTools
                 new ColumnDefinition("canAttackResources", ColumnType.Boolean, true, "是否允许直接攻击资源单位，默认 true；战舰默认 false，仍可攻击敌方家。"),
                 new ColumnDefinition("canSwap", ColumnType.Boolean, true, "是否允许参与互换，默认 true；固定刷怪笼默认 false，资源分类始终不可互换。"),
                 new ColumnDefinition("spawnComponent", ColumnType.Boolean, true, "是否启用刷怪组件，默认 false；启用后从下个所属阵营回合开始八邻生成一架战机。"),
-                new ColumnDefinition("spawnCardType", ColumnType.Text, false, "生成战机卡种，默认空；启用刷怪时须引用攻击类卡种，普通刷怪笼与战舰默认 bossCombat。原 Rules.bossSpawnerSpawnCardType 请迁移到对应 Cards 行。")
+                new ColumnDefinition("spawnCardType", ColumnType.Text, false, "生成战机卡种，默认空；启用刷怪时须引用攻击类卡种，普通刷怪笼与战舰默认 bossCombat。原 Rules.bossSpawnerSpawnCardType 请迁移到对应 Cards 行。"),
+                new ColumnDefinition("cardArt", ColumnType.Text, false, "卡图 Sprite。留空表示没有卡图，界面上保持原来的纯色矩形；可只填文件名（自动解析到 Assets/Imported/SpotlightArt/CardArt/），也可填以 Assets/ 开头的完整 .png 路径。PNG 必须以 Sprite (2D and UI) 导入才能被识别。")
             }),
             new TableDefinition("Rules", new[]
             {

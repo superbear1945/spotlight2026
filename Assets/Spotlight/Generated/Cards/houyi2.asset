@@ -64,6 +64,8 @@ MonoBehaviour:
   _killAction: {fileID: 0}
   _damageMark: {fileID: 0}
   _prefab: {fileID: 4187055158339705282, guid: d337fc68c2b3d564c9e5245a6ab14006, type: 3}
+  _art: {fileID: 21300000, guid: 4948bc2d1486fa848bee5f47d74c7e6e, type: 3}
+  _artPath: Assets/Imported/SpotlightArt/CardArt/houyi2.png
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
   _sourceSheet: Cards
 --- !u!114 &5654165893681111846

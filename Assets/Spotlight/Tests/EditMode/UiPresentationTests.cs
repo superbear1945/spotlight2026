@@ -72,6 +72,7 @@ namespace Spotlight.Tests
                 "pause-overlay", "pause-panel", "pause-close-button", "pause-continue-button",
                 "pause-restart-button", "pause-exit-button",
                 "detail-left", "detail-right", "pile-left", "pile-right",
+                "grave-count", "draw-count", "draw-count-tiers",
                 "menu-overlay", "menu-resume-button", "menu-deck-select-button",
                 "menu-restart-button", "menu-quit-button",
                 "deck-select-confirm-overlay", "deck-select-mask", "deck-select-apply-button"

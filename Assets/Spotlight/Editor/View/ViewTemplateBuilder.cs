@@ -28,7 +28,13 @@ namespace Spotlight.EditorTools
             if (!force)
             {
                 var existing = AssetDatabase.LoadAssetAtPath<GameObject>(TemplatePath);
-                if (existing != null) return existing;
+                if (existing != null)
+                {
+                    // 旧工程里的模板是在“卡图”功能之前生成的，没有 Art 子节点；
+                    // 这里做一次幂等补齐，否则模板与全部卡种变体上的 _art 引用都是空的，卡图永远不显示。
+                    EnsureArtNode();
+                    return AssetDatabase.LoadAssetAtPath<GameObject>(TemplatePath);
+                }
             }
             var temp = BuildTemplateObject();
             var directory = System.IO.Path.GetDirectoryName(TemplatePath);
@@ -37,6 +43,67 @@ namespace Spotlight.EditorTools
             Object.DestroyImmediate(temp);
             AssetDatabase.SaveAssets();
             return prefab;
+        }
+
+        /// <summary>
+        /// 判断现有模板是否已经接好卡图节点。
+        /// 输入：无；输出：模板存在且 Card._art 已指向一个 Image 时为 true。
+        /// 为什么需要：卡图是“有则显示、无则回退纯色”的软特性，
+        /// 一旦模板没接上，表现会和“这张卡没配卡图”完全一样，必须能主动发现而不是靠肉眼。
+        /// </summary>
+        public static bool HasArtNode()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(TemplatePath);
+            return prefab != null && HasArtNode(prefab);
+        }
+
+        /// <summary>
+        /// 判断指定模板对象是否已经接好卡图节点。
+        /// 输入：模板 Prefab 资产对象；输出：_art 引用非空时为 true。
+        /// </summary>
+        public static bool HasArtNode(GameObject prefab)
+        {
+            if (prefab == null) return false;
+            var card = prefab.GetComponent<Card>();
+            if (card == null) return false;
+            var property = new SerializedObject(card).FindProperty("_art");
+            return property != null && property.objectReferenceValue != null;
+        }
+
+        /// <summary>
+        /// 给现有模板补齐卡图节点（幂等）。
+        /// 输入：无；输出：本次是否真的做了修改。
+        /// 为什么需要：模板是手工可维护的资产，重建模板会覆盖策划调好的外观；
+        /// 而新增的 Art 节点只影响“卡图显示”这一件事，所以用“只补缺失节点”的方式升级旧模板。
+        /// 改完后 25 个卡种 Prefab 作为模板变体会自动继承该节点，不需要重新编译配置。
+        /// </summary>
+        public static bool EnsureArtNode()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(TemplatePath);
+            if (existing == null || HasArtNode(existing)) return false;
+
+            var contents = PrefabUtility.LoadPrefabContents(TemplatePath);
+            try
+            {
+                var card = contents.GetComponent<Card>();
+                if (card == null) return false;
+                var serialized = new SerializedObject(card);
+                if (serialized.FindProperty("_art") == null) return false;
+                var rect = (RectTransform)contents.transform;
+                var art = CreateImage("Art", rect, Color.white);
+                art.preserveAspect = true;
+                // 第一个子节点 = 紧贴底色之上、高亮框与文本之下。
+                art.transform.SetAsFirstSibling();
+                AssignReference(serialized, "_art", art);
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                PrefabUtility.SaveAsPrefabAsset(contents, TemplatePath);
+                AssetDatabase.SaveAssets();
+                return true;
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(contents);
+            }
         }
 
         /// <summary>
@@ -55,6 +122,11 @@ namespace Spotlight.EditorTools
             var body = root.GetComponent<Image>();
             body.color = Color.white;
 
+            // 卡图节点先创建：它必须是第一个子节点，渲染顺序才是“底色 → 卡图 → 高亮框 → 文本”。
+            // preserveAspect 让不同长宽比的卡图不被棋盘格子拉伸变形。
+            var art = CreateImage("Art", rect, Color.white);
+            art.preserveAspect = true;
+
             var highlight = CreateImage("Highlight", rect, new Color(0.2f, 1f, 0.6f, 0.35f));
             highlight.enabled = false;
             var nameLabel = CreateText("Name", rect, "卡牌", 16, TextAlignmentOptions.Top);
@@ -64,6 +136,7 @@ namespace Spotlight.EditorTools
             var card = root.GetComponent<Card>();
             var serialized = new SerializedObject(card);
             AssignReference(serialized, "_body", body);
+            AssignReference(serialized, "_art", art);
             AssignReference(serialized, "_highlight", highlight);
             AssignReference(serialized, "_nameLabel", nameLabel);
             AssignReference(serialized, "_statLabel", statLabel);
@@ -123,7 +196,9 @@ namespace Spotlight.EditorTools
             return label;
         }
 
-        /// <summary>把矩形锚点设为铺满父节点。输入：矩形；输出：无。</summary>
+        /// <summary>
+        /// 把矩形锚点设为铺满父节点。输入：矩形；输出：无。
+        /// </summary>
         static void Stretch(RectTransform rect)
         {
             rect.anchorMin = Vector2.zero;

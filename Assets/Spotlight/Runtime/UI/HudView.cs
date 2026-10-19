@@ -113,11 +113,13 @@ namespace Spotlight
         VisualElement _detailLeft, _detailRight;
         /// <summary>左右详情区的标题与正文。</summary>
         Label _detailLeftTitle, _detailLeftBody, _detailRightTitle, _detailRightBody;
-        /// <summary>手牌同一行两侧的计数区与墓地 / 抽牌堆数字。</summary>
+        /// <summary>手牌同一行两侧的计数面板与墓地 / 牌堆数字。</summary>
         VisualElement _pileLeft, _pileRight;
         Label _graveCount;
-        /// <summary>抽牌堆按阶级实时剩余张数（高级 / 中级 / 初级）。</summary>
-        Label _drawAdvanced, _drawIntermediate, _drawBasic;
+        /// <summary>牌堆正中显示的剩余总张数。</summary>
+        Label _drawCount;
+        /// <summary>牌堆底部的阶级构成小字（高 / 中 / 初）。</summary>
+        Label _drawTiers;
         /// <summary>携带选择面板（开局前与菜单里共用）。</summary>
         DeckSelectionPanel _deckSelectionPanel;
         /// <summary>胜负遮罩。</summary>
@@ -190,9 +192,8 @@ namespace Spotlight
             _pileLeft = _root.Q<VisualElement>("pile-left");
             _pileRight = _root.Q<VisualElement>("pile-right");
             _graveCount = _root.Q<Label>("grave-count");
-            _drawAdvanced = _root.Q<Label>("draw-count-advanced");
-            _drawIntermediate = _root.Q<Label>("draw-count-intermediate");
-            _drawBasic = _root.Q<Label>("draw-count-basic");
+            _drawCount = _root.Q<Label>("draw-count");
+            _drawTiers = _root.Q<Label>("draw-count-tiers");
             _deckSelectionPanel = new DeckSelectionPanel();
             _deckSelectionPanel.Bind(_root);
             _victoryOverlay = _root.Q<VisualElement>("victory-overlay");
@@ -315,7 +316,7 @@ namespace Spotlight
             }
             FillDetailFaces(selection, snapshot, configuration);
             if (_graveCount != null) _graveCount.text = snapshot.Graveyard.Count.ToString();
-            RenderDrawPileByTier(snapshot, configuration);
+            RenderDrawPile(snapshot, configuration);
             AppendLog(snapshot.Log);
             if (_victoryOverlay != null)
             {
@@ -493,13 +494,14 @@ namespace Spotlight
         }
 
         /// <summary>
-        /// 按阶级统计抽牌堆剩余张数并刷新三行文本。
+        /// 刷新牌堆计数：正中一个剩余总张数，底部一行小字给阶级构成。
         /// 输入：当前快照与配置；输出：无。
-        /// 为什么按快照统计而不是读配置：Q23 要求显示“实时剩余”，
-        /// 开局时正好等于选卡生成的构成，抽牌后递减，墓地洗回后回涨。
-        /// 卡种未注册（配置被改坏）时该张卡不计入任何阶级，避免显示错误的阶级数字。
+        /// 为什么总数直接取 DrawPile.Count 而不是三个阶级相加：卡种未注册（配置被改坏）时
+        /// 该张卡不计入任何阶级，相加会少算；总数必须以快照为准，阶级小字只作为辅助信息。
+        /// 为什么把三行竖排压成一行小字：面板改成图片徽章后，正中只能有一个数字可读；
+        /// 玩家仍需要知道剩余牌里的阶级构成，所以保留成底部的一行小字。
         /// </summary>
-        void RenderDrawPileByTier(GameSnapshot snapshot, GameConfiguration configuration)
+        void RenderDrawPile(GameSnapshot snapshot, GameConfiguration configuration)
         {
             var basic = 0;
             var intermediate = 0;
@@ -518,9 +520,8 @@ namespace Spotlight
                     }
                 }
             }
-            if (_drawAdvanced != null) _drawAdvanced.text = $"高级 {advanced}";
-            if (_drawIntermediate != null) _drawIntermediate.text = $"中级 {intermediate}";
-            if (_drawBasic != null) _drawBasic.text = $"初级 {basic}";
+            if (_drawCount != null) _drawCount.text = snapshot.DrawPile.Count.ToString();
+            if (_drawTiers != null) _drawTiers.text = $"高 {advanced} · 中 {intermediate} · 初 {basic}";
         }
 
         /// <summary>携带选择面板（供 GameBootstrap 打开、订阅确认/取消事件）。</summary>

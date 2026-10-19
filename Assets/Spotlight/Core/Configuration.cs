@@ -199,6 +199,15 @@ namespace Spotlight
         public string upgradeFrom;
         /// <summary>外观模板键，运行时映射到 Prefab 外观，改动数值不会重编译外观。</summary>
         public string viewKey;
+        /// <summary>
+        /// 卡图 Sprite 的来源。可填两种写法：以 <c>Assets/</c> 开头的项目内完整路径，
+        /// 或只填文件名（自动解析到卡图默认目录 Assets/Imported/SpotlightArt/CardArt）。
+        /// 留空表示没有卡图，界面回退到原来的纯色矩形。
+        /// 为什么放在 Cards 表而不是 Prefab 上：卡图是每张卡的展示数据，必须与数值同源；
+        /// 生成 Prefab 每次编译都会被覆盖，把卡图写在那里等于每次编译都丢图。
+        /// 注意：本类是规则内核契约，这里只保存“指向图片的文本”，不引用 UnityEngine.Sprite。
+        /// </summary>
+        public string cardArt;
         // 生命必须为正整数，其余数值为非负整数；移动距离不设置玩法上的固定上限。
         /// <summary>初始生命与上限。</summary>
         public int hp;
@@ -1170,6 +1179,18 @@ namespace Spotlight
                 if (c.requiresUpgrade && c.category != "resource") errors.Add(p + "：仅资源卡可覆盖升级");
                 if (!c.requiresUpgrade && !string.IsNullOrEmpty(c.upgradeFrom)) errors.Add(p + "：未启用升级却填写 upgradeFrom");
                 if (string.IsNullOrWhiteSpace(c.viewKey)) errors.Add(p + "：viewKey 不能为空");
+                // 卡图是可选项：留空表示只用纯色矩形。填了就只接受 .png，且只允许两种写法
+                // （纯文件名 → 解析到默认卡图目录；或以 Assets/ 开头的完整路径），
+                // 避免出现“写了路径但没人能解析”的死值；反斜杠与 .. 一律拒绝，防止跨目录逃逸。
+                var art = (c.cardArt ?? string.Empty).Trim();
+                if (art.Length > 0)
+                {
+                    if (art.IndexOf('\\') >= 0) errors.Add(p + "：cardArt 不能使用反斜杠，请用 / 分隔路径");
+                    else if (art.Contains("..")) errors.Add(p + "：cardArt 不能包含 ..");
+                    else if (!art.EndsWith(".png", StringComparison.OrdinalIgnoreCase)) errors.Add(p + "：cardArt 必须是 .png 文件");
+                    else if (!art.StartsWith("Assets/", StringComparison.Ordinal) && art.IndexOf('/') >= 0)
+                        errors.Add(p + "：cardArt 只能填文件名（自动解析到卡图默认目录）或以 Assets/ 开头的完整路径");
+                }
                 if (c.deployCost < 0) errors.Add(p + "：deployCost 不得为负");
                 if (c.markOnEnterRadius < 0 || c.markRewardResource < 0) errors.Add(p + "：markOnEnterRadius / markRewardResource 不得为负");
                 if (!c.markOnEnterComponent && (c.markOnEnterRadius != 0 || c.markRewardResource != 0)) errors.Add(p + "：未启用 markOnEnterComponent 时标记半径与奖励必须为 0");

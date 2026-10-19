@@ -417,14 +417,12 @@ namespace Spotlight.Tests
             var hud = Object.FindObjectOfType<HudView>();
             Assert.That(hud, Is.Not.Null, "场景缺少 HudView");
             var grave = hud.Root.Q<Label>("grave-count");
-            // 抽牌堆总数已拆成三行“高级 / 中级 / 初级”（由快照抽牌堆逐张查卡种阶级统计），不再有单个总数标签。
-            var drawBasic = hud.Root.Q<Label>("draw-count-basic");
-            var drawIntermediate = hud.Root.Q<Label>("draw-count-intermediate");
-            var drawAdvanced = hud.Root.Q<Label>("draw-count-advanced");
+            // 抽牌堆改为“图片徽章正中一个总张数 + 底部一行阶级小字”，不再是三行竖排。
+            var drawCount = hud.Root.Q<Label>("draw-count");
+            var drawTiers = hud.Root.Q<Label>("draw-count-tiers");
             Assert.That(grave, Is.Not.Null, "UXML 缺少 grave-count");
-            Assert.That(drawBasic, Is.Not.Null, "UXML 缺少 draw-count-basic");
-            Assert.That(drawIntermediate, Is.Not.Null, "UXML 缺少 draw-count-intermediate");
-            Assert.That(drawAdvanced, Is.Not.Null, "UXML 缺少 draw-count-advanced");
+            Assert.That(drawCount, Is.Not.Null, "UXML 缺少 draw-count");
+            Assert.That(drawTiers, Is.Not.Null, "UXML 缺少 draw-count-tiers");
 
             var start = context.Session.GetSnapshot();
             Assert.That(grave.text, Is.EqualTo(start.Graveyard.Count.ToString()), "墓地计数与快照不一致");
@@ -439,10 +437,10 @@ namespace Spotlight.Tests
         }
 
         /// <summary>
-        /// 断言抽牌堆三行阶级计数与当前快照的抽牌堆一致。
+        /// 断言牌堆的总张数与阶级小字都与当前快照一致。
         /// 输入：对局、HUD 根与步骤说明；输出：NUnit 断言结果。
-        /// 为什么同时断言“逐阶级文本”与“三行合计”：抽牌堆显示从单个总数改成了按阶级三行，
-        /// 只比合计会漏掉“阶级归属算错”，只比单行又看不出总数仍在跟随快照，因此两者都保留。
+        /// 为什么两者都断言：总数来自快照的 DrawPile.Count，阶级小字来自逐张查卡种阶级；
+        /// 只比总数会漏掉“阶级归属算错”，只比小字又看不出总数仍在跟随快照，因此两者都保留。
         /// </summary>
         static void AssertDrawPileCountersMatchSnapshot(GameSession session, VisualElement root, string step)
         {
@@ -452,9 +450,11 @@ namespace Spotlight.Tests
                 .ToDictionary(tier => tier,
                     tier => snapshot.DrawPile.Count(card => configuration.FindCard(card.TypeId)?.Tier == tier));
 
-            Assert.That(root.Q<Label>("draw-count-basic").text, Is.EqualTo($"初级 {expected[CardTier.Basic]}"), $"{step}：初级剩余张数与快照不一致");
-            Assert.That(root.Q<Label>("draw-count-intermediate").text, Is.EqualTo($"中级 {expected[CardTier.Intermediate]}"), $"{step}：中级剩余张数与快照不一致");
-            Assert.That(root.Q<Label>("draw-count-advanced").text, Is.EqualTo($"高级 {expected[CardTier.Advanced]}"), $"{step}：高级剩余张数与快照不一致");
+            Assert.That(root.Q<Label>("draw-count").text, Is.EqualTo(snapshot.DrawPile.Count.ToString()),
+                $"{step}：牌堆总张数与快照不一致");
+            Assert.That(root.Q<Label>("draw-count-tiers").text,
+                Is.EqualTo($"高 {expected[CardTier.Advanced]} · 中 {expected[CardTier.Intermediate]} · 初 {expected[CardTier.Basic]}"),
+                $"{step}：阶级小字与快照不一致");
             Assert.That(expected.Values.Sum(), Is.EqualTo(snapshot.DrawPile.Count), $"{step}：三个阶级之和必须等于抽牌堆剩余张数");
         }
 
