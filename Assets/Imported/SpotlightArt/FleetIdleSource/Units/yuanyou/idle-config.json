@@ -1,0 +1,49 @@
+{
+  "id": "yuanyou",
+  "source": "04-yuanyou.png",
+  "kind": 3,
+  "canvas": [
+    1536,
+    1536
+  ],
+  "hover": 0,
+  "engines": [],
+  "sourceSize": [
+    1254,
+    1254
+  ],
+  "sourceOffset": [
+    141,
+    141
+  ],
+  "loopDuration": 6,
+  "rigLayers": [
+    {
+      "name": "body",
+      "motion": 0,
+      "sourceRect": [
+        141,
+        171,
+        1254,
+        1224
+      ],
+      "atlasRect": [
+        4,
+        4,
+        1254,
+        1224
+      ]
+    }
+  ],
+  "atlasSize": [
+    2048,
+    2048
+  ],
+  "rigVersion": 2,
+  "drill": [
+    827,
+    1111,
+    76,
+    180
+  ]
+}

@@ -1,5 +1,6 @@
-/* 静态界面样式。颜色与尺寸集中在此文件，便于策划在不改代码的情况下调整面板外观；
-   卡牌与棋盘的语义颜色来自 Excel 的 Presentation 表，不在此重复定义。 */
+/* Spotlight 静态界面样式。
+   UI Toolkit 只负责 HUD、信息面板与菜单；棋盘和手牌继续由 UGUI 负责。
+   卡牌与棋盘的语义色仍来自 Excel 的 Presentation 表，不在这里复制规则。 */
 
 .hud-root {
     position: absolute;
@@ -7,84 +8,221 @@
     top: 0;
     right: 0;
     bottom: 0;
+    color: rgb(238, 235, 218);
 }
 
-/* 顶部信息条 */
-.top-bar {
-    flex-direction: row;
+/* ── 顶部 HUD ───────────────────────────────────────────────────────── */
+.top-hud {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    height: 150px;
+}
+
+.player-status,
+.enemy-status,
+.turn-status {
+    position: absolute;
+    top: 4px;
+}
+
+.player-status {
+    left: 4px;
+    width: 330px;
+}
+
+.enemy-status {
+    right: 4px;
+    width: 330px;
+    align-items: flex-end;
+}
+
+.turn-status {
+    left: 50%;
+    translate: -50% 0;
+    width: 360px;
     align-items: center;
-    padding: 8px 16px;
-    background-color: rgba(12, 16, 24, 0.78);
+}
+
+.life-frame {
+    width: 310px;
+    height: 116px;
+    background-color: rgba(0, 0, 0, 0);
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.player-life-frame {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/02_player_info/player_life/player_life_static.png");
+}
+
+.enemy-life-frame {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/02_player_info/enemy_life/enemy_life_static.png");
+}
+
+.life-value {
+    position: absolute;
+    top: 40px;
+    height: 34px;
+    font-size: 26px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    -unity-text-outline-width: 1px;
+    -unity-text-outline-color: rgba(3, 9, 18, 0.9);
+}
+
+.player-life-value {
+    left: 96px;
+    right: 40px;
+    color: rgb(240, 235, 214);
+}
+
+.boss-life-value {
+    left: 40px;
+    right: 96px;
+    color: rgb(21, 31, 48);
+    -unity-text-outline-width: 0;
+}
+
+.resource-chip {
+    width: 238px;
+    height: 72px;
+    margin-top: -24px;
+    margin-left: 20px;
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/secondary/secondary_normal.png");
+    background-color: rgba(0, 0, 0, 0);
+    -unity-background-scale-mode: scale-to-fit;
+    align-items: center;
+    justify-content: center;
+}
+
+.resource-label {
+    color: rgb(238, 235, 218);
+    font-size: 15px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    margin-top: -2px;
+}
+
+.round-counter {
+    width: 118px;
+    height: 118px;
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/01_turn/round_counter_blank/round_counter_blank_static.png");
+    background-color: rgba(0, 0, 0, 0);
+    -unity-background-scale-mode: scale-to-fit;
+    align-items: center;
+    justify-content: center;
+}
+
+.round-counter.opponent-turn {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/01_turn/round_counter_opponent_blank/round_counter_opponent_blank_static.png");
+}
+
+.round-number-label {
+    width: 70px;
+    height: 40px;
+    margin-top: -2px;
+    font-size: 29px;
+    color: rgb(240, 235, 214);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    -unity-text-outline-width: 1px;
+    -unity-text-outline-color: rgba(4, 10, 20, 0.95);
 }
 
 .title-label {
-    font-size: 20px;
-    color: rgb(240, 245, 255);
-    -unity-font-style: bold;
-}
-
-.info-label {
-    font-size: 15px;
-    color: rgb(210, 224, 245);
-    margin-left: 24px;
-    white-space: normal;
-}
-
-.warn-label {
-    font-size: 15px;
-    color: rgb(255, 210, 120);
-    white-space: normal;
-}
-
-.section-label {
-    font-size: 15px;
-    color: rgb(160, 200, 255);
-    margin-top: 6px;
-    margin-bottom: 2px;
-    -unity-font-style: bold;
-}
-
-.detail-label {
-    font-size: 14px;
-    color: rgb(225, 232, 245);
-    white-space: normal;
-}
-
-.log-line {
-    font-size: 13px;
-    color: rgb(200, 214, 235);
-    white-space: normal;
-    margin-bottom: 2px;
-}
-
-/* 通用面板 */
-.panel {
-    background-color: rgba(10, 14, 22, 0.82);
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
-    border-bottom-left-radius: 6px;
-    border-bottom-right-radius: 6px;
+    margin-top: -21px;
+    padding: 4px 18px;
+    min-width: 290px;
+    font-size: 17px;
+    color: rgb(244, 239, 220);
+    background-color: rgba(9, 18, 32, 0.92);
     border-left-width: 1px;
     border-right-width: 1px;
     border-top-width: 1px;
     border-bottom-width: 1px;
-    border-left-color: rgba(80, 120, 190, 0.55);
-    border-right-color: rgba(80, 120, 190, 0.55);
-    border-top-color: rgba(80, 120, 190, 0.55);
-    border-bottom-color: rgba(80, 120, 190, 0.55);
-    padding: 8px 10px;
+    border-color: rgba(222, 211, 174, 0.8);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.plays-label {
+    margin-top: 4px;
+    padding: 3px 12px;
+    font-size: 13px;
+    color: rgb(235, 150, 62);
+    background-color: rgba(9, 18, 32, 0.88);
+    -unity-text-align: middle-center;
+}
+
+.entry-toolbar {
+    flex-direction: row;
+    justify-content: flex-end;
+    margin-top: -23px;
+    margin-right: 16px;
+}
+
+.icon-button {
+    width: 66px;
+    height: 66px;
+    margin-left: 2px;
+    padding: 0;
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.history-button {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/03_entry_buttons/history/history_normal.png");
+}
+.history-button:hover {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/03_entry_buttons/history/history_hover.png");
+}
+.history-button:active {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/03_entry_buttons/history/history_pressed.png");
+}
+.history-button:disabled {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/03_entry_buttons/history/history_disabled.png");
+}
+.history-button.log-hidden {
+    opacity: 0.62;
+}
+
+.settings-button {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/03_entry_buttons/settings/settings_normal.png");
+}
+.settings-button:hover {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/03_entry_buttons/settings/settings_hover.png");
+}
+.settings-button:active {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/03_entry_buttons/settings/settings_pressed.png");
+}
+.settings-button:disabled {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/03_entry_buttons/settings/settings_disabled.png");
+}
+
+/* ── 通用面板与文字 ─────────────────────────────────────────────────── */
+.panel {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/06_panels_notices/panel_large/panel_large_static.png");
+    background-color: rgba(0, 0, 0, 0);
+    -unity-background-scale-mode: stretch-to-fill;
+    padding: 42px 42px 36px 42px;
 }
 
 .log-panel {
     position: absolute;
-    left: 12px;
-    bottom: 64px;
-    width: 420px;
-    height: 240px;
+    left: 8px;
+    bottom: 78px;
+    width: 410px;
+    height: 292px;
 }
 
 .log-list {
     flex-grow: 1;
+}
+
+.log-list .unity-scroll-view__content-viewport {
+    background-color: rgba(5, 12, 22, 0.34);
 }
 
 .log-content {
@@ -93,10 +231,60 @@
 
 .side-panel {
     position: absolute;
-    right: 12px;
-    top: 64px;
-    width: 380px;
-    max-height: 420px;
+    right: 8px;
+    top: 138px;
+    width: 410px;
+    min-height: 300px;
+    max-height: 390px;
+}
+
+.info-label {
+    font-size: 14px;
+    color: rgb(212, 220, 224);
+    white-space: normal;
+}
+
+.warn-label {
+    font-size: 14px;
+    color: rgb(238, 151, 62);
+    white-space: normal;
+    margin-top: 4px;
+}
+
+.section-label {
+    font-size: 15px;
+    color: rgb(238, 235, 218);
+    margin-top: 4px;
+    margin-bottom: 5px;
+    padding-bottom: 3px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(227, 143, 55, 0.65);
+    -unity-font-style: bold;
+}
+
+.detail-label {
+    font-size: 13px;
+    color: rgb(218, 225, 228);
+    white-space: normal;
+}
+
+.log-line {
+    font-size: 12px;
+    color: rgb(205, 215, 222);
+    white-space: normal;
+    margin-bottom: 3px;
+}
+
+/* ── 运行时按钮 ─────────────────────────────────────────────────────── */
+.bottom-bar {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    bottom: 2px;
+    height: 80px;
+    flex-direction: row;
+    align-items: flex-end;
+    flex-wrap: wrap;
 }
 
 /* 底部按钮条：左移 252px，给同一行的左侧“墓地”计数让位（棋盘与手牌的位置不变）。
@@ -107,65 +295,101 @@
     right: 12px;
     bottom: 12px;
     flex-direction: row;
+    align-items: flex-end;
+    flex-wrap: wrap;
 }
 
 .action-button {
-    font-size: 15px;
-    margin-right: 8px;
-    padding: 6px 14px;
-    background-color: rgb(38, 52, 78);
-    color: rgb(235, 242, 255);
-    border-left-width: 1px;
-    border-right-width: 1px;
-    border-top-width: 1px;
-    border-bottom-width: 1px;
-    border-left-color: rgb(90, 130, 200);
-    border-right-color: rgb(90, 130, 200);
-    border-top-color: rgb(90, 130, 200);
-    border-bottom-color: rgb(90, 130, 200);
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
-    border-bottom-left-radius: 4px;
-    border-bottom-right-radius: 4px;
+    min-width: 176px;
+    height: 66px;
+    margin-right: 2px;
+    padding: 0 34px;
+    font-size: 14px;
+    color: rgb(240, 236, 219);
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/primary/primary_normal.png");
+    -unity-background-scale-mode: stretch-to-fill;
+    border-width: 0;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
 }
 
-/* 选中详情里的“离场”按钮：只占内容宽度，避免在侧栏里被拉伸成整行 */
+.action-button:hover,
+.primary-action:hover {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/primary/primary_hover.png");
+}
+
+.action-button:active,
+.primary-action:active {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/primary/primary_pressed.png");
+}
+
+.action-button:disabled,
+.primary-action:disabled {
+    color: rgba(238, 235, 218, 0.55);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/primary/primary_disabled.png");
+}
+
+.secondary-action {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/secondary/secondary_normal.png");
+}
+.secondary-action:hover {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/secondary/secondary_hover.png");
+}
+.secondary-action:active {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/secondary/secondary_pressed.png");
+}
+.secondary-action:disabled {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/secondary/secondary_disabled.png");
+}
+
+.end-turn-button {
+    width: 224px;
+    min-width: 224px;
+    height: 82px;
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/01_turn/end_turn/end_turn_normal.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+.end-turn-button:hover {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/01_turn/end_turn/end_turn_hover.png");
+}
+.end-turn-button:active {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/01_turn/end_turn/end_turn_pressed.png");
+}
+.end-turn-button:disabled {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/01_turn/end_turn/end_turn_disabled.png");
+}
+
 .withdraw-button {
     align-self: flex-start;
-    margin-top: 8px;
+    min-width: 154px;
+    height: 58px;
+    margin-top: 6px;
     margin-right: 0;
 }
 
-.action-button:hover {
-    background-color: rgb(54, 74, 108);
+.bomb-button {
+    color: rgb(247, 166, 77);
 }
 
-.action-button.primary {
-    background-color: rgb(52, 110, 82);
-    border-left-color: rgb(90, 200, 140);
-    border-right-color: rgb(90, 200, 140);
-    border-top-color: rgb(90, 200, 140);
-    border-bottom-color: rgb(90, 200, 140);
-}
-
+/* ── 提示与结算遮罩 ─────────────────────────────────────────────────── */
 .error-label {
     position: absolute;
     left: 50%;
-    top: 64px;
+    top: 132px;
     translate: -50% 0;
-    padding: 6px 14px;
-    font-size: 15px;
-    color: rgb(255, 235, 235);
-    background-color: rgba(150, 40, 40, 0.88);
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
-    border-bottom-left-radius: 4px;
-    border-bottom-right-radius: 4px;
+    width: 700px;
+    min-height: 82px;
+    padding: 27px 84px;
+    font-size: 14px;
+    color: rgb(247, 224, 205);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/06_panels_notices/notice/notice_static.png");
+    background-color: rgba(0, 0, 0, 0);
+    -unity-background-scale-mode: stretch-to-fill;
+    -unity-text-align: middle-center;
     white-space: normal;
-    max-width: 900px;
 }
 
-/* 遮罩 */
 .overlay {
     position: absolute;
     left: 0;
@@ -176,31 +400,51 @@
     justify-content: center;
 }
 
+.victory-overlay,
 .modal-overlay {
-    background-color: rgba(0, 0, 0, 0.35);
+    background-color: rgba(1, 5, 12, 0.66);
 }
 
 .overlay-card {
-    background-color: rgba(14, 20, 32, 0.94);
-    padding: 24px 32px;
+    width: 610px;
+    min-height: 430px;
+    padding: 76px 76px 66px 76px;
     align-items: center;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-    border-bottom-left-radius: 8px;
-    border-bottom-right-radius: 8px;
+    justify-content: center;
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/06_panels_notices/panel_large/panel_large_static.png");
+    background-color: rgba(0, 0, 0, 0);
+    -unity-background-scale-mode: stretch-to-fill;
+}
+
+.result-art {
+    width: 470px;
+    height: 168px;
+    background-color: rgba(0, 0, 0, 0);
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.victory-art {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/07_results/victory/victory_static.png");
+}
+
+.defeat-art {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/07_results/defeat/defeat_static.png");
 }
 
 .victory-label {
-    font-size: 32px;
-    color: rgb(255, 245, 210);
+    font-size: 20px;
+    color: rgb(242, 235, 211);
     -unity-font-style: bold;
-    margin-bottom: 16px;
+    -unity-text-align: middle-center;
+    margin-top: -22px;
+    margin-bottom: 4px;
 }
 
-/* ── 对局配置面板（表单式） ──────────────────────────────────────────────
-   视觉与既有网页版配置界面一致：深色面板、分区标题、自适应字段网格、卡片式卡种编辑框。
-   面板默认隐藏，只能由“配置/调试”按钮打开；遮罩本身会拦截点击，规则层另有输入闸门。 */
+.victory-restart-button {
+    margin-right: 0;
+}
 
+/* ── 对局配置面板（表单式） ────────────────────────────────────────── */
 .cfg-mask {
     display: none;
     position: absolute;
@@ -208,7 +452,7 @@
     top: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(4, 8, 16, 0.72);
+    background-color: rgba(2, 7, 14, 0.82);
     align-items: flex-start;
     justify-content: center;
     padding: 24px;
@@ -218,23 +462,17 @@
     width: 880px;
     max-width: 100%;
     max-height: 100%;
-    background-color: #151c2b;
+    background-color: rgb(10, 19, 32);
     border-width: 1px;
-    border-color: #2a3448;
-    border-top-left-radius: 14px;
-    border-top-right-radius: 14px;
-    border-bottom-left-radius: 14px;
-    border-bottom-right-radius: 14px;
+    border-color: rgb(220, 207, 170);
 }
 
 .cfg-head {
     flex-direction: column;
     padding: 14px 16px;
-    border-bottom-width: 1px;
-    border-bottom-color: #2a3448;
-    background-color: #151c2b;
-    border-top-left-radius: 14px;
-    border-top-right-radius: 14px;
+    border-bottom-width: 2px;
+    border-bottom-color: rgb(214, 126, 45);
+    background-color: rgb(14, 28, 46);
 }
 
 .cfg-head-top {
@@ -245,7 +483,7 @@
 
 .cfg-title {
     font-size: 16px;
-    color: #e6ecff;
+    color: rgb(240, 235, 217);
     -unity-font-style: bold;
 }
 
@@ -254,11 +492,11 @@
 }
 
 .cfg-head-actions Button {
-    margin-left: 8px;
+    margin-left: 4px;
 }
 
 .cfg-error {
-    color: #ef4444;
+    color: rgb(246, 119, 100);
     font-size: 12px;
     white-space: normal;
     margin-top: 8px;
@@ -274,11 +512,10 @@
     flex-grow: 1;
 }
 
-/* 分区 */
 .cfg-section {
     padding: 12px 0;
     border-bottom-width: 1px;
-    border-bottom-color: #2a3448;
+    border-bottom-color: rgba(216, 204, 169, 0.28);
 }
 
 .cfg-section-head {
@@ -290,24 +527,23 @@
 
 .cfg-section-title {
     font-size: 13.5px;
-    color: #9fb6de;
+    color: rgb(237, 229, 205);
     -unity-font-style: bold;
 }
 
 .cfg-note {
     font-size: 12px;
-    color: #6f86ad;
+    color: rgb(139, 159, 178);
     white-space: normal;
     margin-top: 8px;
 }
 
 .cfg-deck-summary {
     font-size: 13px;
-    color: #c6d2e8;
+    color: rgb(209, 219, 224);
     margin-top: 4px;
 }
 
-/* 字段网格：等价于 repeat(auto-fill, minmax(200px, 1fr)) */
 .cfg-grid {
     flex-direction: row;
     flex-wrap: wrap;
@@ -324,32 +560,26 @@
 
 .cfg-field-label {
     font-size: 12.5px;
-    color: #8b97b0;
+    color: rgb(171, 185, 194);
     margin-bottom: 4px;
 }
 
-/* 输入控件 */
 .cfg-input {
     font-size: 13px;
-    color: #e6ecff;
+    color: rgb(238, 235, 218);
 }
 
 .cfg-input .unity-base-field__input,
 .cfg-input .unity-text-field__input,
 .cfg-input .unity-integer-field__input,
 .cfg-input .unity-base-text-field__input {
-    background-color: #0f1624;
+    background-color: rgb(7, 14, 25);
     border-width: 1px;
-    border-color: #2a3448;
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
-    border-bottom-left-radius: 6px;
-    border-bottom-right-radius: 6px;
+    border-color: rgba(229, 218, 180, 0.35);
     padding: 6px 8px;
-    color: #e6ecff;
+    color: rgb(238, 235, 218);
 }
 
-/* 复选框行 */
 .cfg-toggle {
     flex-direction: row;
     align-items: center;
@@ -358,7 +588,7 @@
 
 .cfg-toggle-label {
     font-size: 13px;
-    color: #c6d2e8;
+    color: rgb(209, 218, 222);
     margin-left: 8px;
     white-space: normal;
 }
@@ -374,56 +604,64 @@
     min-width: 260px;
 }
 
-/* 卡种编辑卡片 */
 .cfg-card {
     margin-top: 12px;
     padding: 12px;
     border-width: 1px;
-    border-color: #2a3448;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
+    border-color: rgba(229, 218, 180, 0.35);
+    background-color: rgba(17, 31, 49, 0.72);
 }
 
 .cfg-card-title {
     font-size: 14px;
-    color: #e6ecff;
+    color: rgb(242, 237, 219);
     -unity-font-style: bold;
     margin-bottom: 10px;
 }
 
-/* 按钮 */
 .cfg-panel Button {
-    border-width: 1px;
-    border-color: #2a3448;
-    background-color: #1c2436;
-    color: #e6ecff;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-    border-bottom-left-radius: 8px;
-    border-bottom-right-radius: 8px;
-    padding: 8px 14px;
+    min-width: 132px;
+    height: 52px;
+    padding: 0 28px;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/secondary/secondary_normal.png");
+    -unity-background-scale-mode: stretch-to-fill;
+    border-width: 0;
+    color: rgb(240, 235, 218);
     font-size: 13px;
     -unity-text-align: middle-center;
 }
 
 .cfg-panel Button:hover {
-    border-color: #3d4d6b;
-    background-color: #232e44;
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/secondary/secondary_hover.png");
+}
+
+.cfg-panel Button:active {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/secondary/secondary_pressed.png");
+}
+
+.cfg-panel Button:disabled {
+    color: rgba(238, 235, 218, 0.52);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/secondary/secondary_disabled.png");
 }
 
 .cfg-panel Button.primary {
-    background-color: #2f63d6;
-    border-color: #4f8cff;
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/primary/primary_normal.png");
     -unity-font-style: bold;
 }
 
 .cfg-panel Button.primary:hover {
-    background-color: #3a70e6;
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/primary/primary_hover.png");
 }
 
-/* JSON 导入导出 */
+.cfg-panel Button.primary:active {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/primary/primary_pressed.png");
+}
+
+.cfg-panel Button.primary:disabled {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/primary/primary_disabled.png");
+}
+
 .cfg-json-actions {
     flex-direction: row;
     margin-top: 8px;
@@ -431,7 +669,7 @@
 }
 
 .cfg-json-actions Button {
-    margin-right: 8px;
+    margin-right: 4px;
 }
 
 .bomb-button { border-bottom-color: rgb(220, 110, 45); border-bottom-width: 2px; }
@@ -457,6 +695,401 @@
     background-image: url("project://database/Assets/Spotlight/UI/Pictures/gear.png?fileID=2800000&guid=788226b706a331b438a4fa9013f33e42&type=3#gear");
     /* 按比例缩放：以后换成非正方形图标也不会被拉扁。 */
     -unity-background-scale-mode: scale-to-fit;
+}
+
+.hud-root .top-hud {
+    height: 220px;
+}
+
+.hud-root .player-status {
+    top: 275px;
+    left: 10px;
+    width: 330px;
+    align-items: flex-start;
+}
+
+.hud-root .enemy-status {
+    top: 275px;
+    right: 10px;
+    width: 330px;
+    align-items: flex-end;
+}
+
+.hud-root .turn-status {
+    left: 0;
+    right: 0;
+    top: 0;
+    width: auto;
+    height: 220px;
+    translate: 0 0;
+    align-items: stretch;
+}
+
+.hud-root .life-frame {
+    width: 290px;
+    height: 112px;
+}
+
+.hud-root .life-value {
+    top: 38px;
+    height: 38px;
+    font-size: 30px;
+}
+
+.hud-root .player-life-value {
+    left: 88px;
+    right: 38px;
+}
+
+.hud-root .boss-life-value {
+    left: 38px;
+    right: 88px;
+}
+
+.hud-root .resource-chip {
+    position: relative;
+    width: 320px;
+    height: 106px;
+    margin-top: -38px;
+    margin-left: -15px;
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/02_player_info/player_energy/player_energy_static.png");
+}
+
+.hud-root .resource-label {
+    position: absolute;
+    right: 52px;
+    top: 37px;
+    width: 70px;
+    height: 34px;
+    margin-top: 0;
+    font-size: 25px;
+    color: rgb(244, 239, 220);
+    -unity-text-align: middle-center;
+}
+
+.hud-root .round-counter {
+    position: absolute;
+    left: 50%;
+    top: -14px;
+    translate: -50% 0;
+    width: 220px;
+    height: 220px;
+}
+
+.hud-root .round-number-label {
+    position: absolute;
+    left: 50%;
+    top: 91px;
+    translate: -50% 0;
+    width: 108px;
+    height: 68px;
+    margin-top: 0;
+    font-size: 46px;
+}
+
+.hud-root .boss-phase-label {
+    position: absolute;
+    left: 50%;
+    top: 168px;
+    translate: -50% 0;
+    width: 520px;
+    color: rgb(238, 235, 218);
+    -unity-text-align: middle-center;
+}
+
+.hud-root .title-label {
+    display: none;
+}
+
+.hud-root .plays-label {
+    display: none;
+}
+
+.hud-root .entry-toolbar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    flex-direction: row;
+    margin-top: 0;
+    margin-right: 0;
+}
+
+.hud-root .icon-button {
+    width: 90px;
+    height: 90px;
+    margin-left: -38px;
+    padding: 0;
+    border-width: 0;
+}
+
+.hud-root .panel {
+    padding: 36px 36px 30px 36px;
+}
+
+.hud-root .log-panel {
+    left: 18px;
+    bottom: 80px;
+    width: 348px;
+    height: 240px;
+}
+
+.hud-root .side-panel {
+    right: 24px;
+    top: 500px;
+    width: 360px;
+    min-height: 220px;
+    max-height: 310px;
+}
+
+.hud-root .bottom-bar {
+    left: 50%;
+    right: auto;
+    bottom: 250px;
+    translate: -50% 0;
+    width: 720px;
+    height: 70px;
+    justify-content: center;
+}
+
+.hud-root .action-button {
+    min-width: 142px;
+    height: 54px;
+    margin-right: 4px;
+    padding: 0 24px;
+    font-size: 13px;
+}
+
+.hud-root .end-turn-button {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    translate: -100% 0;
+    margin-left: -40px;
+    width: 460px;
+    min-width: 460px;
+    height: 190px;
+    padding: 0;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/01_turn/end_turn/end_turn_normal.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.hud-root .withdraw-button {
+    min-width: 132px;
+    height: 50px;
+    margin-top: 4px;
+}
+
+.hud-root .error-label {
+    top: 180px;
+    width: 620px;
+    min-height: 72px;
+    padding: 23px 72px;
+}
+
+.hud-root .history-button.log-hidden {
+    opacity: 1;
+}
+
+.hud-root .opponent-turn-indicator {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    margin-left: 42px;
+    width: 460px;
+    height: 190px;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/01_turn/opponent_turn/opponent_turn_static.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.hud-root .side-label {
+    height: 38px;
+    font-size: 30px;
+    color: rgb(248, 244, 226);
+    -unity-font-style: bold;
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(2, 8, 18, 0.95);
+    -unity-text-align: middle-center;
+}
+
+.hud-root .player-side-label {
+    margin-left: 22px;
+}
+
+.hud-root .enemy-side-label {
+    margin-right: 22px;
+}
+
+.hud-root .entry-first {
+    margin-left: 0;
+}
+
+.hud-root .pause-button {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/原油战线_更新UI_v2/01_pause/pause_normal.png");
+}
+
+.hud-root .pause-button:hover {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/原油战线_更新UI_v2/01_pause/pause_hover.png");
+}
+
+.hud-root .pause-button:active {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/原油战线_更新UI_v2/01_pause/pause_pressed.png");
+}
+
+.hud-root .settings-button {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/原油战线_更新UI_v2/02_settings/settings_normal.png");
+}
+
+.hud-root .history-button {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/原油战线_更新UI_v2/03_history/history_normal.png");
+}
+
+.hud-root .help-button {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/原油战线_更新UI_v2/04_help/help_normal.png");
+}
+
+.hud-root .pause-button:disabled {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/原油战线_更新UI_v2/01_pause/pause_disabled.png");
+}
+
+.hud-root .settings-button:hover {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/原油战线_更新UI_v2/02_settings/settings_hover.png");
+}
+
+.hud-root .settings-button:active {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/原油战线_更新UI_v2/02_settings/settings_pressed.png");
+}
+
+.hud-root .settings-button:disabled {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/原油战线_更新UI_v2/02_settings/settings_disabled.png");
+}
+
+.hud-root .history-button:hover {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/原油战线_更新UI_v2/03_history/history_hover.png");
+}
+
+.hud-root .history-button:active {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/原油战线_更新UI_v2/03_history/history_pressed.png");
+}
+
+.hud-root .history-button:disabled {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/原油战线_更新UI_v2/03_history/history_disabled.png");
+}
+
+.hud-root .help-button:hover {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/原油战线_更新UI_v2/04_help/help_hover.png");
+}
+
+.hud-root .help-button:active {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/原油战线_更新UI_v2/04_help/help_pressed.png");
+}
+
+.hud-root .help-button:disabled {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/原油战线_更新UI_v2/04_help/help_disabled.png");
+}
+
+.hud-root .end-turn-button:hover {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/01_turn/end_turn/end_turn_hover.png");
+}
+
+.hud-root .end-turn-button:active {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/01_turn/end_turn/end_turn_pressed.png");
+}
+
+.hud-root .end-turn-button:disabled {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/01_turn/end_turn/end_turn_disabled.png");
+}
+
+.hud-root .pause-overlay {
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.hud-root .pause-panel {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    translate: -50% -50%;
+    width: 700px;
+    height: 640px;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Loose/pause.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.hud-root .pause-menu-button {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    translate: -50% -50%;
+    width: 530px;
+    min-width: 530px;
+    height: 170px;
+    padding: 0;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/primary/primary_normal.png");
+    -unity-background-scale-mode: scale-to-fit;
+    color: rgb(250, 246, 226);
+    font-size: 34px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(2, 8, 18, 0.95);
+}
+
+.hud-root .pause-menu-button:hover {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/primary/primary_hover.png");
+}
+
+.hud-root .pause-menu-button:active {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/primary/primary_pressed.png");
+}
+
+.hud-root .pause-menu-button:disabled {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/primary/primary_disabled.png");
+}
+
+.hud-root .pause-continue-button {
+    margin-top: -62px;
+}
+
+.hud-root .pause-restart-button {
+    margin-top: 58px;
+}
+
+.hud-root .pause-exit-button {
+    margin-top: 174px;
+}
+
+.hud-root .pause-close-button {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    margin-left: 238px;
+    margin-top: -252px;
+    translate: -50% -50%;
+    width: 90px;
+    min-width: 90px;
+    height: 90px;
+    padding: 0;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/03_entry_buttons/close/close_normal.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.hud-root .pause-close-button:hover {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/03_entry_buttons/close/close_hover.png");
+}
+
+.hud-root .pause-close-button:active {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/03_entry_buttons/close/close_pressed.png");
+}
+
+.hud-root .pause-close-button:disabled {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/03_entry_buttons/close/close_disabled.png");
 }
 
 .detail-panel {

@@ -1,0 +1,172 @@
+{
+  "id": "jiandao",
+  "source": "02-jiandao.png",
+  "kind": 1,
+  "canvas": [
+    1792,
+    1280
+  ],
+  "hover": 5,
+  "engines": [
+    [
+      231,
+      444,
+      109,
+      34,
+      -0.98,
+      -0.2
+    ],
+    [
+      164,
+      578,
+      117,
+      36,
+      -0.98,
+      -0.2
+    ]
+  ],
+  "sourceSize": [
+    1536,
+    1024
+  ],
+  "sourceOffset": [
+    128,
+    128
+  ],
+  "loopDuration": 6,
+  "rigLayers": [
+    {
+      "name": "body",
+      "motion": 0,
+      "sourceRect": [
+        128,
+        171,
+        1420,
+        895
+      ],
+      "atlasRect": [
+        4,
+        4,
+        1420,
+        895
+      ]
+    },
+    {
+      "name": "upper-cylinder",
+      "motion": 1,
+      "sourceRect": [
+        1043,
+        594,
+        141,
+        114
+      ],
+      "atlasRect": [
+        567,
+        907,
+        141,
+        114
+      ]
+    },
+    {
+      "name": "lower-cylinder",
+      "motion": 2,
+      "sourceRect": [
+        913,
+        703,
+        177,
+        114
+      ],
+      "atlasRect": [
+        716,
+        907,
+        177,
+        114
+      ]
+    },
+    {
+      "name": "upper-piston",
+      "motion": 3,
+      "sourceRect": [
+        1151,
+        652,
+        56,
+        44
+      ],
+      "atlasRect": [
+        1102,
+        907,
+        56,
+        44
+      ]
+    },
+    {
+      "name": "lower-piston",
+      "motion": 4,
+      "sourceRect": [
+        1051,
+        758,
+        63,
+        78
+      ],
+      "atlasRect": [
+        1031,
+        907,
+        63,
+        78
+      ]
+    },
+    {
+      "name": "upper-blade-lever",
+      "motion": 5,
+      "sourceRect": [
+        1096,
+        638,
+        555,
+        363
+      ],
+      "atlasRect": [
+        4,
+        907,
+        555,
+        363
+      ]
+    },
+    {
+      "name": "lower-blade-lever",
+      "motion": 6,
+      "sourceRect": [
+        1175,
+        662,
+        467,
+        476
+      ],
+      "atlasRect": [
+        1432,
+        4,
+        467,
+        476
+      ]
+    },
+    {
+      "name": "pivot-cap",
+      "motion": 0,
+      "sourceRect": [
+        1226,
+        693,
+        122,
+        91
+      ],
+      "atlasRect": [
+        901,
+        907,
+        122,
+        91
+      ]
+    }
+  ],
+  "atlasSize": [
+    2048,
+    2048
+  ],
+  "rigVersion": 2
+}

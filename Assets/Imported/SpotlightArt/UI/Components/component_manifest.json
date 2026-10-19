@@ -1,0 +1,1404 @@
+{
+  "project": "原油战线",
+  "version": "v1",
+  "png_count": 82,
+  "interactive_families": 15,
+  "interactive_png_count": 60,
+  "static_png_count": 22,
+  "assets": [
+    {
+      "id": "end_turn",
+      "name": "结束回合",
+      "state": "normal",
+      "file": "01_turn/end_turn/end_turn_normal.png",
+      "width": 1942,
+      "height": 809,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        298,
+        187,
+        1644,
+        618
+      ],
+      "sha256": "fa93663136e0645e46140d2292ca9902222f96d7234365cb7dfa06664b7919f4"
+    },
+    {
+      "id": "end_turn",
+      "name": "结束回合",
+      "state": "hover",
+      "file": "01_turn/end_turn/end_turn_hover.png",
+      "width": 1945,
+      "height": 809,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        298,
+        184,
+        1648,
+        622
+      ],
+      "sha256": "b1c58f684d0b092a626419464b0b117ed96377f4472d3d9b018fb81c63441604"
+    },
+    {
+      "id": "end_turn",
+      "name": "结束回合",
+      "state": "pressed",
+      "file": "01_turn/end_turn/end_turn_pressed.png",
+      "width": 1944,
+      "height": 809,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        295,
+        181,
+        1650,
+        623
+      ],
+      "sha256": "98e86a9a65f76dad783cb7de723d330273a4b489f14f5c1c12db99182fe441e5"
+    },
+    {
+      "id": "end_turn",
+      "name": "结束回合",
+      "state": "disabled",
+      "file": "01_turn/end_turn/end_turn_disabled.png",
+      "width": 1944,
+      "height": 809,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        297,
+        185,
+        1648,
+        621
+      ],
+      "sha256": "32515a28bc6ee611370e70d4519196cc0ffa6aa218f716cb72d13de56a00ca16"
+    },
+    {
+      "id": "opponent_turn",
+      "name": "对方回合状态牌",
+      "state": "static",
+      "file": "01_turn/opponent_turn/opponent_turn_static.png",
+      "width": 1944,
+      "height": 809,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        251,
+        168,
+        1693,
+        637
+      ],
+      "sha256": "3593b8cde5fff9a312e15fc0fddd1b8444cf83b64d3c75727752a09d9397610c"
+    },
+    {
+      "id": "round_counter",
+      "name": "回合计数器",
+      "state": "static",
+      "file": "01_turn/round_counter/round_counter_static.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        126,
+        166,
+        1118,
+        1089
+      ],
+      "sha256": "f92b95fd150706156a4f479ddaddbc515a69e619493c246202db28ab0ef7179b"
+    },
+    {
+      "id": "round_counter_blank",
+      "name": "回合计数器空数字版",
+      "state": "static",
+      "file": "01_turn/round_counter_blank/round_counter_blank_static.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        124,
+        163,
+        1121,
+        1090
+      ],
+      "sha256": "04b72773527a5a9da420925410c27b7c0679a2fc68f52a3f745097ba78aa00f5"
+    },
+    {
+      "id": "round_counter_opponent_blank",
+      "name": "对方回合计数器空数字版",
+      "state": "static",
+      "file": "01_turn/round_counter_opponent_blank/round_counter_opponent_blank_static.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        124,
+        162,
+        1121,
+        1091
+      ],
+      "sha256": "a3b09e16f5e8e90ecb7f9a54fae16775133de18a0c8b13e7d997fbcf09af8183"
+    },
+    {
+      "id": "enemy_energy",
+      "name": "对方能量总数框",
+      "state": "static",
+      "file": "02_player_info/enemy_energy/enemy_energy_static.png",
+      "width": 2172,
+      "height": 724,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        293,
+        191,
+        1873,
+        535
+      ],
+      "sha256": "7d4dbb0462db4670a12a8fd64673248a5940c98dda3c8703299f16406ebf1cc2"
+    },
+    {
+      "id": "enemy_insignia",
+      "name": "对方阵营标识",
+      "state": "static",
+      "file": "02_player_info/enemy_insignia/enemy_insignia_static.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        100,
+        110,
+        1154,
+        1030
+      ],
+      "sha256": "adf68bcbe656762179b6d1e4781569cf874e8cd35933748dd043c743c8b73d66"
+    },
+    {
+      "id": "enemy_life",
+      "name": "对方生命信息框",
+      "state": "static",
+      "file": "02_player_info/enemy_life/enemy_life_static.png",
+      "width": 1945,
+      "height": 808,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        164,
+        181,
+        1765,
+        612
+      ],
+      "sha256": "b5743ca8fe66dbbfe57ebe10f49dbd27fa46b0d1a1cd86571f474624fb149b22"
+    },
+    {
+      "id": "player_energy",
+      "name": "我方能量总数框",
+      "state": "static",
+      "file": "02_player_info/player_energy/player_energy_static.png",
+      "width": 2172,
+      "height": 724,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        306,
+        203,
+        1866,
+        543
+      ],
+      "sha256": "f7a38b155764df7e7008250e0e52b42350992b7e414fef4a6adc592a0e32b473"
+    },
+    {
+      "id": "player_insignia",
+      "name": "我方阵营标识",
+      "state": "static",
+      "file": "02_player_info/player_insignia/player_insignia_static.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        144,
+        143,
+        1109,
+        1136
+      ],
+      "sha256": "401b3029439d5b2b8d482c18b85c87517e326afa6c9fc0eb269ac80eaf275509"
+    },
+    {
+      "id": "player_life",
+      "name": "我方生命信息框",
+      "state": "static",
+      "file": "02_player_info/player_life/player_life_static.png",
+      "width": 1945,
+      "height": 809,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        198,
+        186,
+        1746,
+        609
+      ],
+      "sha256": "0a9d4dd1fee61537d3d214d3d9715da8d0593c6f15bb01df5f21ab09dc583783"
+    },
+    {
+      "id": "back",
+      "name": "返回按钮",
+      "state": "normal",
+      "file": "03_entry_buttons/back/back_normal.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        227,
+        302,
+        1027,
+        931
+      ],
+      "sha256": "2545ac2e2d253ca4957a74b0e72ab9bdc89fcf26ebf2b3303093d04f57db8488"
+    },
+    {
+      "id": "back",
+      "name": "返回按钮",
+      "state": "hover",
+      "file": "03_entry_buttons/back/back_hover.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        226,
+        298,
+        1028,
+        933
+      ],
+      "sha256": "cbe8561e8772b6089f2e7781e962528544f46c3a5e2a7ffda1abe664284941d6"
+    },
+    {
+      "id": "back",
+      "name": "返回按钮",
+      "state": "pressed",
+      "file": "03_entry_buttons/back/back_pressed.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        226,
+        299,
+        1027,
+        932
+      ],
+      "sha256": "40c50fe885247c85430a2af450a31b9a320b7b4cbc051c5446f5f5af86b74752"
+    },
+    {
+      "id": "back",
+      "name": "返回按钮",
+      "state": "disabled",
+      "file": "03_entry_buttons/back/back_disabled.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        227,
+        300,
+        1027,
+        932
+      ],
+      "sha256": "399a33b1203e797696e79ff0c9b709cd90fbaaabdd5ae83d73380d3773a977c6"
+    },
+    {
+      "id": "close",
+      "name": "关闭按钮",
+      "state": "normal",
+      "file": "03_entry_buttons/close/close_normal.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        228,
+        302,
+        1026,
+        931
+      ],
+      "sha256": "2416c5d263fcefcb46ca73b472c4a6c5e31267fd89c29b9f8273fdfd4b74b4f6"
+    },
+    {
+      "id": "close",
+      "name": "关闭按钮",
+      "state": "hover",
+      "file": "03_entry_buttons/close/close_hover.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        227,
+        301,
+        1027,
+        932
+      ],
+      "sha256": "041862eb20ed5c6f1991af12564c01c809623c448abd21367c27244a40255601"
+    },
+    {
+      "id": "close",
+      "name": "关闭按钮",
+      "state": "pressed",
+      "file": "03_entry_buttons/close/close_pressed.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        226,
+        300,
+        1027,
+        933
+      ],
+      "sha256": "37ebb4867d440468d084918e2761876b40c12103df2b6fa0780a706109bdd9f0"
+    },
+    {
+      "id": "close",
+      "name": "关闭按钮",
+      "state": "disabled",
+      "file": "03_entry_buttons/close/close_disabled.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        227,
+        301,
+        1027,
+        933
+      ],
+      "sha256": "218535cc8837dce5f71989b24b9f038040150ce350359c82eafcb4ec38de7511"
+    },
+    {
+      "id": "help",
+      "name": "规则帮助入口",
+      "state": "normal",
+      "file": "03_entry_buttons/help/help_normal.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        158,
+        232,
+        1096,
+        1012
+      ],
+      "sha256": "47c8145120cc2a2c771bc0768662317d9618fb5c676db9eebd4d46953f21959a"
+    },
+    {
+      "id": "help",
+      "name": "规则帮助入口",
+      "state": "hover",
+      "file": "03_entry_buttons/help/help_hover.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        158,
+        231,
+        1097,
+        1013
+      ],
+      "sha256": "7cd2137eef9eccff5cd70c993c5f34150d0def9351251b09d9890e4c3182df6e"
+    },
+    {
+      "id": "help",
+      "name": "规则帮助入口",
+      "state": "pressed",
+      "file": "03_entry_buttons/help/help_pressed.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        158,
+        231,
+        1096,
+        1012
+      ],
+      "sha256": "15b9f53ba12701e15aac0f5dadddacaba84662018a4b86b68b0758745c9edfff"
+    },
+    {
+      "id": "help",
+      "name": "规则帮助入口",
+      "state": "disabled",
+      "file": "03_entry_buttons/help/help_disabled.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        158,
+        231,
+        1096,
+        1012
+      ],
+      "sha256": "f49978366e68367b72eec06b47704df711bf6b456d4419018be0473f26010672"
+    },
+    {
+      "id": "history",
+      "name": "战斗记录入口",
+      "state": "normal",
+      "file": "03_entry_buttons/history/history_normal.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        134,
+        188,
+        1121,
+        1036
+      ],
+      "sha256": "657d62f768b531a65fb2bebfc964b21b38ba248870e0a596c1e3cf93c9aea74d"
+    },
+    {
+      "id": "history",
+      "name": "战斗记录入口",
+      "state": "hover",
+      "file": "03_entry_buttons/history/history_hover.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        133,
+        187,
+        1122,
+        1037
+      ],
+      "sha256": "b859ade55c8d857b2528546013f19f285252b6bb934a39c00e27cb321cba7786"
+    },
+    {
+      "id": "history",
+      "name": "战斗记录入口",
+      "state": "pressed",
+      "file": "03_entry_buttons/history/history_pressed.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        134,
+        186,
+        1121,
+        1037
+      ],
+      "sha256": "db9e3741db35d7eb8d3e4515eec7ca450cbc0c46d835634203a363a9b7895c2f"
+    },
+    {
+      "id": "history",
+      "name": "战斗记录入口",
+      "state": "disabled",
+      "file": "03_entry_buttons/history/history_disabled.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        134,
+        187,
+        1121,
+        1036
+      ],
+      "sha256": "c674ff0f427d643b3177cb5a2b9c1ddfa3e9ab3f0459aaffa278334e8fea809e"
+    },
+    {
+      "id": "pause",
+      "name": "暂停入口",
+      "state": "normal",
+      "file": "03_entry_buttons/pause/pause_normal.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        228,
+        304,
+        1024,
+        929
+      ],
+      "sha256": "a3952dd1baa5d7592a7bf04a2eb9494f8af480495cc678b24df5e25f6fbcd65f"
+    },
+    {
+      "id": "pause",
+      "name": "暂停入口",
+      "state": "hover",
+      "file": "03_entry_buttons/pause/pause_hover.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        227,
+        302,
+        1026,
+        931
+      ],
+      "sha256": "f5306643afb06f4d10559946f191d572a4073ca38eee97010930bdb5a4637299"
+    },
+    {
+      "id": "pause",
+      "name": "暂停入口",
+      "state": "pressed",
+      "file": "03_entry_buttons/pause/pause_pressed.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        228,
+        304,
+        1026,
+        931
+      ],
+      "sha256": "b7880767655902ac02802f956c13ae29ec58647da8605025067c34d875f8c01b"
+    },
+    {
+      "id": "pause",
+      "name": "暂停入口",
+      "state": "disabled",
+      "file": "03_entry_buttons/pause/pause_disabled.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        228,
+        303,
+        1025,
+        931
+      ],
+      "sha256": "b6f4eaeb2f2edfbc2aca6797ef4cae7080f2c44ab254109ec748f859a34029f4"
+    },
+    {
+      "id": "settings",
+      "name": "设置入口",
+      "state": "normal",
+      "file": "03_entry_buttons/settings/settings_normal.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        183,
+        235,
+        1071,
+        1001
+      ],
+      "sha256": "eee50489e073e0692c03218547ece3038f4a63c49e9a67d5324083428685b2e8"
+    },
+    {
+      "id": "settings",
+      "name": "设置入口",
+      "state": "hover",
+      "file": "03_entry_buttons/settings/settings_hover.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        183,
+        235,
+        1072,
+        1001
+      ],
+      "sha256": "59b177d0a2885b0c46cec9630f1a7712f18b71a2c9af908a822f3c3d2be5a71b"
+    },
+    {
+      "id": "settings",
+      "name": "设置入口",
+      "state": "pressed",
+      "file": "03_entry_buttons/settings/settings_pressed.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        183,
+        236,
+        1072,
+        1001
+      ],
+      "sha256": "fb4b833c989e70cb0869f7cfe355b7b3eaf71076b119ba753f073e8356450347"
+    },
+    {
+      "id": "settings",
+      "name": "设置入口",
+      "state": "disabled",
+      "file": "03_entry_buttons/settings/settings_disabled.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        183,
+        234,
+        1072,
+        1002
+      ],
+      "sha256": "8e877315b4d68a41868b39463dd481ca220aa28be1dd61fc3b7367aeb3ade255"
+    },
+    {
+      "id": "primary",
+      "name": "主要文字按钮底板",
+      "state": "normal",
+      "file": "04_action_buttons/primary/primary_normal.png",
+      "width": 2141,
+      "height": 734,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        227,
+        133,
+        1914,
+        597
+      ],
+      "sha256": "aff749995a2e4d0712cc211d32374a73db1d2e27414959476d5d71001e38aa72"
+    },
+    {
+      "id": "primary",
+      "name": "主要文字按钮底板",
+      "state": "hover",
+      "file": "04_action_buttons/primary/primary_hover.png",
+      "width": 2141,
+      "height": 734,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        222,
+        125,
+        1919,
+        592
+      ],
+      "sha256": "b97b23e6914fad6a4a149103aa67e1ca00a4fe368059db3373e503f98d4cfc2a"
+    },
+    {
+      "id": "primary",
+      "name": "主要文字按钮底板",
+      "state": "pressed",
+      "file": "04_action_buttons/primary/primary_pressed.png",
+      "width": 2141,
+      "height": 734,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        226,
+        126,
+        1909,
+        597
+      ],
+      "sha256": "2f34ea08e180608880fedd3e3b0c9dd601925487e20fb673b33aad2dbb66e035"
+    },
+    {
+      "id": "primary",
+      "name": "主要文字按钮底板",
+      "state": "disabled",
+      "file": "04_action_buttons/primary/primary_disabled.png",
+      "width": 2141,
+      "height": 734,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        228,
+        127,
+        1914,
+        598
+      ],
+      "sha256": "2e311fc0397b3f29b5cbfd2c8bfadc3cc133fc566efd189f18e994b75a62e169"
+    },
+    {
+      "id": "secondary",
+      "name": "次要文字按钮底板",
+      "state": "normal",
+      "file": "04_action_buttons/secondary/secondary_normal.png",
+      "width": 2087,
+      "height": 753,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        189,
+        183,
+        1898,
+        558
+      ],
+      "sha256": "c4e6bd6eee6a09442c21c7feacf0015846217febdaef30bbfa157e14d0d59185"
+    },
+    {
+      "id": "secondary",
+      "name": "次要文字按钮底板",
+      "state": "hover",
+      "file": "04_action_buttons/secondary/secondary_hover.png",
+      "width": 2087,
+      "height": 753,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        188,
+        175,
+        1898,
+        551
+      ],
+      "sha256": "313978fbeb30390fe92ef692444da8ea958640f08879e285c5b246c32f2407de"
+    },
+    {
+      "id": "secondary",
+      "name": "次要文字按钮底板",
+      "state": "pressed",
+      "file": "04_action_buttons/secondary/secondary_pressed.png",
+      "width": 2087,
+      "height": 753,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        186,
+        177,
+        1901,
+        556
+      ],
+      "sha256": "ef7a9aa0b91396e557726d730a27f11810a51ec120c371fbd0d76f72d6836821"
+    },
+    {
+      "id": "secondary",
+      "name": "次要文字按钮底板",
+      "state": "disabled",
+      "file": "04_action_buttons/secondary/secondary_disabled.png",
+      "width": 2087,
+      "height": 754,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        186,
+        179,
+        1903,
+        557
+      ],
+      "sha256": "563898a4cd3b06d3029260c264be2121a773c5115d05793c607f2e744cff71b5"
+    },
+    {
+      "id": "scroll_handle",
+      "name": "滚动条拖动柄",
+      "state": "normal",
+      "file": "05_settings_controls/scroll_handle/scroll_handle_normal.png",
+      "width": 724,
+      "height": 2173,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        194,
+        312,
+        530,
+        1861
+      ],
+      "sha256": "0858253d6e1c1163d6de0430f0967534d094e7dd60866f7a677ff8273b1b50d1"
+    },
+    {
+      "id": "scroll_handle",
+      "name": "滚动条拖动柄",
+      "state": "hover",
+      "file": "05_settings_controls/scroll_handle/scroll_handle_hover.png",
+      "width": 724,
+      "height": 2172,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        191,
+        307,
+        532,
+        1861
+      ],
+      "sha256": "542b8be57121c13ebc561838b9be4aea6df5f6524d4afca9f9364b51a9a37708"
+    },
+    {
+      "id": "scroll_handle",
+      "name": "滚动条拖动柄",
+      "state": "pressed",
+      "file": "05_settings_controls/scroll_handle/scroll_handle_pressed.png",
+      "width": 724,
+      "height": 2172,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        193,
+        308,
+        531,
+        1861
+      ],
+      "sha256": "58f682b907ebdb8243ea87280104e01d00d54d6fafff69e696f108e45d011fdd"
+    },
+    {
+      "id": "scroll_handle",
+      "name": "滚动条拖动柄",
+      "state": "disabled",
+      "file": "05_settings_controls/scroll_handle/scroll_handle_disabled.png",
+      "width": 724,
+      "height": 2172,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        192,
+        308,
+        532,
+        1861
+      ],
+      "sha256": "32011d6522f7f7dcd0e5fc13862b9882a5764c78260f6e54935e2cc654d8ad4b"
+    },
+    {
+      "id": "scroll_track",
+      "name": "滚动条空轨",
+      "state": "static",
+      "file": "05_settings_controls/scroll_track/scroll_track_static.png",
+      "width": 1145,
+      "height": 1374,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        458,
+        50,
+        688,
+        1317
+      ],
+      "sha256": "64e885aa72cb67ee176eb722127d82d94968714277d33902d70b71f969cc3242"
+    },
+    {
+      "id": "slider_fill",
+      "name": "滑杆填充条",
+      "state": "static",
+      "file": "05_settings_controls/slider_fill/slider_fill_static.png",
+      "width": 2098,
+      "height": 749,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        90,
+        330,
+        2009,
+        418
+      ],
+      "sha256": "95b732e15653e3af6784a9b0bac6a0ce4bb82f0e8e0ab71028c74b0a4ca44c7a"
+    },
+    {
+      "id": "slider_handle",
+      "name": "滑杆拖动柄",
+      "state": "normal",
+      "file": "05_settings_controls/slider_handle/slider_handle_normal.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        353,
+        349,
+        901,
+        898
+      ],
+      "sha256": "eac01bf649318b081ae43ab13a236a94828302556b2711f3bb9d17bb119a4c5f"
+    },
+    {
+      "id": "slider_handle",
+      "name": "滑杆拖动柄",
+      "state": "hover",
+      "file": "05_settings_controls/slider_handle/slider_handle_hover.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        352,
+        347,
+        903,
+        899
+      ],
+      "sha256": "2d9d7730201e430fb9df00341804822342936e0eaf55e33af0d03c245a544973"
+    },
+    {
+      "id": "slider_handle",
+      "name": "滑杆拖动柄",
+      "state": "pressed",
+      "file": "05_settings_controls/slider_handle/slider_handle_pressed.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        353,
+        345,
+        901,
+        901
+      ],
+      "sha256": "f118bd575df2533900388d55b2d5c44fc8416e1b8cf6bfd9d241d4691ebf2666"
+    },
+    {
+      "id": "slider_handle",
+      "name": "滑杆拖动柄",
+      "state": "disabled",
+      "file": "05_settings_controls/slider_handle/slider_handle_disabled.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        351,
+        345,
+        903,
+        900
+      ],
+      "sha256": "e32c9f63e3a0c3fdbff383d009ed3b138f869c62612557c8d7ada56266114a41"
+    },
+    {
+      "id": "slider_track",
+      "name": "滑杆空轨",
+      "state": "static",
+      "file": "05_settings_controls/slider_track/slider_track_static.png",
+      "width": 2172,
+      "height": 724,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        127,
+        243,
+        2045,
+        485
+      ],
+      "sha256": "ff859585c35ee5fbaa363bff943afd9c50f34c5862e8a537f8d851dec169a155"
+    },
+    {
+      "id": "tab_off",
+      "name": "页签未选中",
+      "state": "normal",
+      "file": "05_settings_controls/tab_off/tab_off_normal.png",
+      "width": 2172,
+      "height": 724,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        157,
+        129,
+        2015,
+        586
+      ],
+      "sha256": "8d399590ee50b71dec79e4bb9a4bf28b84c2c5462dd57e63648aa217485e3393"
+    },
+    {
+      "id": "tab_off",
+      "name": "页签未选中",
+      "state": "hover",
+      "file": "05_settings_controls/tab_off/tab_off_hover.png",
+      "width": 2172,
+      "height": 724,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        156,
+        124,
+        2017,
+        588
+      ],
+      "sha256": "2b58b5841853510d49d79e56a77641965f1747bbc41fe62f006488e0b9aaf94a"
+    },
+    {
+      "id": "tab_off",
+      "name": "页签未选中",
+      "state": "pressed",
+      "file": "05_settings_controls/tab_off/tab_off_pressed.png",
+      "width": 2172,
+      "height": 724,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        148,
+        125,
+        2024,
+        589
+      ],
+      "sha256": "57a5c23a6ad04cec1e274f1a3e1fd0f28683e5d715081bdd635faffac475d2d6"
+    },
+    {
+      "id": "tab_off",
+      "name": "页签未选中",
+      "state": "disabled",
+      "file": "05_settings_controls/tab_off/tab_off_disabled.png",
+      "width": 2172,
+      "height": 724,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        156,
+        126,
+        2017,
+        587
+      ],
+      "sha256": "21465bd139f109260c473e9f7c03fdfe6392f3ae07add66feaa0e2e051b25912"
+    },
+    {
+      "id": "tab_on",
+      "name": "页签已选中",
+      "state": "normal",
+      "file": "05_settings_controls/tab_on/tab_on_normal.png",
+      "width": 2172,
+      "height": 724,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        143,
+        124,
+        2029,
+        589
+      ],
+      "sha256": "ce828aa4fe1c62c4f6db4e372b2596446dc07d53d698b80e2749796e1ba7519e"
+    },
+    {
+      "id": "tab_on",
+      "name": "页签已选中",
+      "state": "hover",
+      "file": "05_settings_controls/tab_on/tab_on_hover.png",
+      "width": 2172,
+      "height": 724,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        129,
+        118,
+        2042,
+        594
+      ],
+      "sha256": "24293f503a2d7f793cdd18a22f823f2efb0405f2a77f8fd44cc860252e47811e"
+    },
+    {
+      "id": "tab_on",
+      "name": "页签已选中",
+      "state": "pressed",
+      "file": "05_settings_controls/tab_on/tab_on_pressed.png",
+      "width": 2172,
+      "height": 724,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        134,
+        120,
+        2037,
+        593
+      ],
+      "sha256": "53ec50a8c9860ec1bdd80966b561b88b845ec32e3b57e3802ae7307ebec84b98"
+    },
+    {
+      "id": "tab_on",
+      "name": "页签已选中",
+      "state": "disabled",
+      "file": "05_settings_controls/tab_on/tab_on_disabled.png",
+      "width": 2172,
+      "height": 724,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        143,
+        121,
+        2029,
+        591
+      ],
+      "sha256": "9a677b926f7abd118c964e49a9d60cd2ecb9634d6eeb28b54813fde05efc306b"
+    },
+    {
+      "id": "toggle_off",
+      "name": "开关关态",
+      "state": "normal",
+      "file": "05_settings_controls/toggle_off/toggle_off_normal.png",
+      "width": 1942,
+      "height": 809,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        289,
+        177,
+        1653,
+        620
+      ],
+      "sha256": "380102deaf7588cc956f805f572f2427d2223ca128ed83bfff84491a181864ef"
+    },
+    {
+      "id": "toggle_off",
+      "name": "开关关态",
+      "state": "hover",
+      "file": "05_settings_controls/toggle_off/toggle_off_hover.png",
+      "width": 1942,
+      "height": 809,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        286,
+        174,
+        1656,
+        623
+      ],
+      "sha256": "1c108a0f632cce44cd59b53f223f2d1b24c809daaa0c82a42724d11c206a0a84"
+    },
+    {
+      "id": "toggle_off",
+      "name": "开关关态",
+      "state": "pressed",
+      "file": "05_settings_controls/toggle_off/toggle_off_pressed.png",
+      "width": 1944,
+      "height": 809,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        288,
+        174,
+        1656,
+        622
+      ],
+      "sha256": "04a9616931441298d2842974eaedb13700a3f606b27b5f4a04758ab7806401bc"
+    },
+    {
+      "id": "toggle_off",
+      "name": "开关关态",
+      "state": "disabled",
+      "file": "05_settings_controls/toggle_off/toggle_off_disabled.png",
+      "width": 1944,
+      "height": 809,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        290,
+        176,
+        1656,
+        621
+      ],
+      "sha256": "781134d79938afaca5a343c92aa519df85dafc173ba6f6dd6275d3b9834e28f7"
+    },
+    {
+      "id": "toggle_on",
+      "name": "开关开态",
+      "state": "normal",
+      "file": "05_settings_controls/toggle_on/toggle_on_normal.png",
+      "width": 1944,
+      "height": 809,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        289,
+        174,
+        1655,
+        622
+      ],
+      "sha256": "005f774bf7ca369c9cfe7014915facd849b8d07418ff4705709228d6dff15770"
+    },
+    {
+      "id": "toggle_on",
+      "name": "开关开态",
+      "state": "hover",
+      "file": "05_settings_controls/toggle_on/toggle_on_hover.png",
+      "width": 1944,
+      "height": 809,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        289,
+        173,
+        1655,
+        622
+      ],
+      "sha256": "76821e76d69e498b940adc8a35a1dda5f72dae93fa16d43f4e5281a3ce310dc2"
+    },
+    {
+      "id": "toggle_on",
+      "name": "开关开态",
+      "state": "pressed",
+      "file": "05_settings_controls/toggle_on/toggle_on_pressed.png",
+      "width": 1944,
+      "height": 809,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        289,
+        171,
+        1656,
+        623
+      ],
+      "sha256": "d5808dc58f8b12f944e3317b06b8b73faf666e365e65f7b0f667ccdb1452502b"
+    },
+    {
+      "id": "toggle_on",
+      "name": "开关开态",
+      "state": "disabled",
+      "file": "05_settings_controls/toggle_on/toggle_on_disabled.png",
+      "width": 1944,
+      "height": 809,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        289,
+        171,
+        1657,
+        622
+      ],
+      "sha256": "ea956357712df51a224fbcbb76c27f2563f6f02f3e1299b5bdd2540eafb7a1fd"
+    },
+    {
+      "id": "dialog",
+      "name": "确认弹窗底板",
+      "state": "static",
+      "file": "06_panels_notices/dialog/dialog_static.png",
+      "width": 1635,
+      "height": 962,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        113,
+        227,
+        1523,
+        708
+      ],
+      "sha256": "8f2e2c7ded20e1dce22cf115f9048631476f8202310a9aea19c93166f3ce64e6"
+    },
+    {
+      "id": "notice",
+      "name": "全局提示条",
+      "state": "static",
+      "file": "06_panels_notices/notice/notice_static.png",
+      "width": 2079,
+      "height": 756,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        143,
+        216,
+        1936,
+        537
+      ],
+      "sha256": "2cf957248054e0aeff1a43ecead33e8d244da1df58638b0270df08ecacac7ee3"
+    },
+    {
+      "id": "panel_large",
+      "name": "通用功能面板",
+      "state": "static",
+      "file": "06_panels_notices/panel_large/panel_large_static.png",
+      "width": 1510,
+      "height": 1041,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        106,
+        120,
+        1405,
+        917
+      ],
+      "sha256": "106b7bae65c90bfd2f974a7cafc4702a6a6c96ce32d8eb1b19bfa4ad9d81f190"
+    },
+    {
+      "id": "tooltip",
+      "name": "悬浮说明底板",
+      "state": "static",
+      "file": "06_panels_notices/tooltip/tooltip_static.png",
+      "width": 1774,
+      "height": 887,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        178,
+        204,
+        1596,
+        690
+      ],
+      "sha256": "ccee1fbf93403d741017890fbfeb820a08c05545ae274dfbbd82994b134c1fe7"
+    },
+    {
+      "id": "defeat",
+      "name": "失败结算标题",
+      "state": "static",
+      "file": "07_results/defeat/defeat_static.png",
+      "width": 2094,
+      "height": 751,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        152,
+        97,
+        1941,
+        632
+      ],
+      "sha256": "cbc9ea2faf061eb6f1c409ed4b17823e91e1c7d172a3b076c8dcbbe1d13f425d"
+    },
+    {
+      "id": "victory",
+      "name": "胜利结算标题",
+      "state": "static",
+      "file": "07_results/victory/victory_static.png",
+      "width": 2095,
+      "height": 751,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        156,
+        101,
+        1940,
+        635
+      ],
+      "sha256": "ad3df83a108406d77612d10c2ef88a44a69d878fada17de0bc8a7b91a1d755c8"
+    },
+    {
+      "id": "decor_corner",
+      "name": "转角装饰件",
+      "state": "static",
+      "file": "08_decor/decor_corner/decor_corner_static.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        223,
+        225,
+        1151,
+        1050
+      ],
+      "sha256": "43979ed02e6baa37f88acd7052754518ee0323b986726d75a44cf79646ade533"
+    },
+    {
+      "id": "decor_horizontal",
+      "name": "横向装饰导轨",
+      "state": "static",
+      "file": "08_decor/decor_horizontal/decor_horizontal_static.png",
+      "width": 2172,
+      "height": 724,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        97,
+        279,
+        2075,
+        447
+      ],
+      "sha256": "b80a110e786ad752c14f2eda512080e8800cb9be1af754c8206b609adffca3c2"
+    },
+    {
+      "id": "decor_vertical",
+      "name": "纵向装饰导轨",
+      "state": "static",
+      "file": "08_decor/decor_vertical/decor_vertical_static.png",
+      "width": 746,
+      "height": 2108,
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "solid_bounds_alpha128": [
+        297,
+        106,
+        449,
+        2001
+      ],
+      "sha256": "ba4e3990211d426353805fc9f42d2a4a3baf1bd0ea3767c2a114972b1afd43d2"
+    }
+  ]
+}

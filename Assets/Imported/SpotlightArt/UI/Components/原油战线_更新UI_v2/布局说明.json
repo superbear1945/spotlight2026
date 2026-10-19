@@ -1,0 +1,47 @@
+{
+  "reference_resolution": [
+    1672,
+    941
+  ],
+  "coordinate_notes": "以下位置按组件可见外轮廓计算，屏幕坐标原点为左上。布局建议，非已制作Unity预制体。",
+  "round_counter": {
+    "center": [
+      836,
+      93
+    ],
+    "diameter": 166,
+    "anchor": "top-center",
+    "fixed_across_turns": true
+  },
+  "turn_label": {
+    "visible_size": [
+      320,
+      100
+    ],
+    "gap_to_counter": 6,
+    "player_side": "left",
+    "opponent_side": "right",
+    "same_vertical_center": 93,
+    "rule": "只切换长条所在侧，圆形计数器始终保持中轴。不要居中整个组合。"
+  },
+  "toolbar": {
+    "anchor": "top-right",
+    "visible_button_width": 44,
+    "spacing": 8,
+    "right_margin": 28,
+    "top_margin": 28,
+    "order": [
+      "pause",
+      "settings",
+      "history",
+      "help"
+    ],
+    "preserve_image_aspect": true
+  },
+  "shared_sprite_rect_bottom_left_origin": {
+    "x": 307,
+    "y": 332,
+    "width": 641,
+    "height": 593
+  }
+}

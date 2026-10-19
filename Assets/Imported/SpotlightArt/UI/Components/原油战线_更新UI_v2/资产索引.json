@@ -1,0 +1,311 @@
+{
+  "project": "原油战线",
+  "version": "UI-update-v2",
+  "png_count": 16,
+  "assets": [
+    {
+      "id": "pause",
+      "name": "暂停",
+      "state": "normal",
+      "file": "01_pause/pause_normal.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "solid_bounds_alpha128": [
+        323,
+        344,
+        931,
+        905
+      ],
+      "sha256": "850c3ae88cba9773823fdd946f29d0e4f88c460b55a116f0eb24b89c41c38419"
+    },
+    {
+      "id": "pause",
+      "name": "暂停",
+      "state": "hover",
+      "file": "01_pause/pause_hover.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "solid_bounds_alpha128": [
+        321,
+        341,
+        934,
+        908
+      ],
+      "sha256": "e0e80871140c925b201c2d886932e8097e3f8ad37c598aa4469d32a87484def4"
+    },
+    {
+      "id": "pause",
+      "name": "暂停",
+      "state": "pressed",
+      "file": "01_pause/pause_pressed.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "solid_bounds_alpha128": [
+        321,
+        343,
+        933,
+        906
+      ],
+      "sha256": "4375566bdfd35bad4ab9b34181ef0019eeb972a9bc54366e92ef85694dec9622"
+    },
+    {
+      "id": "pause",
+      "name": "暂停",
+      "state": "disabled",
+      "file": "01_pause/pause_disabled.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "solid_bounds_alpha128": [
+        322,
+        343,
+        933,
+        906
+      ],
+      "sha256": "41b758f83c57f38545030542bdba81158ae32b4edfb9d039f6e1e6f5e4287f99"
+    },
+    {
+      "id": "settings",
+      "name": "设置",
+      "state": "normal",
+      "file": "02_settings/settings_normal.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "solid_bounds_alpha128": [
+        321,
+        343,
+        933,
+        907
+      ],
+      "sha256": "6118989130703b6331f9285d3bce4dcaf8132f95560fd0c4522e3177c0a1a647"
+    },
+    {
+      "id": "settings",
+      "name": "设置",
+      "state": "hover",
+      "file": "02_settings/settings_hover.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "solid_bounds_alpha128": [
+        320,
+        342,
+        935,
+        908
+      ],
+      "sha256": "309c430839c48292fd35c375347177a24ffd5023f885f51c5f44b8c11e6a3c8c"
+    },
+    {
+      "id": "settings",
+      "name": "设置",
+      "state": "pressed",
+      "file": "02_settings/settings_pressed.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "solid_bounds_alpha128": [
+        320,
+        342,
+        935,
+        909
+      ],
+      "sha256": "f20888d56f2869ff5be77441bca8f653aa92a120f8e7a0cc6f7aee28c730f927"
+    },
+    {
+      "id": "settings",
+      "name": "设置",
+      "state": "disabled",
+      "file": "02_settings/settings_disabled.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "solid_bounds_alpha128": [
+        321,
+        342,
+        934,
+        908
+      ],
+      "sha256": "e82d77627520dbb910eaf4f61e0fe59d6d4d80c0c4e54215f618d640504e2689"
+    },
+    {
+      "id": "history",
+      "name": "战斗记录",
+      "state": "normal",
+      "file": "03_history/history_normal.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "solid_bounds_alpha128": [
+        322,
+        343,
+        933,
+        906
+      ],
+      "sha256": "e77879d48f29dafba11523aaf3ee11dba7214ffe76dd9f856815168d4d4af96d"
+    },
+    {
+      "id": "history",
+      "name": "战斗记录",
+      "state": "hover",
+      "file": "03_history/history_hover.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "solid_bounds_alpha128": [
+        321,
+        341,
+        934,
+        908
+      ],
+      "sha256": "7b0142e1cc1867dfdf95c000bc6f31ed6b4f7bb69e37991907eb926625be09fb"
+    },
+    {
+      "id": "history",
+      "name": "战斗记录",
+      "state": "pressed",
+      "file": "03_history/history_pressed.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "solid_bounds_alpha128": [
+        320,
+        341,
+        934,
+        908
+      ],
+      "sha256": "05385c0f20e73477820996823165966d3974a581730189492c4cc37e8b561aa6"
+    },
+    {
+      "id": "history",
+      "name": "战斗记录",
+      "state": "disabled",
+      "file": "03_history/history_disabled.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "solid_bounds_alpha128": [
+        320,
+        343,
+        935,
+        907
+      ],
+      "sha256": "e3cc659ea97e7eaa4a9e627ac17b52aff54a6ebe92c82e5bdf5439301d2c6da7"
+    },
+    {
+      "id": "help",
+      "name": "帮助",
+      "state": "normal",
+      "file": "04_help/help_normal.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "solid_bounds_alpha128": [
+        321,
+        343,
+        934,
+        906
+      ],
+      "sha256": "0dc57e19898515ce1a235cb54dea7bc752761f5801d776d27eb34a7d458b3203"
+    },
+    {
+      "id": "help",
+      "name": "帮助",
+      "state": "hover",
+      "file": "04_help/help_hover.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "solid_bounds_alpha128": [
+        319,
+        341,
+        936,
+        910
+      ],
+      "sha256": "45b27466fbd7e2be3c50558db03da4f3efdcf409c5c077322667ee1a99629039"
+    },
+    {
+      "id": "help",
+      "name": "帮助",
+      "state": "pressed",
+      "file": "04_help/help_pressed.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "solid_bounds_alpha128": [
+        320,
+        342,
+        935,
+        908
+      ],
+      "sha256": "33a7bf73d0d54a9a8c9df46f6e8148b002c09f2cf80ba54decb25df31573aab7"
+    },
+    {
+      "id": "help",
+      "name": "帮助",
+      "state": "disabled",
+      "file": "04_help/help_disabled.png",
+      "width": 1254,
+      "height": 1254,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "solid_bounds_alpha128": [
+        320,
+        342,
+        935,
+        908
+      ],
+      "sha256": "89a55b6e757211bda8eb5e80750e1c07d0b74be6ec16084dd30f4d567c0c9e8b"
+    }
+  ]
+}
