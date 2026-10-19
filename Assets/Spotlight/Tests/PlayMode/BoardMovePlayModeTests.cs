@@ -594,7 +594,15 @@ namespace Spotlight.Tests
         {
             var context = new SceneContext();
             yield return context.Load();
-            var session = context.Session;
+            // 此用例验证选中与缩放，不验证随机抽牌；复用独立的固定战斗卡牌堆，
+            // 避免正式起手恰好全是即时卡或需要覆盖升级的卡，导致尚未点击单位就失败。
+            var sourceJson = JsonUtility.ToJson(context.Bootstrap.CurrentAsset.ToDocument());
+            context.Bootstrap.RestartWith(CreateMovementConfiguration(context.Bootstrap));
+            yield return null;
+            yield return WaitForPresentation(context.Bootstrap);
+            var session = context.Bootstrap.Session;
+            Assert.That(JsonUtility.ToJson(context.Bootstrap.CurrentAsset.ToDocument()), Is.EqualTo(sourceJson),
+                "准备点击测试时不得修改正式配置资产");
             var board = context.Board;
 
             Assert.That(TryDeploy(context.Bootstrap, session, context.Hand, requireMoveDistance: false), Is.True, "初始手牌里没有可部署的卡");
