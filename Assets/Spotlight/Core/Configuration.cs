@@ -368,6 +368,10 @@ namespace Spotlight
         public int bossWarshipColumn;
         /// <summary>两艘阶段战舰的卡种引用，须具备战斗与刷怪能力。</summary>
         public string bossWarshipCardType;
+        /// <summary>三阶段 Boss 家前一列护卫舰的卡种引用；属性取 Cards，不在 Rules 重复保存。</summary>
+        public string bossPhaseThreeFrontCardType;
+        /// <summary>三阶段 Boss 家当前列护卫舰的卡种引用；家所在格不会生成。</summary>
+        public string bossPhaseThreeRearCardType;
         /// <summary>抽牌堆总张数（正整数，至少 3）。开局按此数量生成卡牌记录，不再由 Deck 表逐卡种配置。</summary>
         public int drawPileSize;
         /// <summary>初级卡在抽牌堆中的占比（百分比整数，至少 1）。</summary>
@@ -809,6 +813,10 @@ namespace Spotlight
         public int BossWarshipColumn { get; }
         /// <summary>阶段战舰卡种引用。</summary>
         public string BossWarshipCardType { get; }
+        /// <summary>三阶段前列护卫舰卡种的只读引用。</summary>
+        public string BossPhaseThreeFrontCardType { get; }
+        /// <summary>三阶段当前列护卫舰卡种的只读引用。</summary>
+        public string BossPhaseThreeRearCardType { get; }
         /// <summary>玩家是否在左侧。</summary>
         public bool PlayerOnLeft { get; }
         /// <summary>先手阵营。</summary>
@@ -852,6 +860,8 @@ namespace Spotlight
             BossPhaseTwoHp = r.bossPhaseTwoHp;
             BossWarshipColumn = r.bossWarshipColumn;
             BossWarshipCardType = r.bossWarshipCardType;
+            BossPhaseThreeFrontCardType = r.bossPhaseThreeFrontCardType;
+            BossPhaseThreeRearCardType = r.bossPhaseThreeRearCardType;
             PlayerOnLeft = r.playerSide == "left";
             FirstSide = r.firstSide == "player" ? Side.Player : Side.Boss;
             BossCardType = r.bossCardType;
@@ -1276,6 +1286,21 @@ namespace Spotlight
             // 二阶段完成依赖两艘真实在场战舰的阵亡，部署即离场会永久卡住存活记录。
             if (ship != null && ship.Instant != null)
                 errors.Add("Rules bossWarshipCardType：战舰不能是即时卡");
+            ValidateBossGuard("bossPhaseThreeFrontCardType", rules.BossPhaseThreeFrontCardType, cards, errors);
+            ValidateBossGuard("bossPhaseThreeRearCardType", rules.BossPhaseThreeRearCardType, cards, errors);
+        }
+
+        /// <summary>
+        /// 校验一个护卫舰引用。输入为字段名、引用和卡种清单；输出为追加错误列表。
+        /// 禁止可携带、即时或治疗型卡种，保证阶段生成的实体可存活且能攻击资源目标；允许配置零移动的阵地舰。
+        /// </summary>
+        static void ValidateBossGuard(string field, string id, IEnumerable<CardArchetype> cards, List<string> errors)
+        {
+            var guard = cards.FirstOrDefault(c => c.Id == id);
+            if (guard == null || guard.Category != CardCategory.Attack || guard.Tier != CardTier.None ||
+                guard.Combat == null || guard.Combat.Hp < 1 || guard.Combat.Attack < 1 || guard.Combat.Range < 1 ||
+                !guard.Combat.CanAttackResources || guard.AttacksAlliesAsHeal || guard.Instant != null)
+                errors.Add($"Rules {field}：须引用 tier=none、非即时、非治疗型且可攻击资源的攻击卡，生命、攻击与射程必须为正整数；旧配置请补齐三阶段护卫舰引用");
         }
 
         /// <summary>

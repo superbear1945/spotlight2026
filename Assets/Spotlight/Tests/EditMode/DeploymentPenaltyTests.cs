@@ -44,6 +44,7 @@ namespace Spotlight.Tests
                     new CardRow { tier = "none", id = "bossPenalty", name = "减攻敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default", deploymentPenaltyComponent = true, deploymentAttackReduction = 1 },
                     new CardRow { tier = "none", id = "bossFighter", name = "战机", category = "attack", hp = 3, atk = 2, range = 1, moveDistance = 1, viewKey = "default" },
                     new CardRow { tier = "none", id = "spawner", name = "刷怪卡", category = "special", hp = 1, viewKey = "default", canSwap = false, spawnComponent = true, spawnCardType = "bossFighter" },
+                    new CardRow { tier = "none", id = "phaseGuard", name="测试护卫舰", category="attack", hp=7, atk=1, range=2, moveDistance=1, viewKey="default" },
                     new CardRow { tier = "none", id = "warship", name="战舰", category="attack", hp=15, atk=2, range=1, moveDistance=1, canAttackResources=false, spawnComponent=true, spawnCardType="bossFighter", viewKey="default" },
                     // 仅用于满足“中级至少一种可携带卡种”的配置校验，不参与任何断言。
                     new CardRow { tier = "intermediate", id = "fillerIntermediate", name = "夹具中级卡", category = "resource", hp = 1, resourceComponent = true, produce = 0, viewKey = "default" }
@@ -54,7 +55,7 @@ namespace Spotlight.Tests
                     {
                         drawPileSize = 24, tierRatioBasic = 70, tierRatioIntermediate = 20, tierRatioAdvanced = 10, maxTypesBasic = 5, maxTypesIntermediate = 3, maxTypesAdvanced = 2,
                         bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 1, bossSpawnerUnitThreshold = 3, bossSpawnerDeployFromColumn = 1,
-                        bossSpawnerCardType = "spawner", bossPhaseTwoHp = 1, bossWarshipColumn = 1, bossWarshipCardType = "warship",
+                        bossSpawnerCardType = "spawner", bossPhaseTwoHp = 1, bossWarshipColumn = 1, bossWarshipCardType = "warship", bossPhaseThreeFrontCardType = "phaseGuard", bossPhaseThreeRearCardType = "phaseGuard",
                         bossBombInterval = 1000, bossBombDamage = 3, bossBombColumn = 5,
                         rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 30, bossPlays = 10, drawCount = 40, handLimit = 200,
                         initialResources = 0, bossRespawnDelay = 2, playerSide = "left", firstSide = "player",

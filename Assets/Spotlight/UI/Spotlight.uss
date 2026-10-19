@@ -434,11 +434,6 @@
     margin-right: 8px;
 }
 
-.cfg-json {
-    min-height: 180px;
-    font-size: 12px;
-}
-
 .bomb-button { border-bottom-color: rgb(220, 110, 45); border-bottom-width: 2px; }
 
 /* ── 战斗界面（新 UI，默认显示） ──────────────────────────────────────────

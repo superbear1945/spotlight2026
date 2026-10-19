@@ -150,6 +150,8 @@ namespace Spotlight.EditorTools
                 new ColumnDefinition("bossPhaseTwoHp", ColumnType.Integer, true, "二阶段锁血阈值，默认 20，须大于 0 且小于 Boss 初始生命。越过阈值的伤害截断到此值并立即部署两艘战舰。"),
                 new ColumnDefinition("bossWarshipColumn", ColumnType.Integer, true, "战舰部署列，默认 8，从玩家一侧起算并随阵营镜像，必须在棋盘内；首选格被占时寻找最近空格。"),
                 new ColumnDefinition("bossWarshipCardType", ColumnType.Text, true, "阶段战舰卡种，默认 bossWarship，须具有战斗与刷怪能力且不能攻击资源卡；两艘均阵亡后进入三阶段。"),
+                new ColumnDefinition("bossPhaseThreeFrontCardType", ColumnType.Text, true, "三阶段前列护卫舰卡种，默认 bossGuardType1；生命、攻击、射程和移动距离在 Cards 配置。"),
+                new ColumnDefinition("bossPhaseThreeRearCardType", ColumnType.Text, true, "三阶段 Boss 家当前列护卫舰卡种，默认 bossGuardType2；家所在格不生成。"),
                 new ColumnDefinition("drawPileSize", ColumnType.Integer, true, "玩家抽牌堆总张数，默认 24，必须至少 3。开局按此数量生成卡牌记录；不再由 Deck 表逐卡种配置（Deck 表已废除）。"),
                 new ColumnDefinition("tierRatioBasic", ColumnType.Integer, true, "初级卡在抽牌堆中的占比百分比，默认 70，必须至少 1。三阶级比例之和必须为 100，不支持 0%。"),
                 new ColumnDefinition("tierRatioIntermediate", ColumnType.Integer, true, "中级卡在抽牌堆中的占比百分比，默认 20，必须至少 1。"),

@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: ConfigManifest
   m_EditorClassIdentifier: 
   _sourceWorkbookPath: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceHash: 97e816292fae43ec8b625eac4cbaf606eaeb102924a3e44db8ba17b171f03fb0
-  _compiledAtUtc: 2026-10-18T15:21:24.0563572Z
+  _sourceHash: 19c5f987b4716e6976ad9848462c6bbd10c8090aa3d9f52ac0fd2f6abce84117
+  _compiledAtUtc: 2026-10-19T02:17:46.4400117Z
   _generatedPaths:
   - Assets/Spotlight/Generated/Cards/ge1.asset
   - Assets/Spotlight/Generated/Cards/ge1.prefab
@@ -62,4 +62,8 @@ MonoBehaviour:
   - Assets/Spotlight/Generated/Cards/snpEu.prefab
   - Assets/Spotlight/Generated/Cards/napoleon1769.asset
   - Assets/Spotlight/Generated/Cards/napoleon1769.prefab
+  - Assets/Spotlight/Generated/Cards/bossGuardType1.asset
+  - Assets/Spotlight/Generated/Cards/bossGuardType1.prefab
+  - Assets/Spotlight/Generated/Cards/bossGuardType2.asset
+  - Assets/Spotlight/Generated/Cards/bossGuardType2.prefab
   - Assets/Spotlight/Generated/Resources/SpotlightConfig.asset

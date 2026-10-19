@@ -76,6 +76,64 @@ namespace Spotlight.Tests
             yield return null;
         }
 
+        /// <summary>三阶段顶替删除旧卡面、生成九艘可点击穿透的新护卫舰，属性来自隔离配置；重开清除阶段视图。</summary>
+        [UnityTest]
+        public IEnumerator PhaseThreeReplacesViewsAndUsesDebugAttributes()
+        {
+            yield return Load();
+            var d = _sourceAsset.ToDocument();
+            d.rules[0].playerControlsBoss = true; d.rules[0].homeRegionWidth = 10;
+            d.rules[0].playerPlays = 30; d.rules[0].drawCount = 20; d.rules[0].handLimit = 50;
+            d.rules[0].summoningSickness = false; d.rules[0].bossBombInterval = 1000;
+            d.rules[0].bossSpawnerAttackThreshold = 10000;
+            var soldier = d.cards.Single(c => c.id == "blade1"); soldier.atk = 20; soldier.range = 30; soldier.upkeep = 0;
+            var guard = d.cards.Single(c => c.id == d.rules[0].bossPhaseThreeFrontCardType);
+            guard.hp = 12; guard.atk = 4; guard.range = 3;
+            d.presentation[0].moveSeconds = .01f; d.presentation[0].feedbackSeconds = .01f;
+            _configuration = new GameConfiguration(d).WithDeck(new[] { new DeckEntry(soldier.id, 20) }, false);
+            _bootstrap.RestartWith(_configuration); yield return WaitForPresentation();
+            var attackers = new long[4];
+            for (var i = 0; i < 4; i++)
+            {
+                var card = _bootstrap.Session.GetSnapshot().Hand.First();
+                var cell = i == 3 ? new Cell(0, 8) : new Cell(0, i);
+                Submit(new GameCommand(CommandKind.Deploy, Side.Player, card.Id, cell));
+                yield return WaitForPresentation();
+                attackers[i] = _bootstrap.Session.GetSnapshot().Units.Single(u => u.SourceCardId == card.Id).Id;
+            }
+            Submit(new GameCommand(CommandKind.Attack, Side.Player, attackers[0], targetId: -2));
+            yield return WaitForPresentation();
+            var ships = _bootstrap.Session.GetSnapshot().BossWarships.ToArray();
+            for (var i = 0; i < 2; i++)
+            {
+                Submit(new GameCommand(CommandKind.Attack, Side.Player, attackers[i + 1], targetId: ships[i].UnitId.Value));
+                yield return WaitForPresentation();
+            }
+            var state = _bootstrap.Session.GetSnapshot();
+            var guards = state.Units.Where(u => u.AiTargetPolicy == AiTargetPolicy.BossGuard).ToArray();
+            Assert.That(guards.Length, Is.EqualTo(9));
+            Assert.That(state.BossInvulnerable, Is.False);
+            Assert.That(_board.GetCard(attackers[3]), Is.Null);
+            foreach (var unit in guards)
+            {
+                var view = _board.GetCard(unit.Id);
+                Assert.That(view, Is.Not.Null);
+                Assert.That(view.transform.parent, Is.EqualTo(_board.CellRect(unit.Position)));
+                Assert.That(view.GetComponentsInChildren<Graphic>().All(g => !g.raycastTarget), Is.True);
+                if (unit.TypeId == guard.id)
+                {
+                    Assert.That(new[] { unit.Hp, unit.Attack, unit.Range }, Is.EqualTo(new[] { 12, 4, 3 }));
+                    var text = string.Join(" ", view.GetComponentsInChildren<TMPro.TMP_Text>().Select(t => t.text));
+                    Assert.That(text, Does.Contain("12"));
+                }
+            }
+            Assert.That(Object.FindObjectOfType<HudView>().Root.Q<Label>("boss-phase-label").text, Does.Contain("第 3 阶段"));
+            _bootstrap.RestartWith(_configuration); yield return WaitForPresentation();
+            Assert.That(_bootstrap.Session.GetSnapshot().BossPhase, Is.EqualTo(BossPhase.PhaseOne));
+            foreach (var unit in guards) Assert.That(_board.GetCard(unit.Id), Is.Null);
+            LogAssert.NoUnexpectedReceived();
+        }
+
         /// <summary>自动部署战舰、锁血提示、手动放牌与真实移动动画完整连接；重开清除阶段和旧视图。</summary>
         [UnityTest]
         public IEnumerator PhaseTransitionShipsMoveAndRestartWithoutStaleViews()

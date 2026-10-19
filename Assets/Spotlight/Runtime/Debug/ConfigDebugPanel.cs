@@ -52,8 +52,6 @@ namespace Spotlight
         Label _errorLabel;
         /// <summary>“应用并重开”按钮（校验失败时禁用）。</summary>
         Button _applyButton;
-        /// <summary>JSON 编辑框。</summary>
-        TextField _json;
         /// <summary>JSON 区域状态文本。</summary>
         Label _jsonStatus;
 
@@ -101,7 +99,6 @@ namespace Spotlight
             _deckSummary = null;
             _errorLabel = root.Q<Label>("debug-error");
             _applyButton = root.Q<Button>("debug-apply-button");
-            _json = root.Q<TextField>("debug-json");
             _jsonStatus = root.Q<Label>("debug-json-status");
 
             Hook("debug-close-button", Close);
@@ -174,7 +171,7 @@ namespace Spotlight
             {
                 var document = _draft.Document;
                 // 配置资产缺失时草稿可能只有空文档；此时只保留 JSON 区域，
-                // 让策划仍能通过“从下方导入”恢复一份可用配置，而不是在表单构建时抛空引用。
+                // 让策划仍能通过剪贴板导入恢复一份可用配置，而不是在表单构建时抛空引用。
                 if (document == null || document.rules == null || document.rules.Length == 0
                     || document.homes == null || document.homes.Length < 2
                     || document.cards == null || document.cards.Length == 0
@@ -184,11 +181,10 @@ namespace Spotlight
                     if (_deckSummary != null) _deckSummary.text = string.Empty;
                     if (_errorLabel != null)
                     {
-                        _errorLabel.text = "没有可用的配置：请先执行 Tools/Spotlight/编译全部配置，或在下方粘贴 JSON 后点击“从下方导入”。";
+                        _errorLabel.text = "没有可用的配置：请先执行 Tools/Spotlight/编译全部配置，或复制配置 JSON 后点击“从剪贴板导入”。";
                         _errorLabel.style.display = DisplayStyle.Flex;
                     }
                     if (_applyButton != null) _applyButton.SetEnabled(false);
-                    if (_json != null) _json.value = _draft.ExportJson();
                     return;
                 }
                 Clear(_boardContainer, _homeContainer, _deckContainer, _cardsContainer, _bossContainer, _turnContainer);
@@ -199,7 +195,6 @@ namespace Spotlight
                 BuildBoss(document);
                 BuildTurn(document);
                 BuildToggles(document);
-                if (_json != null) _json.value = _draft.ExportJson();
                 RefreshSummaryAndValidation();
             }
             finally
@@ -587,6 +582,17 @@ namespace Spotlight
             }
             var warship = _draft.FindCard(rules.bossWarshipCardType);
             if (warship != null) content.Add(BuildCardBox(warship));
+            var guards = ConfigFieldBuilder.Section("三阶段护卫舰", out var guardContent);
+            guards.name = "boss-phase-three-guards";
+            guardContent.Add(ConfigFieldBuilder.Grid(
+                ConfigFieldBuilder.Choice("前列护卫舰卡种", CardOptions(document, "attack", rules.bossPhaseThreeFrontCardType), () => rules.bossPhaseThreeFrontCardType, value => { rules.bossPhaseThreeFrontCardType = value; ChangedStructure(); }),
+                ConfigFieldBuilder.Choice("当前列护卫舰卡种", CardOptions(document, "attack", rules.bossPhaseThreeRearCardType), () => rules.bossPhaseThreeRearCardType, value => { rules.bossPhaseThreeRearCardType = value; ChangedStructure(); })));
+            var frontGuard = _draft.FindCard(rules.bossPhaseThreeFrontCardType);
+            var rearGuard = _draft.FindCard(rules.bossPhaseThreeRearCardType);
+            if (frontGuard != null) guardContent.Add(BuildCardBox(frontGuard));
+            if (rearGuard != null && rearGuard != frontGuard) guardContent.Add(BuildCardBox(rearGuard));
+            guardContent.Add(ConfigFieldBuilder.Note("进入三阶段立即在 Boss 家当前列和朝玩家方向的前一列生成一次护卫舰，跳过双方的家。占位单位视作死亡，护卫舰不补回并遵守召唤失调。索敌顺序：攻击单位、玩家家、特殊单位、资源单位；攻击单位先看距 Boss 家的距离，同距离优先当前攻击力更高者。修改仅在应用并重开后生效。"));
+            content.Add(guards);
             content.Add(ConfigFieldBuilder.Note("每个 Boss 回合开始仅检查一次。总攻击力包含全部玩家单位，数量只统计攻击类；列号从玩家一侧起算并包含本列，超过棋盘宽度则范围为空。刷怪卡同时最多一张，固定不动，从下个 Boss 回合起持续在八邻生成战机；满格优先顶替玩家单位，无可用位置暂停，下回合重试。技能不消耗普通放牌次数。"));
             content.Add(ConfigFieldBuilder.Grid(
                 ConfigFieldBuilder.Number("炸弹部署间隔（回合）", () => rules.bossBombInterval, value => { rules.bossBombInterval = value; Changed(); }, 1),
@@ -701,26 +707,27 @@ namespace Spotlight
             Rebuild();
         }
 
-        /// <summary>导出草稿 JSON 到编辑框。输入：无；输出：无。</summary>
+        /// <summary>
+        /// 复制完整草稿 JSON 到系统剪贴板。输入：当前草稿；输出：剪贴板文本与简短成功提示。
+        /// 不把 JSON 放入任何界面文本元素，避免长配置超过 UI Toolkit 单元素文本顶点上限。
+        /// </summary>
         void ExportJson()
         {
             if (_draft == null) return;
-            if (_json != null) _json.value = _draft.ExportJson();
-            if (_jsonStatus != null) _jsonStatus.text = "已导出当前草稿 JSON。";
+            GUIUtility.systemCopyBuffer = _draft.ExportJson();
+            if (_jsonStatus != null) _jsonStatus.text = "已复制完整配置 JSON，可粘贴到文本文件保存。";
         }
 
         /// <summary>
-        /// 从编辑框导入 JSON。
-        /// 输入：无（读取界面文本）；输出：无。
-        /// 成功时提示被移除的废弃字段，失败时回滚到导入前的草稿并显示原因。
+        /// 从系统剪贴板导入 JSON。输入：剪贴板全文；输出：草稿表单及导入结果提示。
+        /// 不渲染原始 JSON；Import 仅在解析成功后替换文档，失败不重新导入旧文档，
+        /// 从而保留原草稿的字段引用和强制牌堆设置。成功仍需“应用并重开”才影响对局。
         /// </summary>
         void ImportJson()
         {
-            if (_draft == null || _json == null) return;
-            var previous = _draft.ExportJson();
-            if (!_draft.Import(_json.value, out var error, out var notices))
+            if (_draft == null) return;
+            if (!_draft.Import(GUIUtility.systemCopyBuffer, out var error, out var notices))
             {
-                _draft.Import(previous, out _, out _);
                 if (_jsonStatus != null) _jsonStatus.text = "导入失败：" + error;
                 RefreshSummaryAndValidation();
                 return;
