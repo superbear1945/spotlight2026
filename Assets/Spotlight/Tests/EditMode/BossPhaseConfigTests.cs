@@ -18,7 +18,7 @@ namespace Spotlight.Tests
             var asset = Resources.Load<SpotlightConfigAsset>(ConfigLoader.DefaultResourcePath);
             Assert.That(ConfigLoader.TryCreateConfiguration(out var config, out var error, asset), Is.True, error);
             var d = asset.ToDocument();
-            Assert.That(d.cards.Length, Is.EqualTo(23), "合并后正式卡种为 23 行（含阶段战舰与五张高级新卡）");
+            Assert.That(d.cards.Length, Is.EqualTo(25), "合并后正式卡种为 25 行（含两种三阶段护卫舰）");
             Assert.That(config.Cards["kepler1"].DeployCost, Is.EqualTo(10));
             Assert.That(config.Cards["kepler1"].DeployRequireAdjacentCount, Is.EqualTo(2));
             Assert.That(config.Cards["collector1"].MarkOnEnter, Is.Not.Null);

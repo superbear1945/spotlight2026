@@ -652,7 +652,7 @@ namespace Spotlight
         void Remove(UnitState u, Removal reason)
         {
             _units.Remove(u);
-            // 标记奖励：只在“因战斗阵亡”时结算。覆盖升级、被战机顶替与主动离场都不算死亡，
+            // 标记奖励：战斗阵亡和三阶段清场使用 Death；覆盖升级、通用刷怪顶替与主动离场都不算死亡，
             // 因此不会给标记者发资源；标记本身已随单位消失，不需要额外清理。
             if (reason == Removal.Death && u.MarkedBy.HasValue && u.MarkReward > 0)
             {
@@ -667,8 +667,8 @@ namespace Spotlight
                     Emit("mark-reward", $"被标记单位阵亡：Boss 侧没有资源系统，未发放 {u.MarkReward} 资源", u.Id);
                 }
             }
-            // 死亡加攻：全棋盘任一单位“因战斗阵亡”时，所有在场且未达次数上限的该能力单位增加攻击力。
-            // 与标记奖励共用同一个钩子，所以覆盖升级、被战机顶替与主动离场都不会触发加成。
+            // 死亡加攻：战斗阵亡及三阶段清场时，所有在场且未达次数上限的该能力单位增加攻击力。
+            // 与标记奖励共用钩子；覆盖升级、通用刷怪顶替与主动离场不会触发加成。
             if (reason == Removal.Death)
             {
                 foreach (var grower in _units)
@@ -704,7 +704,7 @@ namespace Spotlight
         /// 玩家顺序：恢复行动 → 引爆到期炸弹 → 可选清零资源 → 存活单位产出及维持费 → 抽牌 → 通用刷怪 → 当前阶段玩家回合技能。
         /// AI 自动布置；手动模式必须布置或跳过后才能进行玩家普通操作。间隔一时先爆旧炸弹再布置新炸弹。
         /// Boss 顺序：读取一阶段技能条件 → 恢复已有行动 → 通用刷怪 → 当前阶段 Boss 回合技能 → 普通行动。
-        /// 一阶段技能含新刷怪笼机会和 AI 补兵；二阶段只重试待部署战舰；三阶段技能占位。
+        /// 一阶段技能含新刷怪笼机会和 AI 补兵；二阶段只重试待部署战舰；三阶段护卫舰仅在阶段进入时生成。
         /// 新单位在恢复行动之后创建以保留召唤失调；Boss 不结算资源与维持费。
         /// 欠费只禁止行动，不能关闭星门部署扩展（扩展在 DeploymentError 中独立判断）。
         /// </summary>
@@ -1043,12 +1043,13 @@ namespace Spotlight
                 while (u.CanAct && _units.Contains(u))
                 {
                     if (_phase == MatchPhase.Finished) return;
-                    var target = Targets(Side.Boss).Where(t => CanTarget(u, t))
-                        .Where(t => CanAttack(u, u.Position, t.Position))
-                        .OrderBy(t => AttackPriority(u, t))
+                    var attackable = Targets(Side.Boss).Where(t => CanTarget(u, t))
+                        .Where(t => CanAttack(u, u.Position, t.Position));
+                    var target = (u.AiTargetPolicy == AiTargetPolicy.BossGuard ? OrderGuardTargets(attackable) :
+                        attackable.OrderBy(t => AttackPriority(u, t))
                         .ThenBy(t => t.Hp)
                         .ThenBy(t => t.Position.Row)
-                        .ThenBy(t => t.Position.Col)
+                        .ThenBy(t => t.Position.Col))
                         .FirstOrDefault();
                     if (target != null)
                     {
@@ -1058,9 +1059,17 @@ namespace Spotlight
                     }
                     if (u.Attack <= 0 || u.Range <= 0 || u.MoveDistance <= 0) { Emit("wait", $"{Type(u).Name} 待机", u.Id); break; }
                     var paths = Paths(u.Position);
-                    var best = Targets(Side.Boss).Where(t => CanTarget(u, t))
-                        .SelectMany(t => paths.Where(p => p.Value.Count > 0 && CanAttack(u, p.Key, t.Position)).Select(p => new { Target = t, Path = p.Value }))
-                        .OrderBy(x => x.Path.Count)
+                    var routes = Targets(Side.Boss).Where(t => CanTarget(u, t))
+                        .SelectMany(t => paths.Where(p => p.Value.Count > 0 && CanAttack(u, p.Key, t.Position)).Select(p => new { Target = t, Path = p.Value }));
+                    // 护卫舰先按目标优先级挑选可达目标，再选其最短攻击路线；普通 AI 保持原策略。
+                    if (u.AiTargetPolicy == AiTargetPolicy.BossGuard)
+                    {
+                        routes = routes.Where(x => MovementError(u, x.Path[x.Path.Count - 1]) == null &&
+                            x.Path.Take(Math.Min(u.MoveDistance, x.Path.Count)).Any(p => MovementError(u, p) == null));
+                        var preferred = OrderGuardTargets(routes.Select(x => x.Target).Distinct()).FirstOrDefault();
+                        routes = routes.Where(x => preferred != null && x.Target.Id == preferred.Id);
+                    }
+                    var best = routes.OrderBy(x => x.Path.Count)
                         .ThenBy(x => TargetKind(x.Target))
                         .ThenBy(x => x.Target.Position.Row)
                         .ThenBy(x => x.Target.Position.Col)

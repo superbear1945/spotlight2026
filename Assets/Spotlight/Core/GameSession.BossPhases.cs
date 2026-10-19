@@ -77,6 +77,58 @@ namespace Spotlight
             }
         }
 
+        /// <summary>
+        /// 三阶段 Enter 的一次性技能。输入为当前 Boss 家位置和配置引用；输出为两列护卫舰及死亡、部署表现帧。
+        /// 先固定目标并清理全部占位单位，再生成，避免新护卫舰参与同一批顶替的死亡被动。
+        /// 双方的家永不顶替，越界前列直接跳过；地面炸弹不占格，也不被清理。
+        /// </summary>
+        internal void CreateBossGuards()
+        {
+            var home = _homes.Single(h => h.Owner == Side.Boss);
+            var columns = new[] { home.Position.Col + (Rules.PlayerOnLeft ? -1 : 1), home.Position.Col };
+            var types = new[] { Rules.BossPhaseThreeFrontCardType, Rules.BossPhaseThreeRearCardType };
+            var destinations = new List<KeyValuePair<Cell, string>>();
+            for (var index = 0; index < columns.Length; index++)
+            {
+                if (columns[index] < 0 || columns[index] >= Rules.Columns) continue;
+                for (var row = 0; row < Rules.Rows; row++)
+                {
+                    var cell = new Cell(row, columns[index]);
+                    if (_homes.Any(h => h.Position == cell)) continue;
+                    destinations.Add(new KeyValuePair<Cell, string>(cell, types[index]));
+                }
+            }
+            foreach (var destination in destinations)
+            {
+                var occupied = _units.FirstOrDefault(u => u.Position == destination.Key);
+                if (occupied == null) continue;
+                Remove(occupied, Removal.Death);
+                CapturePresentationFrame();
+            }
+            foreach (var destination in destinations)
+            {
+                var guard = Place(NewCard(destination.Value, Side.Boss), destination.Key, false, null);
+                guard.AiTargetPolicy = AiTargetPolicy.BossGuard;
+                Emit("guard-deploy", $"三阶段护卫舰 {Type(guard).Name} 自动部署至 {destination.Key}", guard.Id);
+                CapturePresentationFrame();
+            }
+        }
+
+        /// <summary>
+        /// 护卫舰的统一索敌顺序。输入为已通过权限/射程或可达性过滤的目标；输出为稳定有序目标。
+        /// 攻击类优先按到 Boss 家的当前距离、当前攻击力排序，其后为家、特殊、资源；同分按位置和身份排序。
+        /// 攻击与追击共享此入口，避免移动时重新使用普通 AI 的最近目标或斩杀优先级。
+        /// </summary>
+        IOrderedEnumerable<Target> OrderGuardTargets(IEnumerable<Target> targets)
+        {
+            var home = _homes.Single(h => h.Owner == Side.Boss).Position;
+            return targets.OrderBy(t => t.Unit != null && Type(t.Unit).Category == CardCategory.Attack ? 0 :
+                    t.Home != null ? 1 : Type(t.Unit).Category == CardCategory.Special ? 2 : 3)
+                .ThenBy(t => t.Unit != null && Type(t.Unit).Category == CardCategory.Attack ? t.Position.Distance(home) : 0)
+                .ThenByDescending(t => t.Unit != null && Type(t.Unit).Category == CardCategory.Attack ? t.Unit.Attack : 0)
+                .ThenBy(t => t.Position.Row).ThenBy(t => PlayerColumn(t.Position)).ThenBy(t => t.Id);
+        }
+
         /// <summary>攻击目标资格共用入口。输入为攻击者和目标；输出为资格，不包含距离；AI、手动命令和高亮统一调用。</summary>
         bool CanTarget(UnitState attacker, Target target) =>
             (target.Home == null || target.Home.Owner != Side.Boss || _bossPhases.Phase != BossPhase.PhaseTwo) &&

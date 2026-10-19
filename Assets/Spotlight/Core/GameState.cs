@@ -129,6 +129,8 @@ namespace Spotlight
         public bool CanAttackResources { get; internal set; }
         /// <summary>部署时从战斗配置复制的互换权限。</summary>
         public bool CanSwap { get; internal set; }
+        /// <summary>本次部署的索敌策略；由生成入口赋值，随快照复制，不根据卡名或卡种推断。</summary>
+        public AiTargetPolicy AiTargetPolicy { get; internal set; }
 
         /// <summary>
         /// 永久伤害标记的层集合（与“入场标记 MarkedBy”是两种不同机制）。
@@ -180,6 +182,9 @@ namespace Spotlight
             return copy;
         }
     }
+
+    /// <summary>单位索敌策略。普通部署默认 Standard，三阶段技能创建的护卫舰使用 BossGuard；不改变手动命令权限。</summary>
+    public enum AiTargetPolicy { Standard, BossGuard }
 
     /// <summary>
     /// 独立的家实体。

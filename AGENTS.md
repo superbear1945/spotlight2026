@@ -233,7 +233,7 @@ Excel 配置编译（菜单 `Tools/Spotlight/*`，按顺序）：
 
 ## 10. Boss 阶段与通用刷怪定位
 
-- `Core/BossPhaseStateMachine.cs`：`BossPhase` 与 `MatchPhase` 独立；`IBossPhaseState` 提供 Enter/Exit、双方回合开始、结算后检查。仅允许一 → 二 → 三，不持有第二套单位/生命数据。三阶段技能在 `BossPhaseThreeState` 的注释扩展点实现。
+- `Core/BossPhaseStateMachine.cs`：`BossPhase` 与 `MatchPhase` 独立；`IBossPhaseState` 提供 Enter/Exit、双方回合开始、结算后检查。仅允许一 → 二 → 三，不持有第二套单位/生命数据。三阶段在 `BossPhaseThreeState.Enter` 一次性生成双列护卫舰。
 - `Core/GameSession.BossPhases.cs`：两艘指定战舰记录、三等分坐标、占位回退与目标过滤；`GameSession` 始终是唯一状态所有者。默认 Boss 30 血，阈值 20；跨阈值伤害截断，阶段切换先于胜负判定。
 - 二阶段锁血且不可被攻击，战舰自动部署（包括手动模式），不扣普通放牌次数；满盘等待，下次 Boss 回合重试。只统计两个指定单位 ID 的阵亡，不补回。两舰阵亡进入三阶段并解除锁血。
 - 二、三阶段停止新炸弹、新普通刷怪笼及固定兵位补兵；已有炸弹、已有单位及刷怪能力继续结算。手动普通放牌继续使用原卡种和次数。
@@ -241,4 +241,8 @@ Excel 配置编译（菜单 `Tools/Spotlight/*`，按顺序）：
 - `IsBossSpawner` 仅标记一阶段技能部署身份及唯一性限制，不代表刷怪能力。能力由 `CardArchetype.Spawn` 决定；不可按卡名或卡种 ID 判断行动权限。
 - Cards：`spawnComponent` / `spawnCardType`；战斗开关 `canAttackResources` / `canSwap`。Rules：`bossPhaseTwoHp` / `bossWarshipColumn` / `bossWarshipCardType`。旧全局 `bossSpawnerSpawnCardType` 必须迁移，详见 `docs/使用说明.md`。
 - 快照提供阶段、锁血和两条战舰记录的独立副本。新增回归入口：`BossPhaseTests`、`BossPhaseConfigTests`、`BossPhasePlayModeTests`；保持既有 PR CI 门禁。
-- 与其他能力组合时，敌方攻击统一经过 `CanTarget`，友方治疗保留独立分支；战舰阵亡与标记奖励、死亡加攻共用 `Remove` 结算，不可互相覆盖。阶段战舰不能配置成即时卡，否则自动退场会使二阶段无法完成。默认共 18 个卡种，三个 Boss 专用卡的阶级为 `none`。
+- 与其他能力组合时，敌方攻击统一经过 `CanTarget`，友方治疗保留独立分支；战舰阵亡与标记奖励、死亡加攻共用 `Remove` 结算，不可互相覆盖。阶段战舰不能配置成即时卡，否则自动退场会使二阶段无法完成。默认共 25 个卡种，五个 Boss 专用卡的阶级为 `none`。
+
+- 三阶段护卫舰：Rules 的 `bossPhaseThreeFrontCardType` / `bossPhaseThreeRearCardType` 引用 Cards 的 Boss 专用攻击卡，默认一式护卫舰 7/1/2/1、二式护卫舰 3/3/2/1（生命/攻击/射程/移动）。以进入时 Boss 家当前列及朝玩家方向前列生成一次，保护双方的家，先全部死亡清场再部署，不补回且遵守召唤失调。
+- 三阶段顶替使用 `Remove(Death)`，触发死亡加攻与入场标记奖励；旧通用刷怪顶替仍为 `ReplacedBySpawn`。不重复回收玩家来源卡，不触发直接攻击击杀恢复或伤害标记追加。
+- `UnitState.AiTargetPolicy` 由部署来源赋值；三阶段生成使用 `BossGuard`，不按卡名判断。索敌攻击类 → 家 → 特殊 → 资源；攻击类按距 Boss 家当前坐标升序、当前攻击降序。先攻击射程内目标，无目标才按同一排序追击可达目标；手动模式仍由玩家操作。

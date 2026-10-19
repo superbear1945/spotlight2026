@@ -136,12 +136,11 @@
                         <ui:VisualElement name="debug-toggles" />
                         <ui:VisualElement class="cfg-section">
                             <ui:Label text="JSON 导入 / 导出" class="cfg-section-title" />
-                            <ui:Label text="cardTypes 声明 category（resource / attack / special）与 stats（名字、生命、攻防、射程、移动、产出、维持费）；rules 声明回合与开关；deck 配置数量清单。" class="cfg-note" />
+                            <ui:Label text="复制完整配置 JSON 后可粘贴到文本文件保存。导入前请先复制文件中的全部 JSON；导入只修改草稿，应用并重开后生效。" class="cfg-note" />
                             <ui:VisualElement class="cfg-json-actions">
-                                <ui:Button name="debug-export-button" text="导出到下方" />
-                                <ui:Button name="debug-import-button" text="从下方导入" />
+                                <ui:Button name="debug-export-button" text="复制 JSON" />
+                                <ui:Button name="debug-import-button" text="从剪贴板导入" />
                             </ui:VisualElement>
-                            <ui:TextField name="debug-json" multiline="true" class="cfg-json" />
                             <ui:Label name="debug-json-status" class="cfg-note" />
                         </ui:VisualElement>
                     </ui:ScrollView>

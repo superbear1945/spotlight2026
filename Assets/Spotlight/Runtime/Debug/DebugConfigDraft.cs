@@ -54,7 +54,7 @@ namespace Spotlight
 
         /// <summary>
         /// 导出草稿 JSON。
-        /// 输入：无；输出：缩进后的 JSON 文本，可直接粘贴回面板或存档对比。
+        /// 输入：无；输出：缩进后的完整 JSON 文本，可通过剪贴板导入或存档对比，不在面板中渲染全文。
         /// </summary>
         public string ExportJson() => JsonUtility.ToJson(_document, true);
 
@@ -354,7 +354,7 @@ namespace Spotlight
                 return false;
             }
             return RequireRowFields(json, "cards", new[] { "spawnComponent", "spawnCardType", "canAttackResources", "canSwap" }, out error) &&
-                RequireRowFields(json, "rules", new[] { "bossPhaseTwoHp", "bossWarshipColumn", "bossWarshipCardType" }, out error);
+                RequireRowFields(json, "rules", new[] { "bossPhaseTwoHp", "bossWarshipColumn", "bossWarshipCardType", "bossPhaseThreeFrontCardType", "bossPhaseThreeRearCardType" }, out error);
         }
 
         /// <summary>

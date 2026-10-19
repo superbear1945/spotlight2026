@@ -100,12 +100,12 @@ namespace Spotlight
         { if (session.AllBossWarshipsDefeated) machine.Transition(session, BossPhase.PhaseThree); }
     }
 
-    /// <summary>三阶段技能扩展定位入口：本次不新增技能，仅复用公共行动与刷怪。日后在以下回合钩子添加规则。</summary>
+    /// <summary>三阶段：解除锁血并一次性生成双列护卫舰；之后复用公共行动与已有刷怪，不补回护卫舰。</summary>
     internal sealed class BossPhaseThreeState : IBossPhaseState
     {
         public BossPhase Phase => BossPhase.PhaseThree;
-        /// <summary>进入即通过当前阶段解除锁血；未来一次性技能放在此处，不恢复一阶段机会。</summary>
-        public void Enter(GameSession session) { }
+        /// <summary>输入唯一会话；进入即解除锁血、清理目标格并生成护卫舰，不恢复一阶段机会。</summary>
+        public void Enter(GameSession session) => session.CreateBossGuards();
         /// <summary>预留未来阶段退出清理；本版三阶段不再转换。</summary>
         public void Exit(GameSession session) { }
         /// <summary>三阶段 Boss 回合技能占位；公共行动、手动放牌和刷怪不在这里重复执行。</summary>
