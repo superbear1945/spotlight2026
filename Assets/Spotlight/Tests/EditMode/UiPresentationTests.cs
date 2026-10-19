@@ -63,12 +63,12 @@ namespace Spotlight.Tests
                 "turn-label", "resource-label", "plays-label", "round-number-label",
                 "player-life-label", "boss-life-label", "boss-info-label", "boss-phase-label", "phase-label", "unit-detail",
                 "log-panel", "log-list", "log-content", "pause-button", "menu-button", "history-button",
-                "quick-debug-button", "debug-button", "help-button",
+                "help-button",
                 "withdraw-button", "bomb-deploy-button", "bomb-skip-button",
                 "spawner-deploy-button", "spawner-skip-button", "end-turn-button",
                 "opponent-turn-indicator",
                 "skip-deploy-button", "restart-button", "victory-overlay", "victory-label",
-                "victory-art", "defeat-art", "victory-restart-button", "modal-overlay", "debug-panel",
+                "victory-art", "defeat-art", "victory-restart-button", "modal-overlay",
                 "pause-overlay", "pause-panel", "pause-close-button", "pause-continue-button",
                 "pause-restart-button", "pause-exit-button",
                 "detail-left", "detail-right", "pile-left", "pile-right",
@@ -116,6 +116,27 @@ namespace Spotlight.Tests
                 "结束回合按钮按下时必须切换 Pressed 美术");
             Assert.That(uss, Does.Match(@"(?s)\.hud-root \.end-turn-button:disabled\s*\{[^}]*end_turn_disabled\.png"),
                 "结束回合按钮禁用时必须切换 Disabled 美术");
+        }
+
+        /// <summary>
+        /// 正式 HUD 的 UXML/USS 不得再出现调试入口与调试面板骨架。
+        /// 输入：Spotlight.uxml / Spotlight.uss / DebugPanel.uxml 文本；输出：调试标记不在 HUD 中、且面板已独立成资产的断言。
+        /// 为什么需要：调试面板拆出后，只要有人把那段界面合并回 HUD，正式包会重新带上“可改配置”的拆包证据。
+        /// </summary>
+        [Test]
+        public void ReleaseHudContainsNoDebugEntries()
+        {
+            var hudUxml = File.ReadAllText(UxmlPath);
+            foreach (var needle in new[] { "debug-button", "debug-panel", "quick-debug-button", "配置/调试", "应用并重开" })
+                Assert.That(hudUxml, Does.Not.Contain(needle), "正式 HUD 不应包含调试入口：" + needle);
+
+            var hudUss = File.ReadAllText(UssPath);
+            Assert.That(hudUss, Does.Not.Contain("menu-debug-button"), "正式 HUD 的 USS 不应包含调试按钮样式");
+
+            Assert.That(File.Exists(ConfigDebugPanel.PanelUxmlPath), Is.True, "调试面板 UXML 必须独立存在（仅编辑器加载）");
+            var panelUxml = File.ReadAllText(ConfigDebugPanel.PanelUxmlPath);
+            Assert.That(panelUxml, Does.Contain("name=\"debug-panel\""), "拆分后的调试面板缺少 debug-panel 根节点");
+            Assert.That(panelUxml, Does.Contain("name=\"debug-apply-button\""), "拆分后的调试面板缺少“应用并重开”按钮");
         }
 
         /// <summary>

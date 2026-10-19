@@ -15,8 +15,8 @@ namespace Spotlight.Tests
     /// <summary>配置面板表单测试。输入：UXML 实例与内存草稿；输出：NUnit 断言结果。</summary>
     public class ConfigPanelTests
     {
-        /// <summary>面板界面资产路径。</summary>
-        const string UxmlPath = "Assets/Spotlight/UI/Spotlight.uxml";
+        /// <summary>面板界面资产路径（调试面板已从 HUD 的 Spotlight.uxml 拆出，仅编辑器加载）。</summary>
+        const string UxmlPath = ConfigDebugPanel.PanelUxmlPath;
 
         /// <summary>测试用界面根元素。</summary>
         VisualElement _root;

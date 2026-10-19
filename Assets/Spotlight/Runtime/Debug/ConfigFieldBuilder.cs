@@ -6,6 +6,8 @@
 // 而未挂面板的 UXML 实例（EditMode 测试就是这样用的）不会触发回调。
 // 因此把“从控件读值 → 夹紧 → 写回草稿 → 通知变更”抽成一段独立动作并登记在案，
 // 事件回调与测试都调用同一段逻辑，避免出现“测试通过但运行时行为不同”的情况。
+#if UNITY_EDITOR
+// 整个文件只在编辑器编译：正式运行包里不允许出现调试配置面板的代码、类型名与字段结构。
 using System;
 using System.Collections.Generic;
 using UnityEngine.UIElements;
@@ -196,3 +198,4 @@ namespace Spotlight
         static int Clamp(int value, int min, int max) => value < min ? min : value > max ? max : value;
     }
 }
+#endif

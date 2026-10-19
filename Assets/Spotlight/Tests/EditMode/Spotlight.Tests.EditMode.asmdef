@@ -4,7 +4,8 @@
   "references": [
     "Spotlight.Core",
     "Spotlight.Runtime",
-    "Spotlight.Editor"
+    "Spotlight.Editor",
+    "Spotlight.Runtime.Debug"
   ],
   "includePlatforms": [
     "Editor"

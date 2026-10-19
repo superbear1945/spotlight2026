@@ -1159,11 +1159,6 @@
     background-color: rgba(0, 0, 0, 0.5);
 }
 
-/* 菜单里的“配置/调试”：与「继续 / 重开」拉开距离，避免误点（正式包里该按钮不显示）。 */
-.action-button.menu-debug-button {
-    margin-top: 18px;
-}
-
 /* 菜单里的“退出游戏”：用警示色与「继续 / 重开」区分，降低误点退出（退出后无法回到本局）。 */
 .action-button.menu-quit-button {
     background-color: rgb(96, 40, 48);

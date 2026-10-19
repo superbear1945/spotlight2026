@@ -4,6 +4,7 @@
   "references": [
     "Spotlight.Core",
     "Spotlight.Runtime",
+    "Spotlight.Runtime.Debug",
     "Unity.TextMeshPro"
   ],
   "includePlatforms": [

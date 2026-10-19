@@ -174,7 +174,8 @@ namespace Spotlight.EditorTools
             var bootstrap = root.AddComponent<GameBootstrap>();
             var feedback = root.AddComponent<CardFeedback>();
             var hud = root.AddComponent<HudView>();
-            var debugPanel = root.AddComponent<ConfigDebugPanel>();
+            // 调试配置面板不再写进场景：它只在编辑器编译，并且由 GameBootstrap 在编辑器运行时按需创建，
+            // 否则正式包里会留下“无脚本组件”，也会把调试界面资产带进构建。
             var document = root.AddComponent<UnityEngine.UIElements.UIDocument>();
             var documentSerialized = new SerializedObject(document);
             SetObject(documentSerialized, "m_PanelSettings", panelSettings);
@@ -197,7 +198,6 @@ namespace Spotlight.EditorTools
             SetObject(bootstrapSerialized, "_handView", hand);
             SetObject(bootstrapSerialized, "_hudView", hud);
             SetObject(bootstrapSerialized, "_feedback", feedback);
-            SetObject(bootstrapSerialized, "_debugPanel", debugPanel);
             bootstrapSerialized.ApplyModifiedPropertiesWithoutUndo();
 
             EditorSceneManager.SaveScene(scene, DemoScenePath);

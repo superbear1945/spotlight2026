@@ -1,5 +1,7 @@
 // 调试配置草稿：只在当前运行会话内存在，不写回 Excel，也不修改生成资产。
 // 为什么单独抽出纯 C# 类：JSON 迁移、校验与候选对局创建都可以在不打开界面的情况下被测试覆盖。
+#if UNITY_EDITOR
+// 整个文件只在编辑器编译：正式运行包里不允许出现调试配置面板的代码、类型名与字段结构。
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -465,3 +467,4 @@ namespace Spotlight
         }
     }
 }
+#endif

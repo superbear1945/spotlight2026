@@ -40,8 +40,10 @@ namespace Spotlight
         public event Action<bool> PauseChanged;
         /// <summary>点击暂停面板中的“退出战斗”。</summary>
         public event Action ExitRequested;
-        /// <summary>点击“配置/调试”。</summary>
+#if UNITY_EDITOR
+        /// <summary>点击“配置/调试”（该按钮只在编辑器运行时创建）。</summary>
         public event Action DebugRequested;
+#endif
         /// <summary>点击“离场”：请求让当前选中的己方单位离开棋盘。</summary>
         public event Action WithdrawRequested;
         /// <summary>点击齿轮：请求进入菜单（隐藏战斗界面，显示原有面板与「继续 / 重开」）。</summary>
@@ -231,10 +233,9 @@ namespace Spotlight
             // 退出游戏是宿主环境行为（关播放模式 / 结束进程），HUD 只上报点击，具体怎么做由 GameBootstrap 决定。
             var menuQuit = _root.Q<Button>("menu-quit-button");
             if (menuQuit != null) menuQuit.clicked += () => QuitRequested?.Invoke();
-            var debug = _root.Q<Button>("debug-button");
-            if (debug != null) debug.clicked += () => DebugRequested?.Invoke();
-            var quickDebug = _root.Q<Button>("quick-debug-button");
-            if (quickDebug != null) quickDebug.clicked += () => DebugRequested?.Invoke();
+#if UNITY_EDITOR
+            EnsureDebugButton();
+#endif
             var victoryRestart = _root.Q<Button>("victory-restart-button");
             if (victoryRestart != null) victoryRestart.clicked += () => RestartRequested?.Invoke();
             if (_victoryOverlay != null) _victoryOverlay.style.display = DisplayStyle.None;
@@ -246,11 +247,30 @@ namespace Spotlight
             if (_withdrawButton != null) _withdrawButton.style.display = DisplayStyle.None;
             // 战斗界面是默认视图：原有面板（日志、Boss 状态与选中详情）先隐藏，只在齿轮菜单里显示。
             SetMenuVisible(false);
-
-            // 调试入口只在编辑器或 Development Build 提供。
-            if (debug != null && !DebugSupport.IsDebugAvailable) debug.style.display = DisplayStyle.None;
-            if (quickDebug != null && !DebugSupport.IsDebugAvailable) quickDebug.style.display = DisplayStyle.None;
         }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// 在齿轮菜单里创建“配置/调试”入口。
+        /// 输入：无（使用 Bind 时查到的菜单遮罩）；输出：无。
+        /// 为什么用代码创建而不写进 UXML：按钮文案与调试类名属于开发期信息，
+        /// 写进 Spotlight.uxml 会随正式包进入 sharedassets；编辑器运行时临时创建则不会。
+        /// </summary>
+        void EnsureDebugButton()
+        {
+            if (_menuOverlay == null || _root.Q<Button>("debug-button") != null) return;
+            var card = _menuOverlay.Q<VisualElement>(className: "overlay-card") ?? _menuOverlay;
+            var debug = new Button(() => DebugRequested?.Invoke())
+            {
+                name = "debug-button",
+                text = "配置/调试"
+            };
+            debug.AddToClassList("action-button");
+            // 与「继续 / 重开」拉开距离，避免误点（原 USS 规则随调试入口一起移出正式包）。
+            debug.style.marginTop = 18;
+            card.Add(debug);
+        }
+#endif
 
         /// <summary>
         /// 渲染一帧界面。

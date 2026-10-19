@@ -1,9 +1,12 @@
 // 对局配置面板（表单式）：按分区逐项编辑棋盘、家、卡组、逐卡种属性、Boss 卡、回合规则与开关。
 // 设计依据是既有的网页版配置界面：字段分组与文案保持一致，但已确认删除的“反击”“斜移”开关不再出现。
 // 编辑直接写回内存草稿；“应用并重开”会先校验并创建候选对局，失败时保留原对局与草稿。
+#if UNITY_EDITOR
+// 整个文件只在编辑器编译：正式运行包里不允许出现调试配置面板的代码、类型名与字段结构。
 using System;
 using System.Collections.Generic;
 using System.Text;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -55,17 +58,27 @@ namespace Spotlight
         /// <summary>JSON 区域状态文本。</summary>
         Label _jsonStatus;
 
+        /// <summary>调试面板 UXML 的资产路径（相对工程根）。</summary>
+        public const string PanelUxmlPath = "Assets/Spotlight/UI/DebugPanel.uxml";
+
         /// <summary>面板当前是否打开。输入：无；输出：打开状态。</summary>
         public bool IsOpen => _open;
 
         /// <summary>
         /// 绑定界面元素与事件。
         /// 输入：Bootstrap；输出：无。
-        /// 非编辑器/非 Development Build 时整个面板会被移除，保证正式运行包没有调试入口。
+        /// 面板骨架已从 HUD 的 Spotlight.uxml 拆到 DebugPanel.uxml，这里按需实例化并挂到同一个界面文档上；
+        /// 本类与两个 UXML 都只在编辑器编译/加载，正式运行包里既没有入口也没有调试界面。
         /// </summary>
         public void Bind(GameBootstrap bootstrap)
         {
             _bootstrap = bootstrap != null ? bootstrap : _bootstrap;
+            if (_bootstrap != null)
+            {
+                // HUD 的“配置/调试”按钮只会上报意图，真正打开面板由本组件完成。
+                _bootstrap.DebugPanelRequested -= Open;
+                _bootstrap.DebugPanelRequested += Open;
+            }
             if (_document == null) _document = GetComponent<UIDocument>();
             if (_document == null) { Debug.LogWarning("ConfigDebugPanel：未找到 UIDocument"); return; }
             BindTo(_document.rootVisualElement, bootstrap);
@@ -83,6 +96,9 @@ namespace Spotlight
             if (bootstrap != null) _bootstrap = bootstrap;
             if (root == null) { Debug.LogWarning("ConfigDebugPanel：界面根元素为空"); return; }
             _panel = root.Q<VisualElement>("debug-panel");
+            // 测试与调用方可能直接传入面板自身作为根节点：此时 Q 查不到自己，需要单独判定。
+            if (_panel == null && root.name == "debug-panel") _panel = root;
+            if (_panel == null) _panel = InstantiatePanel(root);
             if (_panel == null) { Debug.LogWarning("ConfigDebugPanel：界面缺少 debug-panel"); return; }
             // 双重保险：USS 已默认 display:none，这里再显式设一次。
             _panel.style.display = DisplayStyle.None;
@@ -106,6 +122,22 @@ namespace Spotlight
             Hook("debug-apply-button", ApplyAndRestart);
             Hook("debug-export-button", ExportJson);
             Hook("debug-import-button", ImportJson);
+        }
+
+        /// <summary>
+        /// 在给定的 HUD 根节点上实例化调试面板骨架。
+        /// 输入：HUD 根元素；输出：面板根元素（资产缺失时为 null）。
+        /// 为什么按需加载：调试界面已从 Spotlight.uxml 拆成独立资产，只有编辑器会读取它，
+        /// 正式包既不引用该资产，也不会把“可改配置”的界面结构带进 sharedassets。
+        /// </summary>
+        static VisualElement InstantiatePanel(VisualElement root)
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(PanelUxmlPath);
+            if (asset == null) return null;
+            var instance = asset.Instantiate();
+            root.Add(instance);
+            var panel = instance.Q<VisualElement>("debug-panel");
+            return panel != null ? panel : instance;
         }
 
         /// <summary>给按钮挂接回调。输入：元素名与动作；输出：无（元素缺失时静默跳过）。</summary>
@@ -760,3 +792,4 @@ namespace Spotlight
         }
     }
 }
+#endif

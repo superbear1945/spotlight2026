@@ -36,8 +36,22 @@ namespace Spotlight
         [SerializeField] HudView _hudView;
         /// <summary>动效播放器。</summary>
         [SerializeField] CardFeedback _feedback;
-        /// <summary>配置调试面板。</summary>
-        [SerializeField] ConfigDebugPanel _debugPanel;
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// 编辑器调试面板的挂载钩子。
+        /// 输入：由仅编辑器程序集 <c>Spotlight.Runtime.Debug</c> 在加载时注册的委托；输出：无。
+        /// 为什么用委托：调试面板已移出运行层程序集，运行层不能反向引用仅编辑器程序集；
+        /// 正式包里这个静态字段永远是 null，也不含任何调试面板类型。
+        /// </summary>
+        public static Action<GameBootstrap> DebugPanelAttach;
+
+        /// <summary>查询调试面板是否打开（暂停与模态闸门共用）。输入：引导器；输出：是否打开。</summary>
+        public static Func<GameBootstrap, bool> DebugPanelOpenQuery;
+
+        /// <summary>HUD 请求打开调试面板；没有注册调试面板时无事发生。</summary>
+        public event Action DebugPanelRequested;
+#endif
 
         /// <summary>当前对局实例；唯一状态所有者。</summary>
         GameSession _session;
@@ -210,10 +224,15 @@ namespace Spotlight
                 _hudView.ExitRequested += OnExitRequested;
                 _hudView.QuitRequested -= OnQuitRequested;
                 _hudView.QuitRequested += OnQuitRequested;
+#if UNITY_EDITOR
                 _hudView.DebugRequested -= OnDebugRequested;
                 _hudView.DebugRequested += OnDebugRequested;
+#endif
             }
-            _debugPanel?.Bind(this);
+#if UNITY_EDITOR
+            // 由仅编辑器程序集把调试面板挂到本引导器上；正式包里没有任何注册者。
+            DebugPanelAttach?.Invoke(this);
+#endif
         }
 
         /// <summary>
@@ -716,7 +735,11 @@ namespace Spotlight
                 Time.timeScale = _timeScaleBeforePause;
             }
             _pauseOpen = paused;
-            SetModalOpen(_debugPanel != null && _debugPanel.IsOpen);
+#if UNITY_EDITOR
+            SetModalOpen(DebugPanelOpenQuery != null && DebugPanelOpenQuery(this));
+#else
+            SetModalOpen(false);
+#endif
         }
 
         /// <summary>
@@ -733,8 +756,10 @@ namespace Spotlight
             Application.Quit();
         }
 
-        /// <summary>HUD 请求打开配置面板。输入：无；输出：无。</summary>
-        void OnDebugRequested() => _debugPanel?.Open();
+#if UNITY_EDITOR
+        /// <summary>HUD 请求打开配置面板。输入：无；输出：无（没有注册调试面板时忽略）。</summary>
+        void OnDebugRequested() => DebugPanelRequested?.Invoke();
+#endif
 
         /// <summary>
         /// 进入齿轮菜单。

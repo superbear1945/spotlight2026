@@ -1,10 +1,13 @@
+using System;
 using System.Collections;
 using System.Linq;
+using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.UIElements;
+using Object = UnityEngine.Object;
 
 namespace Spotlight.Tests
 {
@@ -22,6 +25,35 @@ namespace Spotlight.Tests
         SpotlightConfigAsset _sourceAsset;
         /// <summary>测试前的完整正式配置文本，用于清理时比较。</summary>
         string _sourceJson;
+
+        /// <summary>调试面板的运行时类型名（位于仅编辑器程序集，PlayMode 测试程序集不能直接引用）。</summary>
+        const string DebugPanelTypeName = "Spotlight.ConfigDebugPanel, Spotlight.Runtime.Debug";
+
+        /// <summary>
+        /// 按类型名查找调试面板。
+        /// 输入：无；输出：面板组件（当前场景没有时返回 null）。
+        /// 为什么用反射：调试面板已移入仅编辑器程序集 `Spotlight.Runtime.Debug`，
+        /// 而 PlayMode 测试程序集不限定平台、不能引用仅编辑器程序集；测试在编辑器内运行，按类型名即可拿到同一组件。
+        /// </summary>
+        static Component FindDebugPanel()
+        {
+            var type = System.Type.GetType(DebugPanelTypeName);
+            Assert.That(type, Is.Not.Null, "找不到调试面板程序集，检查 Spotlight.Runtime.Debug.asmdef 是否仍为编辑器平台");
+            return Object.FindObjectOfType(type) as Component;
+        }
+
+        /// <summary>
+        /// 通过反射调用面板的公开方法。
+        /// 输入：面板实例与方法名；输出：无。
+        /// 说明：只用于“打开/关闭”这类界面状态切换，表单字段仍通过真实 UXML 按钮事件验证。
+        /// </summary>
+        static void InvokePanel(Component panel, string method)
+        {
+            Assert.That(panel, Is.Not.Null, "场景缺少调试面板");
+            var info = panel.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.Public);
+            Assert.That(info, Is.Not.Null, "调试面板缺少方法：" + method);
+            info.Invoke(panel, null);
+        }
 
         /// <summary>保存进程外剪贴板和开局开关。输入：无；输出：隔离测试所需的清理备份。</summary>
         [SetUp]
@@ -68,7 +100,7 @@ namespace Spotlight.Tests
             yield return SceneManager.LoadSceneAsync("Assets/Spotlight/Scenes/Spotlight.unity");
             yield return null;
             var bootstrap = Object.FindObjectOfType<GameBootstrap>();
-            var panel = Object.FindObjectOfType<ConfigDebugPanel>();
+            var panel = FindDebugPanel();
             var root = Object.FindObjectOfType<HudView>().Root;
             Assert.That(panel, Is.Not.Null);
             _sourceAsset = bootstrap.CurrentAsset;
@@ -87,7 +119,7 @@ namespace Spotlight.Tests
             Assert.That(json.Count(c => !char.IsWhiteSpace(c)), Is.GreaterThan(20000));
             var session = bootstrap.Session;
             GUIUtility.systemCopyBuffer = json;
-            panel.Open();
+            InvokePanel(panel, "Open");
             yield return null;
             yield return null;
             Assert.That(root.Q<TextField>("debug-json"), Is.Null);
@@ -102,13 +134,13 @@ namespace Spotlight.Tests
             SubmitButton(root, "debug-export-button");
             Assert.That(GUIUtility.systemCopyBuffer, Is.EqualTo(json));
             Assert.That(bootstrap.Session, Is.SameAs(session), "导入草稿不得直接重开对局");
-            panel.Close();
-            panel.Open();
+            InvokePanel(panel, "Close");
+            InvokePanel(panel, "Open");
             yield return null;
             yield return null;
             Assert.That(root.Q<TextField>("debug-json"), Is.Null);
             Assert.That(GUIUtility.systemCopyBuffer, Is.EqualTo(json));
-            panel.Close();
+            InvokePanel(panel, "Close");
             LogAssert.NoUnexpectedReceived();
         }
     }
