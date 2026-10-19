@@ -61,15 +61,20 @@ namespace Spotlight.Tests
             var requiredNames = new[]
             {
                 "turn-label", "resource-label", "plays-label", "round-number-label",
-                "player-life-label", "boss-life-label", "boss-info-label", "phase-label", "unit-detail",
-                "log-panel", "log-list", "log-content", "pause-button", "history-button", "debug-button", "help-button",
+                "player-life-label", "boss-life-label", "boss-info-label", "boss-phase-label", "phase-label", "unit-detail",
+                "log-panel", "log-list", "log-content", "pause-button", "menu-button", "history-button",
+                "quick-debug-button", "debug-button", "help-button",
                 "withdraw-button", "bomb-deploy-button", "bomb-skip-button",
                 "spawner-deploy-button", "spawner-skip-button", "end-turn-button",
                 "opponent-turn-indicator",
                 "skip-deploy-button", "restart-button", "victory-overlay", "victory-label",
                 "victory-art", "defeat-art", "victory-restart-button", "modal-overlay", "debug-panel",
                 "pause-overlay", "pause-panel", "pause-close-button", "pause-continue-button",
-                "pause-restart-button", "pause-exit-button"
+                "pause-restart-button", "pause-exit-button",
+                "detail-left", "detail-right", "pile-left", "pile-right",
+                "menu-overlay", "menu-resume-button", "menu-deck-select-button",
+                "menu-restart-button", "menu-quit-button",
+                "deck-select-confirm-overlay", "deck-select-mask", "deck-select-apply-button"
             };
             foreach (var name in requiredNames)
                 Assert.That(_root.Q<VisualElement>(name), Is.Not.Null, "UXML 缺少运行时绑定元素：" + name);
@@ -78,7 +83,8 @@ namespace Spotlight.Tests
             {
                 "victory-overlay", "victory-art", "defeat-art", "modal-overlay",
                 "error-label", "withdraw-button", "skip-deploy-button", "restart-button",
-                "log-panel", "side-panel", "opponent-turn-indicator", "pause-overlay"
+                "log-panel", "side-panel", "opponent-turn-indicator", "pause-overlay",
+                "menu-overlay", "deck-select-confirm-overlay", "deck-select-mask"
             };
             var uxmlLines = File.ReadAllLines(UxmlPath);
             foreach (var name in stateDependentNames)

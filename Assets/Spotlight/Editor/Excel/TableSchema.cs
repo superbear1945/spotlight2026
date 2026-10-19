@@ -71,7 +71,7 @@ namespace Spotlight.EditorTools
     public static class TableSchema
     {
         /// <summary>工作簿必须包含的工作表，顺序即默认生成顺序。</summary>
-        public static readonly string[] RequiredSheets = { "Cards", "Deck", "Rules", "Homes", "BossSlots", "Presentation" };
+        public static readonly string[] RequiredSheets = { "Cards", "Rules", "Homes", "BossSlots", "Presentation" };
 
         /// <summary>全部表声明。</summary>
         public static readonly IReadOnlyList<TableDefinition> All = new[]
@@ -94,12 +94,31 @@ namespace Spotlight.EditorTools
                 new ColumnDefinition("deployHomeOnly", ColumnType.Boolean, false),
                 new ColumnDefinition("avoidAdjacentSameType", ColumnType.Boolean, false),
                 new ColumnDefinition("requiresUpgrade", ColumnType.Boolean, false),
-                new ColumnDefinition("upgradeFrom", ColumnType.Text, false)
-            }),
-            new TableDefinition("Deck", new[]
-            {
-                new ColumnDefinition("cardType", ColumnType.Text, true),
-                new ColumnDefinition("count", ColumnType.Integer, true)
+                new ColumnDefinition("upgradeFrom", ColumnType.Text, false),
+                new ColumnDefinition("deploymentPenaltyComponent", ColumnType.Boolean, true, "是否启用一次性部署减攻组件，默认 false。启用后该单位在场期间可使用一次：使随后成功上场的一个同阵营攻击类单位攻击力降低 deploymentAttackReduction。未启用时必须填 false，且减攻量必须为 0。"),
+                new ColumnDefinition("deploymentAttackReduction", ColumnType.Integer, true, "一次性部署减攻量，默认 0，非负整数。启用组件时必须为正整数；禁用时必须为 0。减攻下限为 0，持续到目标单位离场；京都壹号默认为 2。"),
+                new ColumnDefinition("deployCost", ColumnType.Integer, true, "成功部署这张卡的一次性资源消耗，默认 0，非负整数。资源不足时该目标不合法（高亮也不会出现）；Boss 部署不受此限制。开普勒-I/II 为 10。"),
+                new ColumnDefinition("deployRequireAdjacentCategory", ColumnType.Text, false, "部署时四邻（上下左右）必须存在的单位分类：resource/attack/special；默认留空表示无要求。必须与 deployRequireAdjacentCount 同时使用，数量为 0 时本列必须留空。"),
+                new ColumnDefinition("deployRequireAdjacentCount", ColumnType.Integer, false, "四邻中该分类单位的最小数量，默认 0（0 表示无要求）。只统计在场单位，不含家，不区分阵营。"),
+                new ColumnDefinition("markOnEnterComponent", ColumnType.Boolean, true, "是否启用入场标记能力，默认 false。启用后该单位入场时把半径内的其它单位标记（先到先得、不叠加），被标记单位阵亡时给标记者阵营发资源。未启用时必须填 false，半径与奖励必须为 0。"),
+                new ColumnDefinition("markOnEnterRadius", ColumnType.Integer, true, "标记半径，默认 0，正整数。1 表示以自身为中心的 3×3 八邻（不含自己）；启用能力时必须为正整数。"),
+                new ColumnDefinition("markRewardResource", ColumnType.Integer, true, "被标记单位阵亡时给标记者阵营的资源，默认 0，正整数。启用能力时必须为正整数；Boss 侧没有资源系统，Boss 标记暂不产生资源。"),
+                new ColumnDefinition("deathGrowthComponent", ColumnType.Boolean, true, "是否启用死亡加攻能力，默认 false。启用后全棋盘任一单位因战斗阵亡时本单位攻击力 +deathGrowthPerKill，最多触发 deathGrowthLimit 次。未启用时必须填 false，加成与上限必须为 0。"),
+                new ColumnDefinition("deathGrowthPerKill", ColumnType.Integer, true, "每次全棋盘单位因战斗阵亡时增加的攻击力，默认 0，正整数。启用能力时必须为正整数。"),
+                new ColumnDefinition("deathGrowthLimit", ColumnType.Integer, true, "死亡加攻最多触发次数，默认 0，正整数。注意是“触发次数上限”，不是“攻击力上限”；达到后不再增加。"),
+                new ColumnDefinition("attacksAlliesAsHeal", ColumnType.Boolean, true, "是否允许攻击友方单位并把对友方的结算改为治疗（生命 + 当前攻击，受生命上限限流），默认 false。只允许攻击类卡启用；满血也允许白打并消耗行动。"),
+                new ColumnDefinition("leaveAfterDeploy", ColumnType.Boolean, true, "是否“部署即结算、结算即退场”（即时卡），默认 false。启用后该卡在场时间视为 0：不参与一次性减攻与入场标记，结算完 deployGainResource 后立即离场（原因为 Consumed，不触发补兵/死亡加攻/标记奖励）。Boss 卡种与刷怪卡卡种不得指向即时卡。"),
+                new ColumnDefinition("deployGainResource", ColumnType.Integer, true, "即时卡结算时立即获得的资源，默认 0，正整数。启用 leaveAfterDeploy 时必须为正整数，禁用时必须为 0。"),
+                new ColumnDefinition("tier", ColumnType.Text, true, "卡牌阶级，独立于 category：basic=初级，intermediate=中级，advanced=高级；Boss 专用卡填 none（不适用），不可加入玩家卡组。必须显式填写；仅用于卡组张数统计，暂不限制携带数量与部署回合。"),
+                new ColumnDefinition("adjacentClearanceComponent", ColumnType.Boolean, true, "是否启用四邻空格限制能力，默认 false。启用后该单位在部署、移动与互换前后，上下左右四邻中至少要有 adjacentClearanceMinEmpty 格为空；斜角不计，棋盘外按空计算。未启用时必须填 false，且阈值为 0。"),
+                new ColumnDefinition("adjacentClearanceMinEmpty", ColumnType.Integer, true, "四邻中至少需要为空的格数，默认 0（关闭），启用时填 1～4。范围之外的数值（包括 5）一律报错；关闭时必须为 0。后羿-II综合舰填 2。"),
+                new ColumnDefinition("killActionComponent", ColumnType.Boolean, true, "是否启用击杀恢复行动，默认 false。启用后该单位的一次直接攻击击杀目标战斗单位（包括伤害标记追加击杀）时恢复一次普通行动，可连续触发，但不是重开回合：不抽牌、不产资源、不重复扣维持费，未使用机会不跨回合保存。仅攻击类卡可启用。维京长船-2056 填 true。"),
+                new ColumnDefinition("damageMarkComponent", ColumnType.Boolean, true, "是否在直接攻击后施加伤害标记，默认 false。启用后每次直接攻击存活的目标战斗单位获得 1 层；新层从下一次受伤起生效，永久保留且可叠层，家不挂层。仅攻击类卡可启用，未启用时 damageMarkDamagePerStack 必须为 0。SNP-EU 填 true。"),
+                new ColumnDefinition("damageMarkDamagePerStack", ColumnType.Integer, true, "每层伤害标记在之后每次直接受伤时追加的伤害，默认 0（关闭），正整数。追加伤害不递归触发标记、不挂新层，也不消耗炸弹预算；正常攻击、炸弹等直接伤害均可触发。SNP-EU 填 1。"),
+                new ColumnDefinition("canAttackResources", ColumnType.Boolean, true, "是否允许直接攻击资源单位，默认 true；战舰默认 false，仍可攻击敌方家。"),
+                new ColumnDefinition("canSwap", ColumnType.Boolean, true, "是否允许参与互换，默认 true；固定刷怪笼默认 false，资源分类始终不可互换。"),
+                new ColumnDefinition("spawnComponent", ColumnType.Boolean, true, "是否启用刷怪组件，默认 false；启用后从下个所属阵营回合开始八邻生成一架战机。"),
+                new ColumnDefinition("spawnCardType", ColumnType.Text, false, "生成战机卡种，默认空；启用刷怪时须引用攻击类卡种，普通刷怪笼与战舰默认 bossCombat。原 Rules.bossSpawnerSpawnCardType 请迁移到对应 Cards 行。")
             }),
             new TableDefinition("Rules", new[]
             {
@@ -128,7 +147,18 @@ namespace Spotlight.EditorTools
                 new ColumnDefinition("bossSpawnerUnitThreshold", ColumnType.Integer, true, "前线玩家攻击类单位数量下限，默认 2，正整数。仅统计 category=attack，不以攻击力是否非零判断。与总攻击力条件同时满足才触发。"),
                 new ColumnDefinition("bossSpawnerDeployFromColumn", ColumnType.Integer, true, "刷怪卡部署起始列，默认 5，正整数。从玩家一侧第 1 列起算，包含本列及之后的空格；超过棋盘宽度或没有空格则跳过当次机会，不累计。"),
                 new ColumnDefinition("bossSpawnerCardType", ColumnType.Text, true, "刷怪卡卡种 ID，默认 bossSpawner，须引用已注册特殊卡。生命可配置为正整数，攻击/射程/移动为 0，无资源和传送能力。场上最多一张，不能移动或互换，部署后下一个 Boss 回合开始生成。"),
-                new ColumnDefinition("bossSpawnerSpawnCardType", ColumnType.Text, true, "生成战机卡种 ID，默认 bossCombat，须引用已注册攻击类卡种。每个 Boss 回合在八邻随机空格生成一架；满格随机顶替玩家单位，无目标则暂停，下回合重试。遵守召唤失调，不占固定兵位。")
+                new ColumnDefinition("bossPhaseTwoHp", ColumnType.Integer, true, "二阶段锁血阈值，默认 20，须大于 0 且小于 Boss 初始生命。越过阈值的伤害截断到此值并立即部署两艘战舰。"),
+                new ColumnDefinition("bossWarshipColumn", ColumnType.Integer, true, "战舰部署列，默认 8，从玩家一侧起算并随阵营镜像，必须在棋盘内；首选格被占时寻找最近空格。"),
+                new ColumnDefinition("bossWarshipCardType", ColumnType.Text, true, "阶段战舰卡种，默认 bossWarship，须具有战斗与刷怪能力且不能攻击资源卡；两艘均阵亡后进入三阶段。"),
+                new ColumnDefinition("bossPhaseThreeFrontCardType", ColumnType.Text, true, "三阶段前列护卫舰卡种，默认 bossGuardType1；生命、攻击、射程和移动距离在 Cards 配置。"),
+                new ColumnDefinition("bossPhaseThreeRearCardType", ColumnType.Text, true, "三阶段 Boss 家当前列护卫舰卡种，默认 bossGuardType2；家所在格不生成。"),
+                new ColumnDefinition("drawPileSize", ColumnType.Integer, true, "玩家抽牌堆总张数，默认 24，必须至少 3。开局按此数量生成卡牌记录；不再由 Deck 表逐卡种配置（Deck 表已废除）。"),
+                new ColumnDefinition("tierRatioBasic", ColumnType.Integer, true, "初级卡在抽牌堆中的占比百分比，默认 70，必须至少 1。三阶级比例之和必须为 100，不支持 0%。"),
+                new ColumnDefinition("tierRatioIntermediate", ColumnType.Integer, true, "中级卡在抽牌堆中的占比百分比，默认 20，必须至少 1。"),
+                new ColumnDefinition("tierRatioAdvanced", ColumnType.Integer, true, "高级卡在抽牌堆中的占比百分比，默认 10，必须至少 1。"),
+                new ColumnDefinition("maxTypesBasic", ColumnType.Integer, true, "玩家每局最多携带的初级卡种数量，默认 5，必须至少 1。实际可用上限 = min(本值, 初级卡种数)。"),
+                new ColumnDefinition("maxTypesIntermediate", ColumnType.Integer, true, "玩家每局最多携带的中级卡种数量，默认 3，必须至少 1。"),
+                new ColumnDefinition("maxTypesAdvanced", ColumnType.Integer, true, "玩家每局最多携带的高级卡种数量，默认 2，必须至少 1；卡池不足时按 min(本值, 卡种数) 生效。")
             }),
             new TableDefinition("Homes", new[]
             {
@@ -215,7 +245,10 @@ namespace Spotlight.EditorTools
                 }
                 if (table.Find(header) == null)
                 {
-                    issues.Add(new ConfigIssue(file, table.SheetName, 1, column + 1, "未定义列：" + header));
+                    var migration = header == "bossSpawnerSpawnCardType"
+                        ? "；请将值迁移至原刷怪笼 Cards 行的 spawnCardType，启用 spawnComponent 后删除旧列，详见 docs/使用说明.md"
+                        : string.Empty;
+                    issues.Add(new ConfigIssue(file, table.SheetName, 1, column + 1, "未定义列：" + header + migration));
                     ok = false;
                     continue;
                 }
@@ -230,9 +263,10 @@ namespace Spotlight.EditorTools
 
             foreach (var definition in table.Columns)
             {
-                if (!definition.Required) continue;
+                // 刷怪引用允许禁用行留空，但列本身必须存在，旧表不能隐式迁移。
+                if (!definition.Required && !(table.SheetName == "Cards" && definition.Name == "spawnCardType")) continue;
                 if (headerIndex.ContainsKey(definition.Name)) continue;
-                issues.Add(new ConfigIssue(file, table.SheetName, 1, 0, "缺失必需列：" + definition.Name));
+                issues.Add(new ConfigIssue(file, table.SheetName, 1, 0, "缺失必需列：" + definition.Name + "；请按当前默认工作簿补齐，迁移步骤见 docs/使用说明.md"));
                 ok = false;
             }
             return ok;
@@ -261,7 +295,8 @@ namespace Spotlight.EditorTools
                 {
                     if (!headerIndex.TryGetValue(definition.Name, out var column)) continue;
                     var raw = (cells[row, column] ?? string.Empty).Trim();
-                    if (raw.Length == 0 && definition.Required && definition.Type == ColumnType.Text)
+                    if (raw.Length == 0 && definition.Required && (definition.Type == ColumnType.Text ||
+                        definition.Name == "canAttackResources" || definition.Name == "canSwap" || definition.Name == "spawnComponent"))
                     {
                         issues.Add(new ConfigIssue(file, table.SheetName, row + 1, column + 1, $"必需列为空：{definition.Name}"));
                         rowOk = false;

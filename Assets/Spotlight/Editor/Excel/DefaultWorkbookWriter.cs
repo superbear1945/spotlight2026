@@ -45,36 +45,43 @@ namespace Spotlight.EditorTools
 
         /// <summary>Cards 表内容（首行为表头，其余为数据行，列以逗号分隔）。</summary>
         private const string CardsSheetText =
-            "id,name,category,viewKey,hp,atk,range,moveDistance,produce,upkeep,resourceComponent,teleportComponent,permitsAttackDeploy,deployHomeOnly,avoidAdjacentSameType,requiresUpgrade,upgradeFrom\n" +
-            "ge1,GE-1开采机,resource,default,1,0,0,0,1,0,true,false,false,false,false,false,\n" +
-            "ge12,GE-12开采机,resource,default,1,1,1,0,1,0,true,false,false,false,false,true,ge1\n" +
-            "blade1,尖刀1,attack,default,2,1,1,1,0,2,true,false,false,false,false,false,\n" +
-            "rabbit2,灵兔2,attack,default,1,1,2,1,0,2,true,false,false,false,false,false,\n" +
-            "odysseus1,奥德修斯-1,special,default,2,0,0,1,0,1,true,false,false,false,false,false,\n" +
-            "gate,星门,special,default,2,0,0,1,0,4,true,true,true,true,true,false,\n" +
-            "bossCombat,Boss敌兵,attack,default,3,1,1,1,0,0,false,false,false,false,false,false,\n" +
-            "bossSpawner,刷怪卡,special,default,1,0,0,0,0,0,false,false,false,false,false,false,";
-
-        /// <summary>Deck 表内容（首行为表头，其余为数据行，列以逗号分隔）。</summary>
-        private const string DeckSheetText =
-            "cardType,count\n" +
-            "ge1,4\n" +
-            "ge12,4\n" +
-            "blade1,4\n" +
-            "rabbit2,4\n" +
-            "odysseus1,4\n" +
-            "gate,4";
+            "id,name,category,viewKey,hp,atk,range,moveDistance,produce,upkeep,resourceComponent,teleportComponent,permitsAttackDeploy,deployHomeOnly,avoidAdjacentSameType,requiresUpgrade,upgradeFrom,deploymentPenaltyComponent,deploymentAttackReduction,deployCost,deployRequireAdjacentCategory,deployRequireAdjacentCount,markOnEnterComponent,markOnEnterRadius,markRewardResource,deathGrowthComponent,deathGrowthPerKill,deathGrowthLimit,attacksAlliesAsHeal,leaveAfterDeploy,deployGainResource,tier,adjacentClearanceComponent,adjacentClearanceMinEmpty,killActionComponent,damageMarkComponent,damageMarkDamagePerStack,canAttackResources,canSwap,spawnComponent,spawnCardType\n" +
+            "ge1,GE-1开采机,resource,default,1,0,0,0,1,0,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,\n" +
+            "ge12,GE-12开采机,resource,default,1,1,1,0,1,0,true,false,false,false,false,true,ge1,false,0,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,\n" +
+            "kyoto_01,京都壹号,resource,default,1,0,0,0,3,0,true,false,false,false,false,false,,true,2,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,\n" +
+            "blade1,尖刀1,attack,default,2,1,1,1,0,2,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,\n" +
+            "rabbit2,灵兔2,attack,default,1,1,2,1,0,2,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,\n" +
+            "odysseus1,奥德修斯-1,special,default,2,0,0,1,0,1,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,\n" +
+            "gate,星门,special,default,2,0,0,1,0,4,true,true,true,true,true,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,false,false,0,true,true,false,\n" +
+            "bossCombat,Boss敌兵,attack,default,3,1,1,1,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,none,false,0,false,false,0,true,true,false,\n" +
+            "bossGuardType2,二式护卫舰,attack,default,3,3,2,1,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,none,false,0,false,false,0,true,true,false,\n" +
+            "bossGuardType1,一式护卫舰,attack,default,7,1,2,1,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,none,false,0,false,false,0,true,true,false,\n" +
+            "bossSpawner,刷怪卡,special,default,1,0,0,0,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,none,false,0,false,false,0,true,false,true,bossCombat\n" +
+            "kepler1,开普勒-I,resource,default,2,0,0,0,3,0,true,false,false,false,false,false,,false,0,10,resource,2,false,0,0,false,0,0,false,false,0,intermediate,false,0,false,false,0,true,true,false,\n" +
+            "kepler2,开普勒-II,resource,default,1,0,0,0,3,0,true,false,false,false,false,false,,false,0,10,attack,1,false,0,0,false,0,0,false,false,0,intermediate,false,0,false,false,0,true,true,false,\n" +
+            "landing1,星铆-1复合着陆机,attack,default,2,1,1,0,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,intermediate,false,0,false,false,0,true,true,false,\n" +
+            "houyi1,后羿综合舰,attack,default,3,2,2,1,0,4,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,intermediate,false,0,false,false,0,true,true,false,\n" +
+            "collector1,星棹-1收集系统,resource,default,1,0,0,0,1,0,true,false,false,false,false,false,,false,0,0,,0,true,1,1,false,0,0,false,false,0,intermediate,false,0,false,false,0,true,true,false,\n" +
+            "force1,力场-I,attack,default,3,0,1,1,0,4,true,false,false,false,false,false,,false,0,0,,0,false,0,0,true,1,4,false,false,0,intermediate,false,0,false,false,0,true,true,false,\n" +
+            "flounder1,比目鱼,attack,default,2,1,1,1,0,3,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,true,false,0,intermediate,false,0,false,false,0,true,true,false,\n" +
+            "reserve1,战时储备,special,default,1,0,0,0,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,true,3,intermediate,false,0,false,false,0,true,true,false,\n" +
+            "bossWarship,战舰,attack,default,15,2,1,1,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,none,false,0,false,false,0,false,true,true,bossCombat\n" +
+            "houyi2,后羿-II综合舰,attack,default,6,2,2,1,0,4,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,true,2,false,false,0,true,true,false,\n" +
+            "texasRanger,德克萨斯游骑兵,attack,default,3,3,2,1,0,3,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,false,false,0,true,true,false,\n" +
+            "viking2056,维京长船-2056,attack,default,2,3,2,1,0,4,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,true,false,0,true,true,false,\n" +
+            "snpEu,SNP-EU,attack,default,1,1,3,1,0,3,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,false,true,1,true,true,false,\n" +
+            "napoleon1769,拿破仑-1769,attack,default,8,3,2,1,0,6,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,false,false,0,true,true,false,";
 
         /// <summary>Rules 表内容（首行为表头，第二行为唯一数据行，列以逗号分隔）。</summary>
         private const string RulesSheetText =
-            "rows,columns,homeRegionWidth,playerPlays,bossPlays,drawCount,handLimit,initialResources,bossRespawnDelay,playerSide,firstSide,bossCardType,playerControlsBoss,accumulateResources,summoningSickness,adjacentSwap,lineBlocking,bossBombInterval,bossBombDamage,bossBombColumn,bossSpawnerAttackThreshold,bossSpawnerCountFromColumn,bossSpawnerUnitThreshold,bossSpawnerDeployFromColumn,bossSpawnerCardType,bossSpawnerSpawnCardType\n" +
-            "5,10,2,5,1,5,5,0,5,left,player,bossCombat,false,true,true,true,false,10,3,5,12,4,2,5,bossSpawner,bossCombat";
+            "rows,columns,homeRegionWidth,playerPlays,bossPlays,drawCount,handLimit,initialResources,bossRespawnDelay,playerSide,firstSide,bossCardType,playerControlsBoss,accumulateResources,summoningSickness,adjacentSwap,lineBlocking,bossBombInterval,bossBombDamage,bossBombColumn,bossSpawnerAttackThreshold,bossSpawnerCountFromColumn,bossSpawnerUnitThreshold,bossSpawnerDeployFromColumn,bossSpawnerCardType,bossPhaseTwoHp,bossWarshipColumn,bossWarshipCardType,bossPhaseThreeFrontCardType,bossPhaseThreeRearCardType,drawPileSize,tierRatioBasic,tierRatioIntermediate,tierRatioAdvanced,maxTypesBasic,maxTypesIntermediate,maxTypesAdvanced\n" +
+            "5,10,2,5,1,5,5,0,5,left,player,bossCombat,false,true,true,true,false,10,3,5,12,4,2,5,bossSpawner,20,8,bossWarship,bossGuardType1,bossGuardType2,24,70,20,10,5,3,2";
 
         /// <summary>Homes 表内容（首行为表头，其余为数据行，列以逗号分隔）。</summary>
         private const string HomesSheetText =
             "owner,hp,produce\n" +
             "player,10,2\n" +
-            "boss,10,0";
+            "boss,30,0";
 
         /// <summary>BossSlots 表内容（首行为表头，其余为数据行，列以逗号分隔）。</summary>
         private const string BossSlotsSheetText =
@@ -162,7 +169,7 @@ namespace Spotlight.EditorTools
 
         /// <summary>
         /// 构建默认工作簿的六张表定义。
-        /// 输入：无；输出：顺序固定为 Cards、Deck、Rules、Homes、BossSlots、Presentation 的表定义列表。
+        /// 输入：无；输出：顺序固定为 Cards、Rules、Homes、BossSlots、Presentation 的表定义列表。
         /// 为什么需要：把玩法文档中的默认数值集中在一处，避免写出流程里散落硬编码。
         /// </summary>
         private static IReadOnlyList<SheetSpec> BuildDefaultSheets()
@@ -170,7 +177,6 @@ namespace Spotlight.EditorTools
             return new[]
             {
                 CreateSheetSpec("Cards", CardsSheetText),
-                CreateSheetSpec("Deck", DeckSheetText),
                 CreateSheetSpec("Rules", RulesSheetText),
                 CreateSheetSpec("Homes", HomesSheetText),
                 CreateSheetSpec("BossSlots", BossSlotsSheetText),
@@ -300,7 +306,7 @@ namespace Spotlight.EditorTools
         /// <summary>
         /// 写出 xl/workbook.xml，列出全部工作表名与顺序。
         /// 输入：ZIP 包与表定义列表；输出：无（写入条目）。
-        /// 为什么需要：设置工作表顺序（Cards、Deck、Rules、Homes、BossSlots、Presentation）与名称，
+        /// 为什么需要：设置工作表顺序（Cards、Rules、Homes、BossSlots、Presentation）与名称，
         /// 读取器按名称取表时依赖这里。
         /// </summary>
         private static void WriteWorkbookPart(ZipArchive archive, IReadOnlyList<SheetSpec> sheets)
@@ -348,10 +354,10 @@ namespace Spotlight.EditorTools
         }
 
         /// <summary>
-        /// 写出单张工作表部件，所有单元格使用内联字符串。
+        /// 写出单张工作表部件，按 TableSchema 的列名选择数字、布尔或文本单元格。
         /// 输入：ZIP 包、工作表从 0 开始的序号、表定义；输出：无（写入条目）。
-        /// 为什么需要：内联字符串无需 sharedStrings.xml，也无需任何样式和公式，
-        /// 能让包保持最小且被 ExcelDataReader 直接解析。
+        /// 为什么需要：数值在 Excel 内也必须是真正的数字；按表头查类型支持列重排，
+        /// 文本仍用内联字符串，让包无需 sharedStrings.xml、样式或公式。
         /// </summary>
         private static void WriteWorksheetPart(ZipArchive archive, int sheetIndex, SheetSpec sheet)
         {
@@ -362,10 +368,14 @@ namespace Spotlight.EditorTools
                 writer.WriteStartElement("sheetData", SpreadsheetNamespace);
 
                 WriteRow(writer, 1, sheet.Headers);
+                var schema = TableSchema.For(sheet.Name);
+                var columns = new List<ColumnDefinition>();
+                foreach (var header in sheet.Headers ?? Array.Empty<string>())
+                    columns.Add(schema?.Find((header ?? string.Empty).Trim()));
                 var rows = sheet.Rows ?? Array.Empty<IReadOnlyList<string>>();
                 for (var index = 0; index < rows.Count; index++)
                 {
-                    WriteRow(writer, index + 2, rows[index]);
+                    WriteRow(writer, index + 2, rows[index], columns);
                 }
 
                 writer.WriteEndElement();
@@ -380,12 +390,12 @@ namespace Spotlight.EditorTools
         }
 
         /// <summary>
-        /// 写出一行单元格，全部使用内联字符串（t="inlineStr"）。
-        /// 输入：XmlWriter、1 开始的行号、该行按列顺序排列的取值；输出：无。
-        /// 为什么需要：统一单元格格式，保证列名与列序和表头一致，且不写出任何公式。
-        /// 空字符串会写成内容为空的 &lt;t/&gt;（t="inlineStr"），读取端可能将其视为 null 或空字符串，需要自行兜底。
+        /// 写出一行单元格，并保持原有列序与坐标。
+        /// 输入：XmlWriter、1 开始的行号、取值与可选列声明；输出：无（写入 row/c 节点）。
+        /// 为什么需要：表头或未知列使用文本，正式数据按声明写入，避免数字外观的 ID 被误转或丢失前导零。
+        /// 空字符串和非法值保留为原样文本，交给编译器报告，而不是静默变成 0。
         /// </summary>
-        private static void WriteRow(XmlWriter writer, int rowNumber, IReadOnlyList<string> values)
+        private static void WriteRow(XmlWriter writer, int rowNumber, IReadOnlyList<string> values, IReadOnlyList<ColumnDefinition> columns = null)
         {
             writer.WriteStartElement("row", SpreadsheetNamespace);
             writer.WriteAttributeString("r", ToInvariant(rowNumber));
@@ -395,15 +405,38 @@ namespace Spotlight.EditorTools
             {
                 writer.WriteStartElement("c", SpreadsheetNamespace);
                 writer.WriteAttributeString("r", GetColumnName(column) + ToInvariant(rowNumber));
-                writer.WriteAttributeString("t", "inlineStr");
-                writer.WriteStartElement("is", SpreadsheetNamespace);
-                writer.WriteStartElement("t", SpreadsheetNamespace);
-                writer.WriteString(values[column] ?? string.Empty);
-                writer.WriteEndElement();
-                writer.WriteEndElement();
+                var type = columns != null && column < columns.Count ? columns[column]?.Type ?? ColumnType.Text : ColumnType.Text;
+                WriteCellValue(writer, values[column], type);
                 writer.WriteEndElement();
             }
 
+            writer.WriteEndElement();
+        }
+
+        /// <summary>
+        /// 按列类型写入单元格内容，使用 OOXML 的 n/b/inlineStr 标记。
+        /// 输入：已打开 c 节点的 XmlWriter、原始取值和目标列类型；输出：类型属性及内容节点。
+        /// 为什么需要：让 Excel 可直接编辑和计算数字，保持旧文本、空值与非法输入可被读取和定位；
+        /// 数字验证后写入原始十进制文本，避免生成阶段额外引入浮点舍入。
+        /// </summary>
+        private static void WriteCellValue(XmlWriter writer, string raw, ColumnType type)
+        {
+            var text = raw ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(text) && type != ColumnType.Text &&
+                TableMapper.TryConvert(text.Trim(), type, out var value) &&
+                !(value is float number && (float.IsNaN(number) || float.IsInfinity(number))))
+            {
+                writer.WriteAttributeString("t", type == ColumnType.Boolean ? "b" : "n");
+                writer.WriteElementString("v", SpreadsheetNamespace,
+                    type == ColumnType.Boolean ? ((bool)value ? "1" : "0") : text.Trim());
+                return;
+            }
+
+            writer.WriteAttributeString("t", "inlineStr");
+            writer.WriteStartElement("is", SpreadsheetNamespace);
+            writer.WriteStartElement("t", SpreadsheetNamespace);
+            writer.WriteString(text);
+            writer.WriteEndElement();
             writer.WriteEndElement();
         }
 

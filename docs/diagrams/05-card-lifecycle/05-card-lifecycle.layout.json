@@ -1,0 +1,341 @@
+{
+  "canvas": {
+    "height": 1370.0,
+    "width": 1200.0
+  },
+  "composition": {
+    "limits": {
+      "max_bends_per_edge": 12,
+      "max_bridged_crossings": 8,
+      "max_route_stretch": 5.0,
+      "max_total_bends": 100,
+      "min_container_gutter": 0.0,
+      "min_label_clearance": 2.0,
+      "min_node_gap": 0.0,
+      "min_segment_length": 0.0,
+      "profile": "standard"
+    },
+    "metrics": {
+      "bridged_crossings": 0,
+      "max_route_stretch": 1.492,
+      "minimum_container_gutter": 20.0,
+      "minimum_node_gap": 60.0,
+      "shortest_segment": 15.3,
+      "total_bends": 6
+    },
+    "ok": true,
+    "profile": "standard",
+    "score": 100,
+    "violations": []
+  },
+  "edges": [
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-deck-draw",
+      "length": 100.0,
+      "route": [
+        [
+          320.0,
+          315.0
+        ],
+        [
+          420.0,
+          315.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-deck",
+      "source_port": [
+        320.0,
+        315.0
+      ],
+      "target": "n-draw",
+      "target_port": [
+        420.0,
+        315.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-draw-hand",
+      "length": 100.0,
+      "route": [
+        [
+          640.0,
+          315.0
+        ],
+        [
+          740.0,
+          315.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-draw",
+      "source_port": [
+        640.0,
+        315.0
+      ],
+      "target": "n-hand",
+      "target_port": [
+        740.0,
+        315.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-grave-draw",
+      "length": 60.0,
+      "route": [
+        [
+          530.0,
+          430.0
+        ],
+        [
+          530.0,
+          370.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-grave",
+      "source_port": [
+        530.0,
+        430.0
+      ],
+      "target": "n-draw",
+      "target_port": [
+        530.0,
+        370.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 1,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-hand-grave",
+      "length": 325.0,
+      "route": [
+        [
+          850.0,
+          370.0
+        ],
+        [
+          850.0,
+          485.0
+        ],
+        [
+          640.0,
+          485.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-hand",
+      "source_port": [
+        850.0,
+        370.0
+      ],
+      "target": "n-grave",
+      "target_port": [
+        640.0,
+        485.0
+      ],
+      "waypoints": [
+        [
+          850.0,
+          485.0
+        ]
+      ]
+    },
+    {
+      "bends": 5,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-hand-unit-a",
+      "length": 1589.0,
+      "route": [
+        [
+          960.0,
+          315.0
+        ],
+        [
+          1010.0,
+          315.0
+        ],
+        [
+          1010.0,
+          595.0
+        ],
+        [
+          290.0,
+          595.0
+        ],
+        [
+          68.0,
+          595.0
+        ],
+        [
+          68.0,
+          684.7
+        ],
+        [
+          280.0,
+          684.7
+        ],
+        [
+          280.0,
+          700.0
+        ]
+      ],
+      "route_stretch": 1.492,
+      "source": "n-hand",
+      "source_port": [
+        960.0,
+        315.0
+      ],
+      "target": "n-unit-a",
+      "target_port": [
+        280.0,
+        700.0
+      ],
+      "waypoints": [
+        [
+          1010.0,
+          315.0
+        ],
+        [
+          1010.0,
+          595.0
+        ],
+        [
+          290.0,
+          595.0
+        ]
+      ]
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-unit-a-b",
+      "length": 80.0,
+      "route": [
+        [
+          420.0,
+          760.0
+        ],
+        [
+          500.0,
+          760.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-unit-a",
+      "source_port": [
+        420.0,
+        760.0
+      ],
+      "target": "n-unit-b",
+      "target_port": [
+        500.0,
+        760.0
+      ],
+      "waypoints": []
+    },
+    {
+      "bends": 0,
+      "bridges": [],
+      "crossings": [],
+      "id": "e-unit-b-remove",
+      "length": 100.0,
+      "route": [
+        [
+          780.0,
+          760.0
+        ],
+        [
+          880.0,
+          760.0
+        ]
+      ],
+      "route_stretch": 1.0,
+      "source": "n-unit-b",
+      "source_port": [
+        780.0,
+        760.0
+      ],
+      "target": "n-remove",
+      "target_port": [
+        880.0,
+        760.0
+      ],
+      "waypoints": []
+    }
+  ],
+  "input_schema": "v1",
+  "issues": [],
+  "mode": "flowchart",
+  "ok": true,
+  "palette": {
+    "below_target": [],
+    "minimum_target": 4.5,
+    "ratios": {
+      "section_sub_fill": 4.76,
+      "text_muted": 4.76,
+      "text_primary": 17.74,
+      "text_secondary": 4.83
+    },
+    "scope": "default opaque canvas text tokens; not a full rendered accessibility audit",
+    "unsupported_tokens": []
+  },
+  "placements": {
+    "legend": {
+      "actual": [
+        42.0,
+        1186.0
+      ],
+      "bounds": [
+        32.0,
+        1172.0,
+        227.6,
+        1306.0
+      ],
+      "moved": true,
+      "requested": [
+        42.0,
+        1220.0
+      ]
+    }
+  },
+  "schema_version": 1,
+  "semantics": {
+    "details": {},
+    "ok": true,
+    "profile": "generic",
+    "style": 1,
+    "visual_theme": "Flat Icon"
+  },
+  "style": {
+    "id": 1,
+    "name": "Flat Icon"
+  },
+  "summary": {
+    "bridged_crossings": 0,
+    "edges": 7,
+    "nodes": 8
+  },
+  "text_metrics": "heuristic-v1",
+  "typography": {
+    "complete_text": true,
+    "hint": null,
+    "metrics": "heuristic widths; inspect the actual rendered font",
+    "truncated": []
+  }
+}

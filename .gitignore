@@ -63,6 +63,8 @@ crashlytics-build.properties
 Thumbs.db
 *.swp
 *~
+# Excel/WPS 打开工作簿时生成的锁文件（`~$xxx.xlsx` 及其 .meta）是纯临时产物，不入库
+~$*
 
 # UnitySkills 包在运行自身测试时创建的临时资源目录
 /[Aa]ssets/[Tt]emp/

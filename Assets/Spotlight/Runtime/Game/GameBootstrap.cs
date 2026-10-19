@@ -6,6 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace Spotlight
 {
@@ -42,6 +43,10 @@ namespace Spotlight
         GameSession _session;
         /// <summary>当前生效配置（可能来自调试面板“应用并重开”）。</summary>
         GameConfiguration _configuration;
+        /// <summary>本次运行会话的携带选择；重开与“再来一局”沿用它，只有启动与菜单“选卡”会重新选。</summary>
+        DeckSelectionState _deckSelection;
+        /// <summary>携带选择面板是否打开；打开时不再叠加配置面板用的那层遮罩（否则会盖住选卡面板）。</summary>
+        bool _deckSelectionOpen;
         /// <summary>当前界面选择上下文。</summary>
         Selection _selection;
         /// <summary>上一次播放过选中表现的卡牌视图；用来在选中变化时把上一张牌恢复原状。</summary>
@@ -60,17 +65,60 @@ namespace Spotlight
         bool _pauseOpen;
         /// <summary>进入暂停前的时间缩放值，用于继续战斗或销毁组件时精确恢复。</summary>
         float _timeScaleBeforePause = 1f;
+        /// <summary>齿轮菜单是否打开。与模态闸门配套：菜单打开时挡输入，菜单自带遮罩而不显示配置面板用的那层遮罩。</summary>
+        bool _menuOpen;
+        /// <summary>实际的退出动作（默认关闭播放模式 / 结束应用），可替换以便测试与后续平台适配。</summary>
+        Action _quitAction = DefaultQuit;
         /// <summary>当前正在展示的阶段，避免选择或面板刷新提前读取最终快照。</summary>
         GameSnapshot _displaySnapshot;
+        /// <summary>唯一活动手牌手势及其指针位置，不与棋盘单位身份混用。</summary>
+        HandCardDrag _drag;
+        PointerEventData _dragPointer;
 
         /// <summary>是否正在展示回合阶段，供运行诊断及帧循环测试读取。</summary>
         public bool IsPresentingTurn => _presentingTurn;
+
+        /// <summary>
+        /// 仅供 PlayMode 测试：为 true 时启动流程跳过携带选择界面，直接用默认选卡开局。
+        /// 为什么需要：大量棋盘/动画用例只关心对局内行为，不应为了跑一帧去点选卡界面；
+        /// 选卡链路本身另有专门的 PlayMode 用例覆盖。正式运行包不暴露该开关，也不会被序列化。
+        /// </summary>
+        public static bool SuppressDeckSelectionOnStart { get; set; }
+
+        /// <summary>本次运行会话的携带选择（供测试与调试读取）。</summary>
+        public DeckSelectionState DeckSelection => _deckSelection;
 
         /// <summary>当前生效的配置资产，供调试面板“恢复默认”使用。</summary>
         public SpotlightConfigAsset CurrentAsset => ConfigLoader.LoadAsset(_configAsset);
 
         /// <summary>当前对局实例（只读，供调试与测试使用）。</summary>
         public GameSession Session => _session;
+
+        /// <summary>
+        /// 退出动作：默认在编辑器里停止播放模式、在独立运行包里结束进程。
+        /// 输入/输出：无参数的宿主环境操作。
+        /// 为什么抽成可替换属性：退出在 PlayMode 测试里无法真的执行（会直接中断测试运行），
+        /// 但又必须验证“菜单按钮 → 退出”这条链路，因此保留一个可替换的执行点。
+        /// </summary>
+        public Action QuitAction
+        {
+            get => _quitAction;
+            set => _quitAction = value;
+        }
+
+        /// <summary>
+        /// 默认退出：编辑器下停止播放模式，正式包里结束应用进程。
+        /// 输入/输出：无。
+        /// 为什么不用单一句 Application.Quit：编辑器里它不生效，开发者会以为按钮没接上。
+        /// </summary>
+        static void DefaultQuit()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
 
         /// <summary>
         /// 初始化对局并绑定视图。
@@ -87,7 +135,14 @@ namespace Spotlight
                 return;
             }
             BindViewEvents();
-            StartSession(configuration);
+            _deckSelection = new DeckSelectionState(configuration);
+            if (SuppressDeckSelectionOnStart)
+            {
+                ConfirmDeckSelection();
+                return;
+            }
+            // 每次启动都必须先选卡：抽牌堆的卡种由玩家决定，不再有“所有卡默认进抽牌堆”的配置。
+            OpenDeckSelection(false);
         }
 
         /// <summary>
@@ -108,7 +163,14 @@ namespace Spotlight
         void BindViewEvents()
         {
             if (_boardView != null) { _boardView.CellClicked -= OnCellClicked; _boardView.CellClicked += OnCellClicked; }
-            if (_handView != null) { _handView.CardClicked -= OnCardClicked; _handView.CardClicked += OnCardClicked; }
+            if (_handView != null)
+            {
+                _handView.CardClicked -= OnCardClicked; _handView.CardClicked += OnCardClicked;
+                _handView.DragStarted -= OnHandDragStarted; _handView.DragStarted += OnHandDragStarted;
+                _handView.DragMoved -= OnHandDragMoved; _handView.DragMoved += OnHandDragMoved;
+                _handView.DragEnded -= OnHandDragEnded; _handView.DragEnded += OnHandDragEnded;
+                _handView.DragCancelled -= OnHandDragCancelled; _handView.DragCancelled += OnHandDragCancelled;
+            }
             if (_hudView != null)
             {
                 _hudView.Bind();
@@ -126,12 +188,28 @@ namespace Spotlight
                 _hudView.SpawnerDeployRequested += OnSpawnerDeployRequested;
                 _hudView.SpawnerSkipRequested -= OnSpawnerSkipRequested;
                 _hudView.SpawnerSkipRequested += OnSpawnerSkipRequested;
+                _hudView.MenuRequested -= OnMenuRequested;
+                _hudView.MenuRequested += OnMenuRequested;
+                _hudView.MenuResumeRequested -= OnMenuResumeRequested;
+                _hudView.MenuResumeRequested += OnMenuResumeRequested;
+                _hudView.DeckSelectRequested -= OnMenuDeckSelectRequested;
+                _hudView.DeckSelectRequested += OnMenuDeckSelectRequested;
+                var selector = _hudView.DeckSelectionPanel;
+                if (selector != null)
+                {
+                    selector.Confirmed -= ConfirmDeckSelection;
+                    selector.Confirmed += ConfirmDeckSelection;
+                    selector.Cancelled -= OnDeckSelectionCancelled;
+                    selector.Cancelled += OnDeckSelectionCancelled;
+                }
                 _hudView.RestartRequested -= OnRestartRequested;
                 _hudView.RestartRequested += OnRestartRequested;
                 _hudView.PauseChanged -= OnPauseChanged;
                 _hudView.PauseChanged += OnPauseChanged;
                 _hudView.ExitRequested -= OnExitRequested;
                 _hudView.ExitRequested += OnExitRequested;
+                _hudView.QuitRequested -= OnQuitRequested;
+                _hudView.QuitRequested += OnQuitRequested;
                 _hudView.DebugRequested -= OnDebugRequested;
                 _hudView.DebugRequested += OnDebugRequested;
             }
@@ -145,6 +223,7 @@ namespace Spotlight
         /// </summary>
         public void StartSession(GameConfiguration configuration)
         {
+            CancelHandDrag();
             StopAllCoroutines();
             _feedbackQueue.Clear();
             _playingFeedback = false;
@@ -175,10 +254,89 @@ namespace Spotlight
         /// </summary>
         public void RestartWith(GameConfiguration configuration)
         {
+            CancelHandDrag();
             _feedback?.KillAll();
             _boardView?.ClearUnits();
             _handView?.Clear();
+            // 配置可能来自调试面板：卡池、上级上限或比例都可能变，选卡状态必须先与新配置对齐，
+            // 否则菜单里再次打开选卡会看到一组对新配置非法的勾选。
+            _deckSelection = ReconcileDeckSelection(configuration);
             StartSession(configuration);
+        }
+
+        /// <summary>
+        /// 把当前选卡对齐到一份新配置。
+        /// 输入：即将生效的配置；输出：可用的选卡状态。
+        /// 行为：尽量保留玩家已选卡种（仍存在、属于玩家阶级、不超新上限），
+        /// 保留后仍非法则回退为默认选卡——对应“调试面板改配置后不要弹选卡界面”的约定。
+        /// </summary>
+        DeckSelectionState ReconcileDeckSelection(GameConfiguration configuration)
+        {
+            if (configuration == null) return null;
+            var fresh = new DeckSelectionState(configuration);
+            if (_deckSelection == null) return fresh;
+            var preserved = new List<string>();
+            foreach (var id in _deckSelection.SelectedTypeIds)
+            {
+                var card = configuration.FindCard(id);
+                if (card != null && DeckComposition.IsPlayerTier(card.Tier)) preserved.Add(id);
+            }
+            return fresh.TryRestore(preserved) ? fresh : new DeckSelectionState(configuration);
+        }
+
+        /// <summary>
+        /// 打开携带选择面板。
+        /// 输入：是否从齿轮菜单进入（菜单入口会先弹二次确认）；
+        /// 输出：无。打开期间与配置面板一样暂停对局：遮罩挡住点击，规则层同时拒绝命令。
+        /// </summary>
+        void OpenDeckSelection(bool fromMenu)
+        {
+            if (_deckSelection == null) return;
+            if (fromMenu) _menuOpen = false;
+            _deckSelectionOpen = true;
+            SetModalOpen(true);
+            _hudView?.DeckSelectionPanel?.Show(_deckSelection, fromMenu);
+        }
+
+        /// <summary>关闭携带选择面板并解除暂停。输入：无；输出：无。</summary>
+        void CloseDeckSelection()
+        {
+            _hudView?.DeckSelectionPanel?.Hide();
+            if (!_deckSelectionOpen) return;
+            _deckSelectionOpen = false;
+            SetModalOpen(false);
+        }
+
+        /// <summary>
+        /// 玩家在选卡面板点“确认”：用当前选卡生成抽牌堆并开局。
+        /// 输入：无；输出：无。生成失败时把原因显示在面板里，不关闭面板、不改变现有对局。
+        /// </summary>
+        void ConfirmDeckSelection()
+        {
+            if (_deckSelection == null) return;
+            if (!_deckSelection.TryBuildConfiguration(out var configuration, out var error))
+            {
+                _hudView?.DeckSelectionPanel?.ShowError(error);
+                return;
+            }
+            CloseDeckSelection();
+            StartSession(configuration);
+        }
+
+        /// <summary>
+        /// 玩家取消选卡（菜单入口的“继续当前对局”或面板里的“取消”）。
+        /// 输入：无；输出：无。开局前不允许取消（面板不显示取消按钮），这里兜底重新打开。
+        /// </summary>
+        void OnDeckSelectionCancelled()
+        {
+            _hudView?.DeckSelectionPanel?.Hide();
+            _deckSelectionOpen = false;
+            if (_session == null)
+            {
+                OpenDeckSelection(false);
+                return;
+            }
+            SetModalOpen(false);
         }
 
         /// <summary>
@@ -188,9 +346,16 @@ namespace Spotlight
         /// </summary>
         public void SetModalOpen(bool blocked)
         {
-            _modalOpen = blocked || _pauseOpen;
+            var shouldBlock = blocked || _pauseOpen || _menuOpen || _deckSelectionOpen;
+            if (shouldBlock) CancelHandDrag();
+            _modalOpen = shouldBlock;
+            // 只有所有其它模态状态都已关闭时，false 才表示退出齿轮菜单；
+            // 暂停、选卡或调试面板关闭时不能顺带解除另一个仍然有效的输入闸门。
+            if (!blocked && !_pauseOpen && !_deckSelectionOpen) _menuOpen = false;
             UpdateInputGate();
-            _hudView?.SetModalVisible(_modalOpen);
+            // 菜单自带全屏遮罩，此时不再叠加配置面板用的那层遮罩（否则会盖住「继续 / 重开」并吞掉点击）。
+            _hudView?.SetModalVisible(blocked && !_pauseOpen && !_menuOpen && !_deckSelectionOpen);
+            _hudView?.SetMenuVisible(_menuOpen);
             if (_modalOpen) _selection = new Selection(SelectionKind.None);
             Refresh();
         }
@@ -198,6 +363,7 @@ namespace Spotlight
         /// <summary>玩家点击手牌。输入：被点击的卡牌视图；输出：无。</summary>
         void OnCardClicked(Card card)
         {
+            if (_drag != null) return;
             if (_presentingTurn || _modalOpen || _session == null || card == null || card.Record == null) return;
             var snapshot = _session.GetSnapshot();
             if (snapshot.BossBombPending) { Show("请先布置炸弹或跳过炸弹，再开始玩家行动"); return; }
@@ -220,10 +386,105 @@ namespace Spotlight
             Refresh();
         }
 
+        /// <summary>判断手牌拖动的操作阶段。输入：当前快照；输出：是否允许操作，部署格仍由规则层计算。</summary>
+        bool CanDragHand(GameSnapshot snapshot) => isActiveAndEnabled && !_presentingTurn && !_modalOpen &&
+            snapshot.ActiveSide == Side.Player && snapshot.Phase == MatchPhase.Action &&
+            !snapshot.BossBombPending && !snapshot.BossSpawnerPending;
+
+        /// <summary>接收手牌开始手势。输入：拖动器与指针；输出：选中该卡并许可表现，不复用点击切换逻辑。</summary>
+        void OnHandDragStarted(HandCardDrag drag, PointerEventData pointer)
+        {
+            if (_session == null || drag == null || drag.Card.Record == null) return;
+            var snapshot = _session.GetSnapshot();
+            if (!CanDragHand(snapshot) || !snapshot.Hand.Any(c => c.Id == drag.Card.Record.Id)) return;
+            var grabbedPosition = drag.transform.position;
+            CancelHandDrag();
+            _selection = new Selection(SelectionKind.Hand, drag.Card.Record.Id);
+            Refresh();
+            if (!drag.BeginVisual(pointer, _handView.DragLayer, grabbedPosition)) return;
+            _drag = drag;
+            OnHandDragMoved(drag, pointer);
+        }
+
+        /// <summary>更新指针与合法悬停格。输入：活动拖动器与指针；输出：范围及悬停提示，不修改规则。</summary>
+        void OnHandDragMoved(HandCardDrag drag, PointerEventData pointer)
+        {
+            if (_drag != drag) return;
+            _dragPointer = pointer;
+            UpdateDragHover();
+        }
+
+        /// <summary>
+        /// 按最新快照重算范围及悬停。输入：缓存的指针；输出：只提示当前合法格。
+        /// 每帧更新使资源、回合或占位改变后提示及时失效，鼠标静止时也不会保留过期落点。
+        /// </summary>
+        void UpdateDragHover()
+        {
+            if (_drag == null || _session == null) return;
+            var snapshot = _session.GetSnapshot();
+            if (!CanDragHand(snapshot) || !snapshot.Hand.Any(c => c.Id == _selection.Id))
+            {
+                CancelHandDrag();
+                Refresh();
+                return;
+            }
+            var actions = _session.GetLegalActions(_selection);
+            _boardView?.Render(snapshot, actions, _selection);
+            if (_boardView != null)
+                _boardView.SetDeploymentHover(_boardView.TryGetPointerCell(_dragPointer, out var cell) && actions.Deploy.Contains(cell) ? cell : (Cell?)null);
+        }
+
+        /// <summary>帧末重查拖动目标。输入：无；输出：跟随布局和规则变化的悬停提示。</summary>
+        void LateUpdate() => UpdateDragHover();
+
+        /// <summary>
+        /// 松手时重新命中并提交部署。输入：拖动器与指针；输出：成功则快照移除手牌，失败则回位保留选中。
+        /// 在提交前清空活动手势，防止 Render 销毁卡面时的取消事件重复执行命令。
+        /// </summary>
+        void OnHandDragEnded(HandCardDrag drag, PointerEventData pointer)
+        {
+            if (_drag != drag) return;
+            _drag = null; _dragPointer = null;
+            _boardView?.SetDeploymentHover(null);
+            var id = drag.Card.Record.Id;
+            var success = false;
+            if (_session != null && CanDragHand(_session.GetSnapshot()) && _boardView != null &&
+                _boardView.TryGetPointerCell(pointer, out var cell) &&
+                _session.GetLegalActions(new Selection(SelectionKind.Hand, id)).Deploy.Contains(cell))
+            {
+                var result = Submit(new GameCommand(CommandKind.Deploy, Side.Player, id, cell));
+                success = result != null && result.Success;
+            }
+            if (success) _selection = new Selection(SelectionKind.None);
+            else drag.ReturnToHand(_configuration.Presentation.MoveSeconds);
+            Refresh();
+        }
+
+        /// <summary>收到视图主动取消。输入：拖动器；输出：撤掉对应手势及悬停，晚到的松手无效。</summary>
+        void OnHandDragCancelled(HandCardDrag drag)
+        {
+            if (_drag != drag) return;
+            _drag = null; _dragPointer = null;
+            _boardView?.SetDeploymentHover(null);
+        }
+
+        /// <summary>统一取消拖拽和回位。输入：是否延后生命周期回调中的排版；输出：复位视图且不提交命令。</summary>
+        void CancelHandDrag(bool deferLayout = false)
+        {
+            _drag = null; _dragPointer = null;
+            _boardView?.SetDeploymentHover(null);
+            _handView?.CancelDrags(deferLayout);
+        }
+
+        /// <summary>失焦时取消手势，避免窗口外松手后卡牌一直跟随。输入：焦点状态；输出：必要时归位。</summary>
+        void OnApplicationFocus(bool focused) { if (!focused) CancelHandDrag(); }
+        /// <summary>协调器禁用时取消手势。输入：无；输出：释放视图临时状态。</summary>
+        void OnDisable() => CancelHandDrag(true);
+
         /// <summary>玩家点击棋盘格。输入：内部坐标；输出：无。</summary>
         void OnCellClicked(Cell cell)
         {
-            if (_presentingTurn || _modalOpen || _session == null) return;
+            if (_presentingTurn || _modalOpen || _session == null || _drag != null) return;
             var snapshot = _session.GetSnapshot();
             var actions = _session.GetLegalActions(_selection);
 
@@ -249,16 +510,9 @@ namespace Spotlight
                 return;
             }
 
-            // 1) 部署：手牌选择或手动 Boss 未选单位时的部署高亮。
+            // 1) 点击部署只服务手动 Boss；玩家手牌必须通过拖拽松手提交。
             if (actions.Deploy.Contains(cell))
             {
-                if (_selection.Kind == SelectionKind.Hand)
-                {
-                    Submit(new GameCommand(CommandKind.Deploy, snapshot.ActiveSide, _selection.Id, cell));
-                    _selection = new Selection(SelectionKind.None);
-                    Refresh();
-                    return;
-                }
                 if (snapshot.ActiveSide == Side.Boss && snapshot.PlayerControlsBoss)
                 {
                     Submit(new GameCommand(CommandKind.BossDeploy, Side.Boss, 0, cell));
@@ -370,6 +624,7 @@ namespace Spotlight
         /// <summary>HUD 请求结束回合。输入：无；输出：无。</summary>
         void OnEndTurnRequested()
         {
+            CancelHandDrag();
             if (_session == null) return;
             // 结束回合前先清空选中：Submit 内部的 Refresh 会以“未选中”状态渲染，
             // 于是棋盘与手牌的选中标记、放大补间以及 HUD 详情都会随这次回合切换一起复位，
@@ -482,22 +737,59 @@ namespace Spotlight
         void OnDebugRequested() => _debugPanel?.Open();
 
         /// <summary>
+        /// 进入齿轮菜单。
+        /// 输入：无（由 HUD 的齿轮按钮触发）；输出：无。
+        /// 行为：切到“原有面板”视图（日志、Boss 状态与选中详情），并复用模态闸门挡住棋盘与手牌的点击。
+        /// 为什么复用 SetModalOpen：暂停的实质就是“期间不接受对局操作”，与配置面板完全一致，
+        /// 界面遮罩加规则层输入闸门已经足够，不需要给规则层增加“暂停”这种新概念。
+        /// </summary>
+        void OnMenuRequested()
+        {
+            if (_session == null) return;
+            _menuOpen = true;
+            SetModalOpen(true);
+        }
+
+        /// <summary>关闭齿轮菜单并继续对局。输入：无；输出：无。</summary>
+        void OnMenuResumeRequested() => SetModalOpen(false);
+
+        /// <summary>
+        /// 菜单里的“选卡”：先弹二次确认，确认后才进入选卡面板（换卡会重开当前对局）。
+        /// 输入：无；输出：无。选卡状态与界面都比对局长寿，因此这里直接复用 _deckSelection。
+        /// </summary>
+        void OnMenuDeckSelectRequested() => OpenDeckSelection(true);
+
+        /// <summary>
+        /// HUD 请求退出游戏。
+        /// 输入：无（由菜单里的“退出游戏”按钮触发）；输出：无（调用宿主退出动作后进程/播放模式结束）。
+        /// 行为：先停掉所有补间，再做退出动作，避免退出过程中仍有 DOTween 回调访问即将销毁的界面对象。
+        /// 为什么不做“先结束对局”：本局不保存进度，退出就是终止运行，不存在需要回写的规则状态。
+        /// </summary>
+        void OnQuitRequested()
+        {
+            _feedback?.KillAll();
+            _quitAction?.Invoke();
+        }
+
+        /// <summary>
         /// 提交命令并刷新。
-        /// 输入：命令；输出：无。
+        /// 输入：命令；输出：规则执行结果，输入被屏蔽时为 null，供拖动判断是否需要回位。
         /// 行为：记录渲染前快照 → 同步结算；炸弹准备及自动 Boss 按阶段展示，其他命令直接刷新并播放反馈。
         /// 失败时只提示原因，不改变界面以外的状态。
         /// </summary>
-        void Submit(GameCommand command)
+        CommandResult Submit(GameCommand command)
         {
-            if (_presentingTurn || _modalOpen || _session == null) return;
+            if (_presentingTurn || _modalOpen || _session == null) return null;
             var before = _session.GetSnapshot();
             var result = _session.Execute(command);
+            if (result.Success && before.BossPhase != _session.GetSnapshot().BossPhase)
+                _selection = new Selection(SelectionKind.None);
             if (!result.Success)
             {
                 Show(result.Error);
                 _previousSnapshot = before;
                 Refresh();
-                return;
+                return result;
             }
             _hudView?.ShowError(null);
             _previousSnapshot = before;
@@ -507,6 +799,7 @@ namespace Spotlight
                 Refresh();
                 PlayFeedback(before, _session.GetSnapshot(), result.Events);
             }
+            return result;
         }
 
         /// <summary>
@@ -573,6 +866,7 @@ namespace Spotlight
         /// </summary>
         void PresentTurn(GameSnapshot before, IReadOnlyList<PresentationFrame> frames)
         {
+            CancelHandDrag();
             _presentingTurn = true;
             _displaySnapshot = before;
             _selection = new Selection(SelectionKind.None);

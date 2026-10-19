@@ -30,6 +30,22 @@ namespace Spotlight.Tests
         /// <summary>隔离的本局配置，重开复用。</summary>
         GameConfiguration _configuration;
 
+        /// <summary>
+        /// 让本类用例加载场景后直接进入对局（跳过“携带选择”面板）。
+        /// 输入：无；输出：无。
+        /// 为什么需要：正式启动流程会先弹出携带选择模态面板并挡住棋盘，
+        /// 而本类只验证刷怪技能与按钮；选卡流程本身由 DeckSelectionPlayModeTests 覆盖。
+        /// </summary>
+        [OneTimeSetUp]
+        public void SuppressDeckSelectionOnStart() => GameBootstrap.SuppressDeckSelectionOnStart = true;
+
+        /// <summary>
+        /// 恢复正式启动行为。输入：无；输出：无。
+        /// 为什么需要：PlayMode 用例在同一进程里顺序执行，静态开关必须还原，否则会让后面的用例看不到选卡界面。
+        /// </summary>
+        [OneTimeTearDown]
+        public void RestoreDeckSelectionOnStart() => GameBootstrap.SuppressDeckSelectionOnStart = false;
+
         /// <summary>加载真实场景并替换为测试配置。输入：控制模式与玩家边缘；输出：准备好的视图和可交互会话。</summary>
         IEnumerator Load(bool manual = true, string side = "left")
         {
@@ -43,11 +59,17 @@ namespace Spotlight.Tests
             r.homeRegionWidth = 10; r.playerPlays = 100; r.bossPlays = 100;
             r.drawCount = 60; r.handLimit = 100; r.bossBombInterval = 1000; r.summoningSickness = true;
             r.bossSpawnerAttackThreshold = 12; r.bossSpawnerUnitThreshold = 2; r.bossSpawnerCountFromColumn = 4; r.bossSpawnerDeployFromColumn = 5;
-            var fighter = d.cards.Single(c => c.id == r.bossSpawnerSpawnCardType); fighter.atk = 0; fighter.moveDistance = 0;
+            // 抽牌堆构成规则显式写进夹具：Deck 表已废除，抽牌堆由下面的 WithDeck 给定，
+            // 但配置校验仍要求“每阶级至少一种卡”与三比例合法，写死可以不受 Excel 当前取值影响。
+            r.drawPileSize = 24; r.tierRatioBasic = 70; r.tierRatioIntermediate = 20; r.tierRatioAdvanced = 10;
+            r.maxTypesBasic = 5; r.maxTypesIntermediate = 3; r.maxTypesAdvanced = 2;
+            var fighter = d.cards.Single(c => c.id == d.cards.Single(s => s.id == r.bossSpawnerCardType).spawnCardType); fighter.atk = 0; fighter.moveDistance = 0;
             d.cards.Single(c => c.id == "blade1").atk = 6;
-            d.deck = new[] { new DeckRow { cardType="blade1", count=30 }, new DeckRow { cardType="ge1", count=30 } };
             d.presentation[0].moveSeconds = 0.02f; d.presentation[0].feedbackSeconds = 0.02f;
-            _configuration = new GameConfiguration(d); _bootstrap.RestartWith(_configuration);
+            // 第二个参数 false：60 张的夹具牌堆不等于 drawPileSize（24），走测试夹具专供的豁免路径。
+            _configuration = new GameConfiguration(d).WithDeck(
+                new[] { new DeckEntry("blade1", 30), new DeckEntry("ge1", 30) }, false);
+            _bootstrap.RestartWith(_configuration);
             yield return null;
         }
 

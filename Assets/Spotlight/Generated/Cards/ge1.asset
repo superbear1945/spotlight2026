@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f46270952f46ef441a82ecbe84dc9fd9, type: 3}
   m_Name: ge1_Resource
   m_EditorClassIdentifier: 
-  _produce: 1
+  _produce: 2
   _upkeep: 0
 --- !u!114 &-2340171078816063782
 MonoBehaviour:
@@ -30,6 +30,8 @@ MonoBehaviour:
   _attack: 0
   _range: 0
   _moveDistance: 0
+  _canAttackResources: 1
+  _canSwap: 1
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -45,14 +47,27 @@ MonoBehaviour:
   _id: ge1
   _name: "GE-1\u5F00\u91C7\u673A"
   _category: resource
+  _tier: basic
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 
   _deployHomeOnly: 0
   _avoidAdjacentSameType: 0
+  _deployCost: 0
+  _deployRequireAdjacentCategory: 
+  _deployRequireAdjacentCount: 0
+  _attacksAlliesAsHeal: 0
   _combat: {fileID: -2340171078816063782}
   _resource: {fileID: -8795902440029840070}
   _teleport: {fileID: 0}
+  _deploymentPenalty: {fileID: 0}
+  _markOnEnter: {fileID: 0}
+  _deathGrowth: {fileID: 0}
+  _instant: {fileID: 0}
+  _spawn: {fileID: 0}
+  _adjacentClearance: {fileID: 0}
+  _killAction: {fileID: 0}
+  _damageMark: {fileID: 0}
   _prefab: {fileID: 6749875582034393383, guid: 9da3e0744635f8744b3e8535be6fa104, type: 3}
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
   _sourceSheet: Cards

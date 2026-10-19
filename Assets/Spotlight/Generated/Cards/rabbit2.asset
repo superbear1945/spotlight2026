@@ -16,6 +16,8 @@ MonoBehaviour:
   _attack: 1
   _range: 2
   _moveDistance: 1
+  _canAttackResources: 1
+  _canSwap: 1
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -31,14 +33,27 @@ MonoBehaviour:
   _id: rabbit2
   _name: "\u7075\u51542"
   _category: attack
+  _tier: basic
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 
   _deployHomeOnly: 0
   _avoidAdjacentSameType: 0
+  _deployCost: 0
+  _deployRequireAdjacentCategory: 
+  _deployRequireAdjacentCount: 0
+  _attacksAlliesAsHeal: 0
   _combat: {fileID: -919092684236112073}
   _resource: {fileID: 8870785878615904322}
   _teleport: {fileID: 0}
+  _deploymentPenalty: {fileID: 0}
+  _markOnEnter: {fileID: 0}
+  _deathGrowth: {fileID: 0}
+  _instant: {fileID: 0}
+  _spawn: {fileID: 0}
+  _adjacentClearance: {fileID: 0}
+  _killAction: {fileID: 0}
+  _damageMark: {fileID: 0}
   _prefab: {fileID: 4120874686476434148, guid: b52673757889084458844d7129b693e8, type: 3}
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
   _sourceSheet: Cards

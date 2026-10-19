@@ -16,6 +16,8 @@ MonoBehaviour:
   _attack: 0
   _range: 0
   _moveDistance: 1
+  _canAttackResources: 1
+  _canSwap: 1
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -31,14 +33,27 @@ MonoBehaviour:
   _id: gate
   _name: "\u661F\u95E8"
   _category: special
+  _tier: advanced
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 
   _deployHomeOnly: 1
   _avoidAdjacentSameType: 1
+  _deployCost: 0
+  _deployRequireAdjacentCategory: 
+  _deployRequireAdjacentCount: 0
+  _attacksAlliesAsHeal: 0
   _combat: {fileID: -1783643114695788713}
   _resource: {fileID: 6045040607372019927}
   _teleport: {fileID: 3383924171147166296}
+  _deploymentPenalty: {fileID: 0}
+  _markOnEnter: {fileID: 0}
+  _deathGrowth: {fileID: 0}
+  _instant: {fileID: 0}
+  _spawn: {fileID: 0}
+  _adjacentClearance: {fileID: 0}
+  _killAction: {fileID: 0}
+  _damageMark: {fileID: 0}
   _prefab: {fileID: 2079076778610225538, guid: 7b7ce62fcaf8ca746989c45c7a109f6c, type: 3}
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
   _sourceSheet: Cards

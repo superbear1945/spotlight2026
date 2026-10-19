@@ -19,6 +19,8 @@ namespace Spotlight.Tests
     {
         /// <summary>
         /// 构造一份最小可用配置：士兵可以移动两格，玩家先手且由玩家控制 Boss，避免 AI 干扰断言。
+        /// 说明：Deck 表已废除，抽牌堆由 <see cref="Configuration"/> 显式覆盖；
+        /// 夹具只用到初级与不适用卡，因此补两张仅用于满足“每阶级至少一张可携带卡种”校验的填充卡。
         /// </summary>
         static ConfigDocument Document()
         {
@@ -26,17 +28,22 @@ namespace Spotlight.Tests
             {
                 cards = new[]
                 {
-                    new CardRow { id = "miner", name = "矿机", category = "resource", hp = 4, produce = 1, moveDistance = 0, resourceComponent = true, viewKey = "default" },
-                    new CardRow { id = "soldier", name = "士兵", category = "attack", hp = 5, atk = 2, range = 1, moveDistance = 2, viewKey = "default" },
-                    new CardRow { id = "boss", name = "敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
-                    new CardRow { id="spawner", name="刷怪卡", category="special", hp=1, viewKey="default" }
+                    new CardRow { tier = "basic", id = "miner", name = "矿机", category = "resource", hp = 4, produce = 1, moveDistance = 0, resourceComponent = true, viewKey = "default" },
+                    new CardRow { tier = "basic", id = "soldier", name = "士兵", category = "attack", hp = 5, atk = 2, range = 1, moveDistance = 2, viewKey = "default" },
+                    new CardRow { tier = "none", id = "boss", name = "敌兵", category = "attack", hp = 3, atk = 1, range = 1, moveDistance = 1, viewKey = "default" },
+                    new CardRow { tier = "none", id = "spawner", name="刷怪卡", category="special", hp=1, viewKey="default" , canSwap = false, spawnComponent = true, spawnCardType = "boss" },
+                    new CardRow { tier = "none", id = "phaseGuard", name="测试护卫舰", category="attack", hp=7, atk=1, range=2, moveDistance=1, viewKey="default" },
+                    new CardRow { tier = "none", id = "warship", name="战舰", category="attack", hp=15, atk=2, range=1, moveDistance=1, canAttackResources=false, spawnComponent=true, spawnCardType="boss", viewKey="default" },
+                    // 以下两张仅用于满足“初级/中级/高级每阶级至少一张可携带卡种”的配置校验，不参与任何断言。
+                    new CardRow { tier = "intermediate", id = "fillerIntermediate", name = "夹具中级卡", category = "resource", hp = 1, resourceComponent = true, produce = 0, viewKey = "default" },
+                    new CardRow { tier = "advanced", id = "fillerAdvanced", name = "夹具高级卡", category = "resource", hp = 1, resourceComponent = true, produce = 0, viewKey = "default" }
                 },
-                deck = new[] { new DeckRow { cardType = "soldier", count = 4 }, new DeckRow { cardType = "miner", count = 2 } },
                 rules = new[]
                 {
                     new RulesRow
                     {
-                        bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossSpawnerSpawnCardType = "boss", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 20, bossPlays = 1, drawCount = 6, handLimit = 30,
+                        drawPileSize = 24, tierRatioBasic = 70, tierRatioIntermediate = 20, tierRatioAdvanced = 10, maxTypesBasic = 5, maxTypesIntermediate = 3, maxTypesAdvanced = 2,
+                        bossSpawnerAttackThreshold = 1000, bossSpawnerCountFromColumn = 4, bossSpawnerUnitThreshold = 2, bossSpawnerDeployFromColumn = 5, bossSpawnerCardType = "spawner", bossPhaseTwoHp = 1, bossWarshipColumn = 1, bossWarshipCardType = "warship", bossPhaseThreeFrontCardType = "phaseGuard", bossPhaseThreeRearCardType = "phaseGuard", bossBombInterval = 10, bossBombDamage = 3, bossBombColumn = 5, rows = 5, columns = 10, homeRegionWidth = 2, playerPlays = 20, bossPlays = 1, drawCount = 6, handLimit = 30,
                         initialResources = 0, bossRespawnDelay = 3, playerSide = "left", firstSide = "player", bossCardType = "boss",
                         playerControlsBoss = true, summoningSickness = false, adjacentSwap = true
                     }
@@ -62,6 +69,15 @@ namespace Spotlight.Tests
         }
 
         /// <summary>
+        /// 建立本文件的配置：抽牌堆固定为“士兵 4 + 矿机 2”，与 Deck 表废除前的夹具完全一致。
+        /// 输入：无；输出：可直接创建对局的配置。
+        /// 为什么需要：抽牌堆已不能写在文档里，必须用 WithDeck 显式覆盖；
+        /// requireDrawPileSize=false 表示夹具不要求凑满 drawPileSize（正式配置仍由校验强制）。
+        /// </summary>
+        static GameConfiguration Configuration() => new GameConfiguration(Document())
+            .WithDeck(new[] { new DeckEntry("soldier", 4), new DeckEntry("miner", 2) }, false);
+
+        /// <summary>
         /// 移动单位后，卡牌必须挂到目标格并且偏移归零；被动画中断留下的偏移必须在下一次渲染自动纠正。
         /// 输入：无；输出：NUnit 断言结果。
         /// 为什么需要：这正是“日志说移动了、棋子却还在原地”的直接防线。
@@ -69,7 +85,7 @@ namespace Spotlight.Tests
         [Test]
         public void MoveKeepsCardInTargetCellAndClearsStaleOffset()
         {
-            var session = new GameSession(new GameConfiguration(Document()), new SeededRandom(7), 50);
+            var session = new GameSession(Configuration(), new SeededRandom(7), 50);
             using (var fixture = new BoardFixture())
             {
                 fixture.Build(session.Configuration);
@@ -109,7 +125,7 @@ namespace Spotlight.Tests
         [Test]
         public void BoardCardsDoNotSwallowClicks()
         {
-            var session = new GameSession(new GameConfiguration(Document()), new SeededRandom(11), 50);
+            var session = new GameSession(Configuration(), new SeededRandom(11), 50);
             using (var fixture = new BoardFixture())
             {
                 fixture.Build(session.Configuration);
@@ -140,6 +156,34 @@ namespace Spotlight.Tests
                 var cellGo = fixture.Board.CellRect(deployCell).gameObject;
                 var handler = ExecuteEvents.GetEventHandler<IPointerClickHandler>(cellGo);
                 Assert.That(handler, Is.EqualTo(cellGo), "格子没有可接收点击的按钮");
+            }
+        }
+
+        /// <summary>
+        /// 悬停描边不能抢走射线，也不能给棋盘单位装上手牌拖动器。
+        /// 输入：最小棋盘及一次公开部署；输出：描边、身份和清理的视图契约断言。
+        /// </summary>
+        [Test]
+        public void DeploymentHoverIsIndependentAndNeverBlocksBoardInput()
+        {
+            var session = new GameSession(Configuration(), new SeededRandom(7), 50);
+            using (var fixture = new BoardFixture())
+            {
+                fixture.Build(session.Configuration);
+                var record = session.GetSnapshot().Hand.First(r => r.TypeId == "soldier");
+                var target = new Cell(0, 1);
+                Assert.That(session.Execute(new GameCommand(CommandKind.Deploy, Side.Player, record.Id, target)).Success, Is.True);
+                fixture.Render(session);
+                fixture.Board.SetDeploymentHover(target);
+                Assert.That(fixture.Board.HoveredDeploymentCell, Is.EqualTo(target));
+                var outline = fixture.Board.CellRect(target).Find("DeploymentHover");
+                Assert.That(outline, Is.Not.Null);
+                Assert.That(outline.GetComponentsInChildren<Image>().Length, Is.EqualTo(4));
+                Assert.That(outline.GetComponentsInChildren<Image>().All(i => !i.raycastTarget), Is.True);
+                Assert.That(fixture.Board.UnitCards.Values.All(c => c.GetComponent<HandCardDrag>() == null), Is.True);
+                fixture.Board.SetDeploymentHover(null);
+                Assert.That(outline.gameObject.activeSelf, Is.False);
+                Assert.That(fixture.Board.HoveredDeploymentCell, Is.Null);
             }
         }
 

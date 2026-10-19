@@ -68,6 +68,8 @@ namespace Spotlight
     /// 值副本（ID/卡种/阵营），不持有 CardRecord 引用，因此场上的单位与抽牌堆、手牌、
     /// 墓地中的卡牌互不影响，卡牌总数不会因单位存活而增加。
     /// 覆盖升级只移除被覆盖的单位，本次部署的新单位 ID 必须与原单位不同。
+    /// 属性职责：攻击/射程/移动距离/生命上限与一次性减攻状态都是**场上属性**，
+    /// 部署时从只读卡种配置初始化，之后只由规则代码修改；不能被卡牌记录、SO 或表现层写回。
     /// </summary>
     public sealed class UnitState
     {
@@ -83,6 +85,32 @@ namespace Spotlight
         public Cell Position { get; internal set; }
         /// <summary>当前生命；在场单位跨回合保留伤势。</summary>
         public int Hp { get; internal set; }
+        /// <summary>生命上限：部署时从卡种配置复制；本次不新增改变上限的玩法。</summary>
+        public int MaxHp { get; internal set; }
+        /// <summary>当前攻击力：部署时从卡种配置复制，一次性部署减攻后持久保存，不在场上读配置。</summary>
+        public int Attack { get; internal set; }
+        /// <summary>当前攻击距离（曼哈顿）：部署时从卡种配置复制，用作一切在场射程判断。</summary>
+        public int Range { get; internal set; }
+        /// <summary>当前移动距离：部署时从卡种配置复制，用作一切在场移动范围判断。</summary>
+        public int MoveDistance { get; internal set; }
+        /// <summary>一次性部署减攻是否尚未触发：具有该能力的单位上场时为 true，触发一次后永久为 false。</summary>
+        public bool DeploymentPenaltyPending { get; internal set; }
+        /// <summary>该单位的一次性减攻量副本：没有该能力时为 0，来自卡种配置而非代码常量。</summary>
+        public int DeploymentAttackReduction { get; internal set; }
+        /// <summary>
+        /// 标记来源阵营；null 表示未被标记。
+        /// 为什么要记录来源：标记是永久状态（来源离场也不消失），阵亡时必须按“谁标记的”给对应阵营发资源。
+        /// 多个来源重叠时不叠加：已被标记的单位不会改归属（先到先得）。
+        /// </summary>
+        public Side? MarkedBy { get; internal set; }
+        /// <summary>标记奖励副本：标记时从来源配置复制，阵亡时按此值发放，不随后续配置改动而变化。</summary>
+        public int MarkReward { get; internal set; }
+        /// <summary>死亡加攻：每次全棋盘单位因战斗阵亡时增加的攻击力副本；没有该能力时为 0。</summary>
+        public int DeathGrowthPerKill { get; internal set; }
+        /// <summary>死亡加攻的次数上限副本；没有该能力时为 0。</summary>
+        public int DeathGrowthLimit { get; internal set; }
+        /// <summary>死亡加攻已触发次数；达到上限后不再增加攻击力。</summary>
+        public int DeathGrowthTriggers { get; internal set; }
         /// <summary>本回合是否已经行动（移动、攻击或互换其一）。</summary>
         public bool Acted { get; internal set; }
         /// <summary>本回合维持费是否已支付；未支付时不能行动。</summary>
@@ -91,17 +119,72 @@ namespace Spotlight
         public long DeploymentOrder { get; internal set; }
         /// <summary>AI 兵位 ID；非 AI 兵位单位该值为 null，因此不会触发补兵计时。</summary>
         public string BossSlotId { get; internal set; }
-        /// <summary>是否由 Boss 刷怪技能部署的固定据点；身份不依赖卡名，不允许移动、攻击或互换。</summary>
+        /// <summary>是否由 Boss 刷怪技能部署的固定据点；仅用于一阶段部署数量限制；行动权限由配置决定。</summary>
         public bool IsBossSpawner { get; internal set; }
-        /// <summary>部署时的完整回合号；刷怪卡在之后的 Boss 回合才开始生成战机。</summary>
+        /// <summary>部署时的完整回合号，保留供日志追踪；首次刷怪使用 DeployedOwnerTurn。</summary>
         public long DeployedRound { get; internal set; }
+        /// <summary>部署时所属阵营已经开始的回合序号；刷怪资格不依赖完整回合号。</summary>
+        public long DeployedOwnerTurn { get; internal set; }
+        /// <summary>部署时从战斗配置复制的资源目标权限。</summary>
+        public bool CanAttackResources { get; internal set; }
+        /// <summary>部署时从战斗配置复制的互换权限。</summary>
+        public bool CanSwap { get; internal set; }
+        /// <summary>本次部署的索敌策略；由生成入口赋值，随快照复制，不根据卡名或卡种推断。</summary>
+        public AiTargetPolicy AiTargetPolicy { get; internal set; }
 
-        /// <summary>是否本回合仍可行动：不是固定刷怪卡、未行动且维持费已付。</summary>
-        public bool CanAct => !IsBossSpawner && !Acted && UpkeepPaid;
+        /// <summary>
+        /// 永久伤害标记的层集合（与“入场标记 MarkedBy”是两种不同机制）。
+        /// 每层保存施加时的追加伤害副本，因此来源离场、跨回合或调试改配置都不会改变已有层。
+        /// 字段刻意不是 List 引用共享：Copy 时必须复制集合，否则旧快照会被后续挂层改写。
+        /// </summary>
+        List<DamageMarkLayer> _damageMarks = new List<DamageMarkLayer>();
 
-        /// <summary>浅拷贝，供 GetSnapshot 输出与真实对局解耦。</summary>
-        internal UnitState Copy() => (UnitState)MemberwiseClone();
+        /// <summary>当前伤害标记层数；0 表示没有标记。</summary>
+        public int DamageMarkLayers => _damageMarks.Count;
+
+        /// <summary>本次直接受伤将追加的总伤害（各层数值之和，宽类型累加后截断为 int）。</summary>
+        public int DamageMarkBonus
+        {
+            get
+            {
+                long total = 0;
+                for (var i = 0; i < _damageMarks.Count; i++) total += _damageMarks[i].Damage;
+                return total > int.MaxValue ? int.MaxValue : (int)total;
+            }
+        }
+
+        /// <summary>
+        /// 只读的层集合副本。
+        /// 输入：无；输出：当前层的只读视图。
+        /// 为什么返回只读视图：界面与快照只需要展示层数与数值，可写集合必须留在规则内核内部。
+        /// </summary>
+        public IReadOnlyList<DamageMarkLayer> DamageMarks => _damageMarks.AsReadOnly();
+
+        /// <summary>
+        /// 追加一层伤害标记。
+        /// 输入：施加时从来源配置复制的每层追加伤害；输出：无。
+        /// 只在一次直接攻击完成后由规则内核调用；炸弹、治疗与追加伤害都不会挂层。
+        /// </summary>
+        internal void AddDamageMark(int damage) => _damageMarks.Add(new DamageMarkLayer(damage));
+
+        /// <summary>是否本回合仍可行动：未行动且维持费已付；能力和目标限制在具体命令中校验。</summary>
+        public bool CanAct => !Acted && UpkeepPaid;
+
+        /// <summary>
+        /// 深拷贝，供 GetSnapshot 输出与真实对局解耦。
+        /// 伤害标记层集合必须逐层复制：MemberwiseClone 会共享同一个 List，
+        /// 后续挂层就会把已经交付给界面的旧快照一起改掉。
+        /// </summary>
+        internal UnitState Copy()
+        {
+            var copy = (UnitState)MemberwiseClone();
+            copy._damageMarks = new List<DamageMarkLayer>(_damageMarks);
+            return copy;
+        }
     }
+
+    /// <summary>单位索敌策略。普通部署默认 Standard，三阶段技能创建的护卫舰使用 BossGuard；不改变手动命令权限。</summary>
+    public enum AiTargetPolicy { Standard, BossGuard }
 
     /// <summary>
     /// 独立的家实体。
@@ -182,14 +265,24 @@ namespace Spotlight
         public Cell Position { get; }
         /// <summary>受伤单位 ID，空格或忽略对象时为 0。</summary>
         public long UnitId { get; }
-        /// <summary>此格实际消耗的伤害。</summary>
+        /// <summary>
+        /// 此格实际消耗的炸弹预算（每轮基础 1 点）。
+        /// 为什么保留旧语义：炸弹的搜索与“剩余预算”完全按它推进；追加伤害不扣预算。
+        /// </summary>
         public int Damage { get; }
+        /// <summary>此格由目标伤害标记追加扣掉的生命值；没有标记时为 0，且不消耗预算。</summary>
+        public int BonusDamage { get; }
+        /// <summary>此格实际扣掉的总生命值 = 预算消耗 + 追加伤害。</summary>
+        public int TotalDamage => Damage + BonusDamage;
         /// <summary>该单位是否因本次爆炸阵亡。</summary>
         public bool Killed { get; }
 
-        /// <summary>保存单格结算。输入：坐标与伤害结果；输出：不可变路径步骤。</summary>
-        public BombBlastStep(Cell position, long unitId, int damage, bool killed)
-        { Position = position; UnitId = unitId; Damage = damage; Killed = killed; }
+        /// <summary>
+        /// 保存单格结算。输入：坐标、受伤单位、消耗的预算、是否阵亡与可选追加伤害；输出：不可变路径步骤。
+        /// bonusDamage 默认 0，保证没有伤害标记时步骤与旧行为完全一致。
+        /// </summary>
+        public BombBlastStep(Cell position, long unitId, int damage, bool killed, int bonusDamage = 0)
+        { Position = position; UnitId = unitId; Damage = damage; Killed = killed; BonusDamage = bonusDamage < 0 ? 0 : bonusDamage; }
     }
 
     /// <summary>回合阶段：正常行动、超限弃牌、已结束。</summary>
@@ -261,6 +354,12 @@ namespace Spotlight
         public IReadOnlyList<Cell> Move { get; internal set; } = Array.Empty<Cell>();
         /// <summary>可攻击目标所在格。</summary>
         public IReadOnlyList<Cell> Attack { get; internal set; } = Array.Empty<Cell>();
+        /// <summary>
+        /// 可攻击的**己方**单位所在格（只有“攻击友方即治疗”的卡才有）。
+        /// 为什么单独列出：这些格同时也在 Attack 里（点击链路与敌方目标一致），
+        /// 单列出来只是让视图把它们高亮成治疗色，规则层不会重复判定。
+        /// </summary>
+        public IReadOnlyList<Cell> Heal { get; internal set; } = Array.Empty<Cell>();
         /// <summary>可互换的己方单位所在格。</summary>
         public IReadOnlyList<Cell> Swap { get; internal set; } = Array.Empty<Cell>();
         /// <summary>
@@ -289,11 +388,21 @@ namespace Spotlight
         public BossBombState Bomb { get; }
         /// <summary>爆炸实际访问顺序与伤害结果；复制数组防止外部改变事件。</summary>
         public IReadOnlyList<BombBlastStep> BlastSteps { get; }
+        /// <summary>
+        /// 本次事件的结构化伤害结果；没有伤害的事件为 null。
+        /// 为什么挂在事件上：表现层与日志不得从中文文本或快照差反推伤害归属，
+        /// 击杀恢复行动也必须读取“这次攻击”的结果而不是“本次命令发生过死亡”。
+        /// </summary>
+        public DamageResult Damage { get; }
 
-        /// <summary>构造事件。输入：类型、文本、主体及可选炸弹路径；输出：拥有独立只读路径的事件。</summary>
-        public GameEvent(string kind, string message, long subjectId = 0, BossBombState bomb = null, BombBlastStep[] blastSteps = null)
+        /// <summary>
+        /// 构造事件。输入：类型、文本、主体以及可选的炸弹路径与结构化伤害结果；
+        /// 输出：拥有独立只读路径与不可变伤害事实的事件。
+        /// damage 追加在参数末尾，旧调用点无需修改。
+        /// </summary>
+        public GameEvent(string kind, string message, long subjectId = 0, BossBombState bomb = null, BombBlastStep[] blastSteps = null, DamageResult damage = null)
         {
-            Kind = kind; Message = message; SubjectId = subjectId; Bomb = bomb;
+            Kind = kind; Message = message; SubjectId = subjectId; Bomb = bomb; Damage = damage;
             BlastSteps = Array.AsReadOnly(blastSteps == null ? Array.Empty<BombBlastStep>() : (BombBlastStep[])blastSteps.Clone());
         }
     }
@@ -343,6 +452,12 @@ namespace Spotlight
     /// </summary>
     public sealed class GameSnapshot
     {
+        /// <summary>Boss 技能阶段，与玩家行动/弃牌阶段独立。</summary>
+        public BossPhase BossPhase { get; internal set; }
+        /// <summary>Boss 当前是否锁血且不可被攻击。</summary>
+        public bool BossInvulnerable { get; internal set; }
+        /// <summary>二阶段指定战舰的独立只读记录。</summary>
+        public IReadOnlyList<BossWarshipState> BossWarships { get; internal set; } = Array.Empty<BossWarshipState>();
         /// <summary>当前完整回合号，从 1 开始。</summary>
         public long Round { get; internal set; }
         /// <summary>当前行动方。</summary>

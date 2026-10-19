@@ -6,6 +6,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.EventSystems;
 
 namespace Spotlight
 {
@@ -54,6 +55,13 @@ namespace Spotlight
         bool _needsCellSize;
         /// <summary>格网布局组件缓存，避免每帧 GetComponent。</summary>
         GridLayoutGroup _grid;
+        /// <summary>复用射线结果列表，避免每次指针移动创建列表。</summary>
+        readonly List<RaycastResult> _pointerHits = new List<RaycastResult>();
+        /// <summary>独立于部署范围高亮的当前落点描边。</summary>
+        RectTransform _dropOutline;
+
+        /// <summary>当前被强调的合法部署格；null 表示没有悬停提示，供交互和测试观察。</summary>
+        public Cell? HoveredDeploymentCell { get; private set; }
 
         /// <summary>单位 ID → 卡牌视图的只读访问，供反馈与调试面板定位动画对象。</summary>
         public IReadOnlyDictionary<long, Card> UnitCards => _unitCards;
@@ -65,6 +73,7 @@ namespace Spotlight
         /// </summary>
         public void Build(GameConfiguration config, SpotlightConfigAsset asset)
         {
+            SetDeploymentHover(null);
             _config = config;
             _asset = asset;
             _rows = config.Rules.Rows;
@@ -148,6 +157,67 @@ namespace Spotlight
         public RectTransform CellRect(Cell cell) => _cells.TryGetValue(cell, out var view) ? view.Rect : null;
 
         /// <summary>
+        /// 查询指针实际命中的棋盘格。输入：屏幕指针；输出：是否命中及内部坐标。
+        /// 只接受最上层射线结果，避免透过 HUD、手牌或遮罩部署，也避免镜像坐标和格间隙误判。
+        /// </summary>
+        public bool TryGetPointerCell(PointerEventData pointer, out Cell cell)
+        {
+            cell = default;
+            if (EventSystem.current == null || pointer == null) return false;
+            _pointerHits.Clear();
+            EventSystem.current.RaycastAll(pointer, _pointerHits);
+            if (_pointerHits.Count == 0) return false;
+            var view = _pointerHits[0].gameObject.GetComponentInParent<BoardCellView>();
+            if (view == null || !_cells.TryGetValue(view.Coordinate, out var own) || own != view) return false;
+            cell = view.Coordinate;
+            return true;
+        }
+
+        /// <summary>
+        /// 设置已由规则确认的悬停格。输入：合法坐标或 null；输出：额外描边，不覆盖范围高亮。
+        /// 描边由四条不参与射线的边组成，挂在格子最上层，覆盖升级时也不会被单位卡面遮住。
+        /// </summary>
+        public void SetDeploymentHover(Cell? cell)
+        {
+            var rect = cell.HasValue ? CellRect(cell.Value) : null;
+            HoveredDeploymentCell = rect != null ? cell : null;
+            if (rect == null) { if (_dropOutline != null) _dropOutline.gameObject.SetActive(false); return; }
+            if (_dropOutline == null)
+            {
+                _dropOutline = new GameObject("DeploymentHover", typeof(RectTransform)).GetComponent<RectTransform>();
+                for (var i = 0; i < 4; i++)
+                {
+                    var edge = new GameObject("Edge", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+                    edge.SetParent(_dropOutline, false);
+                    var horizontal = i < 2;
+                    var side = i % 2;
+                    edge.anchorMin = horizontal ? new Vector2(0f, side) : new Vector2(side, 0f);
+                    edge.anchorMax = horizontal ? new Vector2(1f, side) : new Vector2(side, 1f);
+                    edge.pivot = horizontal ? new Vector2(0.5f, side) : new Vector2(side, 0.5f);
+                    edge.sizeDelta = horizontal ? new Vector2(0f, 3f) : new Vector2(3f, 0f);
+                    edge.GetComponent<Image>().raycastTarget = false;
+                }
+            }
+            _dropOutline.SetParent(rect, false);
+            _dropOutline.anchorMin = Vector2.zero; _dropOutline.anchorMax = Vector2.one;
+            _dropOutline.offsetMin = _dropOutline.offsetMax = Vector2.zero;
+            _dropOutline.SetAsLastSibling();
+            // 手牌比格子大，浮动卡面可能完全遮住格边；独立排序让描边显示在拖动卡面上方。
+            var boardCanvas = GetComponentInParent<Canvas>();
+            if (boardCanvas != null)
+            {
+                var outlineCanvas = _dropOutline.GetComponent<Canvas>();
+                if (outlineCanvas == null) outlineCanvas = _dropOutline.gameObject.AddComponent<Canvas>();
+                outlineCanvas.overrideSorting = true;
+                outlineCanvas.sortingLayerID = boardCanvas.rootCanvas.sortingLayerID;
+                outlineCanvas.sortingOrder = boardCanvas.rootCanvas.sortingOrder + 1;
+            }
+            foreach (var edge in _dropOutline.GetComponentsInChildren<Image>(true))
+                edge.color = CardText.HighlightColor("deploy", _config.Presentation) ?? Color.white;
+            _dropOutline.gameObject.SetActive(true);
+        }
+
+        /// <summary>
         /// 渲染一帧棋盘状态。
         /// 输入：快照、当前选中对象的合法动作与选择上下文；输出：无。
         /// 顺序：先清高亮 → 画高亮 → 同步家与单位视图 → 更新选中标记。
@@ -224,6 +294,8 @@ namespace Spotlight
             var presentation = _config != null ? _config.Presentation : null;
             Highlight(actions.Deploy, "deploy", presentation);
             Highlight(actions.Attack, "attack", presentation);
+            // 治疗格在攻击格之后染色：同格时紫色覆盖红色（比目鱼对友方目标），敌我一眼可分。
+            Highlight(actions.Heal, "heal", presentation);
             Highlight(actions.Swap, "swap", presentation);
             Highlight(actions.Move, "move", presentation);
         }

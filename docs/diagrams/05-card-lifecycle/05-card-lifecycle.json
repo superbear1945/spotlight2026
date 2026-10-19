@@ -17,7 +17,7 @@
    "width": 1080,
    "height": 410,
    "label": "循环区：卡牌记录唯一流转，总数恒定",
-   "subtitle": "卡组 → 抽牌堆 → 手牌 → 墓地 →（抽牌堆耗尽）→ 洗回抽牌堆",
+   "subtitle": "携带选择 → 抽牌堆 → 手牌 → 墓地 →（耗尽）→ 洗回抽牌堆",
    "preserve_case": true
   },
   {
@@ -49,9 +49,9 @@
    "y": 260,
    "width": 220,
    "height": 110,
-   "label": "卡组 Deck",
-   "type_label": "开局配置",
-   "sublabel": "卡种与数量清单",
+   "label": "携带选择",
+   "type_label": "开局前",
+   "sublabel": "每阶级选 1 至上限种",
    "fill": "#eff6ff",
    "stroke": "#2563eb",
    "flat": true
@@ -65,7 +65,7 @@
    "height": 110,
    "label": "抽牌堆 DrawPile",
    "type_label": "运行时",
-   "sublabel": "玩家每回合抽牌来源",
+   "sublabel": "按张数与比例生成，每回合抽牌来源",
    "fill": "#eff6ff",
    "stroke": "#2563eb",
    "flat": true
@@ -194,7 +194,10 @@
    "label": "部署 / 弃置入墓地",
    "label_style": "offset",
    "route_points": [
-    [850, 485]
+    [
+     850,
+     485
+    ]
    ]
   },
   {
@@ -206,9 +209,18 @@
    "flow": "control",
    "label": "部署出满血新单位",
    "route_points": [
-    [1010, 315],
-    [1010, 595],
-    [290, 595]
+    [
+     1010,
+     315
+    ],
+    [
+     1010,
+     595
+    ],
+    [
+     290,
+     595
+    ]
    ]
   },
   {

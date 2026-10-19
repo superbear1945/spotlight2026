@@ -9,12 +9,9 @@
 | 3 UI 与调试 | UXML、UGUI、场景、DOTween、临时配置 | 已完成 |
 | 4 验证与架构图 | EditMode 全量回归、运行验证、四组 SVG/PNG/HTML、使用说明 | 已完成（Windows 独立构建未执行） |
 | 5 界面同步修复 | 棋盘点击穿透、移动后棋子停在旧格、动画遗留补间与 DOTween 警告 | 已完成（含 EditMode + PlayMode 回归） |
+| 6 高级卡 | 统一伤害结算、伤害标记、四邻空格限制、击杀恢复行动、五张正式高级卡与配置/文档同步 | 已完成（EditMode + PlayMode 用例已提交，待 PR 云端验证） |
 
-<<<<<<< HEAD
 确认后的规则：不实现反击和斜移；星门仅扩展部署；特殊卡在 AI 非致死优先级中排在资源卡之后；资源卡不参与互换（既不能发起也不能作为目标）；玩家可主动让己方单位离场（不消耗行动、来源卡不回收，Boss 单位与家不可离场）；正式数据禁止公式；调试只影响当前运行会话。
-=======
-确认后的规则：不实现反击和斜移；星门仅扩展部署；特殊卡在 AI 非致死优先级中排在资源卡之后；资源卡不参与互换（既不能发起也不能作为目标）；正式数据禁止公式；调试只影响当前运行会话。
->>>>>>> origin/main
 
 ## 详细进度
 
@@ -58,7 +55,7 @@
 
 | 子项 | 文件 | 状态 |
 |---|---|---|
-| 卡牌视图与三个组件 | `Runtime/Cards/Card.cs`、`CombatComponent.cs`、`ResourceComponent.cs`、`TeleportComponent.cs` | 完成 |
+| 卡牌视图与四个组件 | `Runtime/Cards/Card.cs`、`CombatComponent.cs`、`ResourceComponent.cs`、`TeleportComponent.cs`、`DeploymentPenaltyComponent.cs` | 完成 |
 | 文本与配色工具 | `Runtime/View/CardText.cs`、`CardFactory.cs` | 完成 |
 | 棋盘（UGUI） | `Runtime/UI/BoardView.cs`、`BoardCellView.cs` | 完成 |
 | 手牌（UGUI） | `Runtime/UI/HandView.cs` | 完成 |
@@ -70,6 +67,20 @@
 | 演示场景 | `Assets/Spotlight/Scenes/Spotlight.unity` | 完成 |
 | 界面预览 | `docs/界面预览.png`、`docs/配置面板.png`、`docs/配置面板-下半部分.png` | 完成 |
 
+### 模块 4：京都壹号与场上战斗属性（本轮新增，已在 Unity 2022.3.62f3 验证）
+
+| 子项 | 文件 | 状态 |
+|---|---|---|
+| 能力配置契约与校验 | `Core/Configuration.cs`（`IDeploymentPenaltyConfig`、`CardRow` 新两列、`CardArchetype.FromRow` 值拷贝隔离、校验规则） | 代码完成 |
+| 场上战斗属性 | `Core/GameState.cs`（`UnitState.MaxHp/Attack/Range/MoveDistance/DeploymentPenaltyPending/DeploymentAttackReduction`） | 代码完成 |
+| 统一入场结算与读取迁移 | `Core/GameSession.cs`（`Place` 初始化 + `ApplyDeploymentPenalty`，伤害/射程/移动/AI/刷怪条件改读当前值） | 代码完成 |
+| 能力配置 SO 与视图组件 | `Runtime/Config/DeploymentPenaltyConfigSO.cs`、`Runtime/Cards/DeploymentPenaltyComponent.cs`、`CombatComponent.cs`、`Card.cs` | 代码完成 |
+| 表现与调试 | `Runtime/View/CardText.cs`（`StatLine(def, unit)`、`UnitDetail`、`DeploymentPenaltyLine`）、`Runtime/UI/HudView.cs`、`Runtime/Debug/ConfigDebugPanel.cs` | 代码完成 |
+| 配置管线 | `Editor/Excel/TableSchema.cs`、`DefaultWorkbookWriter.cs`、`ConfigAssetPublisher.cs`、`Editor/View/ViewTemplateBuilder.cs` | 代码完成 |
+| 正式数据 | `Assets/Spotlight/Config/Spotlight.xlsx`（Cards 加两列 + `kyoto_01` 行；Deck 加 2 张） | 已改（后被取代：`Deck` 表已废除，改由 `Rules` 抽牌堆 7 列 + 开局选卡生成） |
+| 测试 | `Tests/EditMode/DeploymentPenaltyTests.cs`、`Tests/PlayMode/DeploymentPenaltyPlayModeTests.cs` | EditMode 179/179、PlayMode 26/26 全部通过 |
+| 生成资产 | `Generated/` | 已按管线重编译：新增 `kyoto_01.asset`（含 `_DeploymentPenalty` 子资产）与 `kyoto_01.prefab`，共 20 个资产 |
+
 ### 模块 4：验证与架构图
 
 | 子项 | 状态 |
@@ -78,6 +89,7 @@
 | PlayMode 回归 | `Spotlight.Tests.PlayMode` 新增 3 个用例：移动后卡牌落在目标格且动画不会被中断在旧格、连续 10 个回合中界面始终跟随规则快照、点击棋子的射线命中格子而非卡牌；本地已按 `-testPlatform PlayMode` 跑通 |
 | 运行验证 | 演示场景进入 Play 无错误；棋盘 5×10、双方家、手牌 5 张、中文 HUD 与日志均正常（见 `docs/界面预览.png`） |
 | 配置面板验证 | 在 Play 中打开面板逐段截图核对：字段分组与文案与既有网页版配置界面一致，已删除的反击/斜移开关不再出现（见 `docs/配置面板.png`、`docs/配置面板-下半部分.png`） |
+| 架构图 02-cards | `docs/diagrams/02-cards/` | 已按 JSON 源补入第四个能力组件与其 SO，重新渲染 SVG/PNG/HTML/drawio，`fireworks.py check` 通过 |
 | 四组架构图 | `docs/diagrams/` 下每张图一个子目录（`01-modules/`、`02-cards/`、`03-dataflow/`、`04-turnflow/`），每个目录内含同名图纸 JSON、布局检查报告、**SVG + PNG + 离线 HTML + draw.io 原生文件** |
 | 图纸转 draw.io | `docs/diagrams/spec-to-drawio.py`（按子目录扫描图纸 JSON → `.drawio`，箭头为真实边，可拖动重连）＋ `--check` 结构校验 ＋ `.github/workflows/diagrams-check.yml` |
 | 策划填写说明 | `docs/策划填写说明.md` |
@@ -101,6 +113,23 @@
 1. **点击被卡牌吃掉**：卡牌模板自带 `Image`、`Button` 与三个 TMP 文本，UGUI 射线会先命中卡牌并交给卡牌上的 `Button`（它没有任何监听），格子的 `Button` 永远收不到点击。实测射线命中顺序修复前为 `blade1(Clone) | Cell_0_0`，因此“点棋子选单位 / 点相邻牌换位 / 点自己的家”全部无反应。修复：棋盘卡牌统一 `SetRaycastTarget(false)`（只做显示），手牌保持可点。
 2. **移动动画可能把棋子留在旧格**：`PlayMove` 先把卡牌摆到旧格位置再补间回格心，一旦补间没启动、被停止或被打断，卡牌就永久停在旧格附近，表现为“日志说移动了、棋子却在原地”；旧实现里 `DOKill()` 还会把动画停在半途。修复：调试用的位移补间加上 `SetTarget` 并挂 `OnComplete/OnKill` 把位移归零；`Kill` 改为 `DOKill(true)`（先写回结束值再停）；`Place` 在没有动画时把任何残留偏移校准回格心，于是“规则快照改变 → 界面必然跟随”。
 3. **补间泄漏到已销毁对象**：手牌打出后立即被回收，模板上的选中/部署补间会在下一帧访问已销毁的 `RectTransform` 并打印 DOTween 警告。修复：`Card.OnDestroy` 停止自身补间（只停不补完，避免写回已销毁对象）。
+
+### 模块 6：高级卡（统一伤害、伤害标记、四邻空格、击杀恢复）
+
+| 子项 | 文件 | 状态 |
+|---|---|---|
+| 伤害数据契约 | `Assets/Spotlight/Core/DamageResolution.cs` | 完成 |
+| 伤害标记层与快照隔离 | `Assets/Spotlight/Core/GameState.cs` | 完成 |
+| 统一扣血、空格检查、击杀恢复、AI 再决策 | `Assets/Spotlight/Core/GameSession.cs` | 完成 |
+| 三种能力接口与校验 | `Assets/Spotlight/Core/Configuration.cs` | 完成 |
+| 能力子资产 | `Assets/Spotlight/Runtime/Config/AdjacentClearanceConfigSO.cs` / `KillActionConfigSO.cs` / `DamageMarkConfigSO.cs` | 完成 |
+| 表结构、默认工作簿、正式工作簿、发布器 | `Assets/Spotlight/Editor/Excel/*`、`Assets/Spotlight/Config/Spotlight.xlsx` | 完成 |
+| 卡面与详情文案 | `Assets/Spotlight/Runtime/View/CardText.cs` | 完成 |
+| 调试面板新开关 | `Assets/Spotlight/Runtime/Debug/ConfigDebugPanel.cs` | 完成 |
+| EditMode 用例 | `AdvancedCardConfigTests` / `CardAdjacentClearanceTests` / `CardKillActionTests` / `CardDamageMarkTests` / `DamageResolutionTests` | 完成 |
+| PlayMode 用例 | `AdvancedCardsPlayModeTests` | 完成 |
+
+正式数据：高级池六种（星门 + 五张新卡），卡种总数 22；默认高级上限仍为 2，默认选卡为星门 + 后羿-II。
 
 ## 依赖与来源
 

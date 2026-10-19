@@ -20,7 +20,7 @@ namespace Spotlight.Tests
     /// <summary>
     /// 棋盘交互与渲染的端到端测试。
     /// 输入：演示场景（真实配置资产 + 真实视图装配）；输出：卡牌父子关系、坐标、缩放与点击落点断言。
-    /// 用例通过 GameBootstrap 的私有输入入口驱动，等于复现玩家“点手牌 → 点格 → 结束回合 → 点单位 → 点目标格”的完整路径。
+    /// 用例通过手牌 UGUI 拖动及既有棋盘输入入口驱动，复现“拖拽部署 → 结束回合 → 点击单位移动”的路径。
     /// </summary>
     public class BoardMovePlayModeTests
     {
@@ -34,6 +34,22 @@ namespace Spotlight.Tests
         const float CenterTolerance = 0.5f;
 
         /// <summary>
+        /// 让本类用例加载场景后直接进入对局（跳过“携带选择”面板）。
+        /// 输入：无；输出：无。
+        /// 为什么需要：正式启动流程会先弹出携带选择模态面板，它挡住棋盘与手牌，
+        /// 而本类只验证对局内的棋盘/选中/计数契约；选卡流程本身由 DeckSelectionPlayModeTests 覆盖。
+        /// </summary>
+        [OneTimeSetUp]
+        public void SuppressDeckSelectionOnStart() => GameBootstrap.SuppressDeckSelectionOnStart = true;
+
+        /// <summary>
+        /// 恢复正式启动行为。输入：无；输出：无。
+        /// 为什么需要：PlayMode 用例在同一进程里顺序执行，静态开关必须还原，否则会让后面的用例看不到选卡界面。
+        /// </summary>
+        [OneTimeTearDown]
+        public void RestoreDeckSelectionOnStart() => GameBootstrap.SuppressDeckSelectionOnStart = false;
+
+        /// <summary>
         /// 移动单位后，卡牌必须挂到目标格、在配置的动画时长内回到格心，并且不会停在旧格。
         /// 输入：无；输出：NUnit 断言结果。
         /// </summary>
@@ -43,13 +59,20 @@ namespace Spotlight.Tests
             var context = new SceneContext();
             yield return context.Load();
             var bootstrap = context.Bootstrap;
-            var session = context.Session;
+            bootstrap.RestartWith(CreateMovementConfiguration(bootstrap));
+            yield return null;
+            yield return WaitForPresentation(bootstrap);
+            // 重开创建了新会话，不能继续使用 SceneContext 缓存的上一局引用。
+            var session = bootstrap.Session;
             var board = context.Board;
 
             var deployed = default(CardRecord);
             var deployCell = default(Cell);
             foreach (var record in session.GetSnapshot().Hand)
             {
+                // 即时卡（leaveAfterDeploy）部署后立即离场，本用例结尾断言“部署后棋盘上有对应单位”，
+                // 因此必须跳过它们，否则抽到即时卡就会得到假失败。
+                if (IsInstant(session, record.TypeId)) continue;
                 var options = session.GetLegalActions(new Selection(SelectionKind.Hand, record.Id));
                 if (options.Deploy.Count <= 0) continue;
                 deployed = record;
@@ -57,33 +80,29 @@ namespace Spotlight.Tests
                 break;
             }
             Assert.That(deployed, Is.Not.Null, "初始手牌里没有可部署的卡");
-            Invoke(bootstrap, "OnCardClicked", context.Hand.GetCard(deployed.Id));
-            Invoke(bootstrap, "OnCellClicked", deployCell);
+            HandDragInput.Deploy(context.Hand.GetCard(deployed.Id), board, deployCell);
             yield return WaitSeconds(SettleSeconds);
 
             var deployedUnit = session.GetSnapshot().Units.FirstOrDefault(u => u.SourceCardId == deployed.Id);
             Assert.That(deployedUnit, Is.Not.Null, "部署后棋盘上没有对应单位");
 
-            // 推进回合直到有己方单位可以移动（覆盖召唤失调与 Boss AI 回合）。
-            // 不绑定刚部署的单位：它可能在等待期间被 AI 击杀，因此每轮都补一张带移动距离的牌，
-            // 断言只关心“界面上的某个棋子确实跟着规则移动”。
-            UnitState live = null;
-            for (var turn = 0; turn < 10 && live == null; turn++)
-            {
-                TryDeploy(bootstrap, session, context.Hand, requireMoveDistance: true);
-                yield return WaitSeconds(SettleSeconds);
-                live = session.GetSnapshot().Units.FirstOrDefault(u =>
-                    u.Owner == Side.Player &&
-                    session.GetLegalActions(new Selection(SelectionKind.Unit, u.Id)).Move.Count > 0);
-                if (live != null) break;
-                Invoke(bootstrap, "OnEndTurnRequested");
-                yield return null;
-                yield return FinishDiscard(bootstrap, session, context.Hand);
-            }
+            // 保留召唤失调覆盖，经过完整的 Boss 回合后验证同一个单位恢复移动。
+            Assert.That(session.GetLegalActions(new Selection(SelectionKind.Unit, deployedUnit.Id)).Move,
+                Is.Empty, "刚部署的单位应受到召唤失调限制");
+            var roundBefore = session.GetSnapshot().Round;
+            Invoke(bootstrap, "OnEndTurnRequested");
+            yield return WaitForPresentation(bootstrap);
 
-            Assert.That(live, Is.Not.Null, "推进 10 个回合后仍没有可移动的己方单位");
+            var ready = session.GetSnapshot();
+            var state = $"回合={ready.Round}，行动方={ready.ActiveSide}，阶段={ready.Phase}，演示中={bootstrap.IsPresentingTurn}";
+            Assert.That(ready.Round, Is.EqualTo(roundBefore + 1), $"结束回合没有推进到下一轮：{state}");
+            Assert.That(ready.ActiveSide, Is.EqualTo(Side.Player), $"Boss 回合结束后没有回到玩家：{state}");
+            Assert.That(ready.Phase, Is.EqualTo(MatchPhase.Action), $"尚未进入行动阶段：{state}");
+            var live = ready.Units.FirstOrDefault(u => u.Id == deployedUnit.Id);
+            Assert.That(live, Is.Not.Null, $"准备移动的单位 {deployedUnit.Id} 在回合切换后消失：{state}");
             var moveTargets = session.GetLegalActions(new Selection(SelectionKind.Unit, live.Id)).Move;
-            Assert.That(moveTargets.Count, Is.GreaterThan(0), "单位始终无法移动，无法验证移动渲染");
+            Assert.That(moveTargets.Count, Is.GreaterThan(0),
+                $"单位没有合法移动目标：{state}，单位={live.Id}，位置={live.Position}，移动距离={live.MoveDistance}，已行动={live.Acted}，维持费已付={live.UpkeepPaid}");
 
             var from = live.Position;
             var target = moveTargets[0];
@@ -159,7 +178,10 @@ namespace Spotlight.Tests
             var session = context.Session;
             var board = context.Board;
 
-            TryDeploy(bootstrap, session, context.Hand, requireMoveDistance: true);
+            // 这条用例只验证“点击棋子能命中它所在的格子”，不需要移动能力。
+            // 为什么不再要求可移动：开局只抽 3 张，而默认抽牌堆 24 张里移 0 的卡占一半（资源卡/星铆-1/战时储备），
+            // 一旦 3 张都是移 0 的卡就会“没有部署成功任何己方单位”而偶发失败（CI 上曾命中）。
+            Assert.That(TryDeploy(bootstrap, session, context.Hand, requireMoveDistance: false), Is.True, "初始手牌里没有可部署的卡");
             yield return WaitSeconds(SettleSeconds);
 
             var unit = session.GetSnapshot().Units.FirstOrDefault(u => u.Owner == Side.Player);
@@ -227,6 +249,213 @@ namespace Spotlight.Tests
             Assert.That(after.Hand.Count + after.DrawPile.Count + after.Graveyard.Count,
                 Is.EqualTo(before.Hand.Count + before.DrawPile.Count + before.Graveyard.Count), "离场改变了牌区总数");
             Assert.That(button.style.display.value, Is.EqualTo(UnityEngine.UIElements.DisplayStyle.None), "离场后离场按钮应隐藏");
+        }
+
+        /// <summary>
+        /// 齿轮在两套界面之间切换：默认是战斗界面（左右详情区与卡牌计数可见、日志与 Boss 状态隐藏），
+        /// 点齿轮后隐藏战斗界面、显示原有面板与「继续 / 重开」，点「继续」恢复；菜单打开期间规则层不接受操作。
+        /// 输入：无；输出：NUnit 断言结果。
+        /// 为什么需要：原有面板没有删除，只是移进菜单，必须防止以后误删或忘记恢复，也要确认暂停真的挡住了输入。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator MenuButtonSwapsBattleAndLegacyHud()
+        {
+            var context = new SceneContext();
+            yield return context.Load();
+            var hud = Object.FindObjectOfType<HudView>();
+            Assert.That(hud, Is.Not.Null, "场景缺少 HudView");
+            var root = hud.Root;
+
+            var detailLeft = root.Q<VisualElement>("detail-left");
+            var pileLeft = root.Q<VisualElement>("pile-left");
+            var logPanel = root.Q<VisualElement>("log-panel");
+            var sidePanel = root.Q<VisualElement>("side-panel");
+            var menuOverlay = root.Q<VisualElement>("menu-overlay");
+            var menuButton = root.Q<VisualElement>("menu-button");
+            Assert.That(detailLeft, Is.Not.Null, "UXML 缺少 detail-left");
+            Assert.That(pileLeft, Is.Not.Null, "UXML 缺少 pile-left");
+            Assert.That(logPanel, Is.Not.Null, "UXML 缺少 log-panel");
+            Assert.That(sidePanel, Is.Not.Null, "UXML 缺少 side-panel");
+            Assert.That(menuOverlay, Is.Not.Null, "UXML 缺少 menu-overlay");
+            Assert.That(menuButton, Is.Not.Null, "UXML 缺少 menu-button");
+            // 齿轮按钮的全部外观就是那张背景图标（gear.png，由 .action-button.menu-button 指定）：
+            // 图标读不到就会剩下一个空方块，玩家再也找不到菜单入口，所以这里既不让它退回文字，也要求图标真的解析出来。
+            var gear = (UnityEngine.UIElements.Button)menuButton;
+            Assert.That(gear.text, Is.Empty, "齿轮按钮只显示图标，不应再有文字");
+            Assert.That(gear.resolvedStyle.backgroundImage.texture != null || gear.resolvedStyle.backgroundImage.sprite != null,
+                "齿轮按钮没有读到背景图标（gear.png），菜单入口会变成一个空方块");
+            var debugButton = root.Q<VisualElement>("debug-button");
+            Assert.That(debugButton, Is.Not.Null, "UXML 缺少 debug-button");
+            Assert.That(menuOverlay.Contains(debugButton), Is.True, "“配置/调试”入口应当位于齿轮菜单里");
+
+            Assert.That(detailLeft.style.display.value, Is.EqualTo(DisplayStyle.Flex), "默认应显示战斗界面的左右详情区");
+            Assert.That(pileLeft.style.display.value, Is.EqualTo(DisplayStyle.Flex), "默认应显示卡牌计数区");
+            Assert.That(logPanel.style.display.value, Is.EqualTo(DisplayStyle.None), "默认应隐藏对局日志");
+            Assert.That(sidePanel.style.display.value, Is.EqualTo(DisplayStyle.None), "默认应隐藏 Boss 状态");
+            Assert.That(menuOverlay.style.display.value, Is.EqualTo(DisplayStyle.None), "默认不该显示菜单");
+
+            Invoke(context.Bootstrap, "OnMenuRequested");
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(detailLeft.style.display.value, Is.EqualTo(DisplayStyle.None), "菜单打开时应隐藏战斗界面");
+            Assert.That(pileLeft.style.display.value, Is.EqualTo(DisplayStyle.None), "菜单打开时应隐藏卡牌计数区");
+            Assert.That(logPanel.style.display.value, Is.EqualTo(DisplayStyle.Flex), "菜单打开时应显示对局日志");
+            Assert.That(sidePanel.style.display.value, Is.EqualTo(DisplayStyle.Flex), "菜单打开时应显示 Boss 状态");
+            Assert.That(menuOverlay.style.display.value, Is.EqualTo(DisplayStyle.Flex), "菜单打开时应显示遮罩与两个按钮");
+
+            // 菜单是暂停状态：结束回合必须被规则层拒绝，回合数不推进。
+            var pausedRound = context.Session.GetSnapshot().Round;
+            Invoke(context.Bootstrap, "OnEndTurnRequested");
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(context.Session.GetSnapshot().Round, Is.EqualTo(pausedRound), "菜单打开期间不应能结束回合");
+
+            Invoke(context.Bootstrap, "OnMenuResumeRequested");
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(detailLeft.style.display.value, Is.EqualTo(DisplayStyle.Flex), "继续后应恢复战斗界面");
+            Assert.That(logPanel.style.display.value, Is.EqualTo(DisplayStyle.None), "继续后应重新隐藏日志");
+            Assert.That(menuOverlay.style.display.value, Is.EqualTo(DisplayStyle.None), "继续后应关闭菜单");
+        }
+
+        /// <summary>
+        /// 齿轮菜单里的“退出游戏”必须走到宿主退出动作：按钮位于菜单内，点击后只调用退出动作一次，且不改动对局。
+        /// 输入：无；输出：NUnit 断言结果。
+        /// 为什么需要：退出是菜单里唯一“离开对局生命周期”的动作（其他项都只是暂停或重建对局），
+        /// 一旦接错或被写成“结束回合”这类规则操作，玩家就会在毫不知情的情况下丢掉当前对局。
+        /// 为什么要把 QuitAction 换成计数委托：测试不能真的结束运行中的编辑器/播放会话。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator MenuQuitButtonRequestsQuit()
+        {
+            var context = new SceneContext();
+            yield return context.Load();
+            var hud = Object.FindObjectOfType<HudView>();
+            Assert.That(hud, Is.Not.Null, "场景缺少 HudView");
+            var menuOverlay = hud.Root.Q<VisualElement>("menu-overlay");
+            Assert.That(menuOverlay, Is.Not.Null, "UXML 缺少 menu-overlay");
+            var quitButton = hud.Root.Q<UnityEngine.UIElements.Button>("menu-quit-button");
+            Assert.That(quitButton, Is.Not.Null, "UXML 缺少 menu-quit-button");
+            Assert.That(menuOverlay.Contains(quitButton), Is.True, "“退出游戏”入口应当位于齿轮菜单里");
+            Assert.That(quitButton.text, Is.EqualTo("退出游戏"), "退出按钮的文案必须能看出会离开当前对局");
+
+            // 替换退出动作，避免测试真的结束运行会话。
+            var quitCalls = 0;
+            context.Bootstrap.QuitAction = () => quitCalls++;
+
+            Invoke(context.Bootstrap, "OnMenuRequested");
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(menuOverlay.style.display.value, Is.EqualTo(DisplayStyle.Flex), "菜单打开时才能看到退出按钮");
+
+            var before = context.Session.GetSnapshot();
+            Invoke(context.Bootstrap, "OnQuitRequested");
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(quitCalls, Is.EqualTo(1), "点击“退出游戏”没有触发宿主退出动作");
+
+            var after = context.Session.GetSnapshot();
+            Assert.That(after.Round, Is.EqualTo(before.Round), "退出不该推进对局");
+            Assert.That(after.Units.Count, Is.EqualTo(before.Units.Count), "退出不该改动棋盘上的单位");
+            Assert.That(after.Hand.Count, Is.EqualTo(before.Hand.Count), "退出不该改动手牌");
+        }
+
+        /// <summary>
+        /// 左右详情区采用单选中槽：我方手牌/单位只填左侧，敌方单位只填右侧，选中家时两侧都清空。
+        /// 输入：无；输出：NUnit 断言结果。
+        /// 为什么需要：详情区是给玩家的信息展示（同时充当后续功能的占位），
+        /// 必须保证“同一时刻只有一侧有内容”，否则会误导成两个对象同时被选中。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator DetailPanelsShowFriendlyOnLeftAndEnemyOnRight()
+        {
+            var context = new SceneContext();
+            yield return context.Load();
+            var hud = Object.FindObjectOfType<HudView>();
+            Assert.That(hud, Is.Not.Null, "场景缺少 HudView");
+            var leftBody = hud.Root.Q<Label>("detail-left-body");
+            var rightBody = hud.Root.Q<Label>("detail-right-body");
+            Assert.That(leftBody, Is.Not.Null, "UXML 缺少 detail-left-body");
+            Assert.That(rightBody, Is.Not.Null, "UXML 缺少 detail-right-body");
+            Assert.That(leftBody.text, Is.Empty, "未选中时左侧详情应为空");
+            Assert.That(rightBody.text, Is.Empty, "未选中时右侧详情应为空");
+
+            var record = context.Session.GetSnapshot().Hand.First();
+            Invoke(context.Bootstrap, "OnCardClicked", context.Hand.GetCard(record.Id));
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(leftBody.text, Is.Not.Empty, "选中我方手牌后左侧详情应有卡面信息");
+            Assert.That(rightBody.text, Is.Empty, "选中我方手牌时右侧应保持为空");
+
+            var home = context.Session.GetSnapshot().Homes.First(h => h.Owner == Side.Player);
+            Invoke(context.Bootstrap, "OnCellClicked", home.Position);
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(leftBody.text, Is.Empty, "选中家时左侧详情应清空（家不在卡面区显示）");
+            Assert.That(rightBody.text, Is.Empty, "选中家时右侧详情应清空");
+
+            // 结束回合让 Boss 部署，等回放结束后选中敌方单位。
+            Invoke(context.Bootstrap, "OnEndTurnRequested");
+            UnitState enemy = null;
+            var deadline = Time.realtimeSinceStartup + 15f;
+            while (Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+                enemy = context.Session.GetSnapshot().Units.FirstOrDefault(u => u.Owner == Side.Boss);
+                if (enemy != null && !context.Bootstrap.IsPresentingTurn) break;
+            }
+            Assert.That(enemy, Is.Not.Null, "Boss 回合结束后场上仍没有敌方单位");
+            Invoke(context.Bootstrap, "OnCellClicked", enemy.Position);
+            yield return WaitSeconds(SettleSeconds);
+            Assert.That(rightBody.text, Is.Not.Empty, "选中敌方单位后右侧详情应有卡面信息");
+            Assert.That(leftBody.text, Is.Empty, "选中敌方单位时左侧应保持为空");
+        }
+
+        /// <summary>
+        /// 墓地与抽牌堆的计数必须跟随快照（部署后来源卡进墓地，数字同步变化）。
+        /// 输入：无；输出：NUnit 断言结果。
+        /// 为什么需要：计数区目前只显示数字，但它是后续“查看牌区列表”的入口位置，先固定“数字来自快照”这条契约。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator PileCountersFollowSnapshot()
+        {
+            var context = new SceneContext();
+            yield return context.Load();
+            var hud = Object.FindObjectOfType<HudView>();
+            Assert.That(hud, Is.Not.Null, "场景缺少 HudView");
+            var grave = hud.Root.Q<Label>("grave-count");
+            // 抽牌堆总数已拆成三行“高级 / 中级 / 初级”（由快照抽牌堆逐张查卡种阶级统计），不再有单个总数标签。
+            var drawBasic = hud.Root.Q<Label>("draw-count-basic");
+            var drawIntermediate = hud.Root.Q<Label>("draw-count-intermediate");
+            var drawAdvanced = hud.Root.Q<Label>("draw-count-advanced");
+            Assert.That(grave, Is.Not.Null, "UXML 缺少 grave-count");
+            Assert.That(drawBasic, Is.Not.Null, "UXML 缺少 draw-count-basic");
+            Assert.That(drawIntermediate, Is.Not.Null, "UXML 缺少 draw-count-intermediate");
+            Assert.That(drawAdvanced, Is.Not.Null, "UXML 缺少 draw-count-advanced");
+
+            var start = context.Session.GetSnapshot();
+            Assert.That(grave.text, Is.EqualTo(start.Graveyard.Count.ToString()), "墓地计数与快照不一致");
+            AssertDrawPileCountersMatchSnapshot(context.Session, hud.Root, "开局");
+
+            Assert.That(TryDeploy(context.Bootstrap, context.Session, context.Hand, requireMoveDistance: false), Is.True, "初始手牌里没有可部署的卡");
+            yield return WaitSeconds(SettleSeconds);
+            var after = context.Session.GetSnapshot();
+            Assert.That(after.Graveyard.Count, Is.GreaterThan(start.Graveyard.Count), "部署成功后来源卡应进入墓地");
+            Assert.That(grave.text, Is.EqualTo(after.Graveyard.Count.ToString()), "部署后墓地计数没有跟随快照");
+            AssertDrawPileCountersMatchSnapshot(context.Session, hud.Root, "部署后");
+        }
+
+        /// <summary>
+        /// 断言抽牌堆三行阶级计数与当前快照的抽牌堆一致。
+        /// 输入：对局、HUD 根与步骤说明；输出：NUnit 断言结果。
+        /// 为什么同时断言“逐阶级文本”与“三行合计”：抽牌堆显示从单个总数改成了按阶级三行，
+        /// 只比合计会漏掉“阶级归属算错”，只比单行又看不出总数仍在跟随快照，因此两者都保留。
+        /// </summary>
+        static void AssertDrawPileCountersMatchSnapshot(GameSession session, VisualElement root, string step)
+        {
+            var snapshot = session.GetSnapshot();
+            var configuration = session.Configuration;
+            var expected = new[] { CardTier.Basic, CardTier.Intermediate, CardTier.Advanced }
+                .ToDictionary(tier => tier,
+                    tier => snapshot.DrawPile.Count(card => configuration.FindCard(card.TypeId)?.Tier == tier));
+
+            Assert.That(root.Q<Label>("draw-count-basic").text, Is.EqualTo($"初级 {expected[CardTier.Basic]}"), $"{step}：初级剩余张数与快照不一致");
+            Assert.That(root.Q<Label>("draw-count-intermediate").text, Is.EqualTo($"中级 {expected[CardTier.Intermediate]}"), $"{step}：中级剩余张数与快照不一致");
+            Assert.That(root.Q<Label>("draw-count-advanced").text, Is.EqualTo($"高级 {expected[CardTier.Advanced]}"), $"{step}：高级剩余张数与快照不一致");
+            Assert.That(expected.Values.Sum(), Is.EqualTo(snapshot.DrawPile.Count), $"{step}：三个阶级之和必须等于抽牌堆剩余张数");
         }
 
         /// <summary>
@@ -365,7 +594,15 @@ namespace Spotlight.Tests
         {
             var context = new SceneContext();
             yield return context.Load();
-            var session = context.Session;
+            // 此用例验证选中与缩放，不验证随机抽牌；复用独立的固定战斗卡牌堆，
+            // 避免正式起手恰好全是即时卡或需要覆盖升级的卡，导致尚未点击单位就失败。
+            var sourceJson = JsonUtility.ToJson(context.Bootstrap.CurrentAsset.ToDocument());
+            context.Bootstrap.RestartWith(CreateMovementConfiguration(context.Bootstrap));
+            yield return null;
+            yield return WaitForPresentation(context.Bootstrap);
+            var session = context.Bootstrap.Session;
+            Assert.That(JsonUtility.ToJson(context.Bootstrap.CurrentAsset.ToDocument()), Is.EqualTo(sourceJson),
+                "准备点击测试时不得修改正式配置资产");
             var board = context.Board;
 
             Assert.That(TryDeploy(context.Bootstrap, session, context.Hand, requireMoveDistance: false), Is.True, "初始手牌里没有可部署的卡");
@@ -495,14 +732,25 @@ namespace Spotlight.Tests
         {
             foreach (var record in session.GetSnapshot().Hand)
             {
+                // 即时卡部署后不留下单位，任何“按单位断言”的用例都不能选它。
+                if (IsInstant(session, record.TypeId)) continue;
                 if (requireMoveDistance && !HasMoveDistance(session, record.TypeId)) continue;
                 var options = session.GetLegalActions(new Selection(SelectionKind.Hand, record.Id));
                 if (options.Deploy.Count <= 0) continue;
-                Invoke(bootstrap, "OnCardClicked", hand.GetCard(record.Id));
-                Invoke(bootstrap, "OnCellClicked", options.Deploy[0]);
-                return true;
+                HandDragInput.Deploy(hand.GetCard(record.Id), Object.FindObjectOfType<BoardView>(), options.Deploy[0]);
+                return session.GetSnapshot().Units.Any(u => u.SourceCardId == record.Id);
             }
             return false;
+        }
+
+        /// <summary>
+        /// 判断某卡种是否为即时卡。
+        /// 输入：对局与卡种 ID；输出：是否配置了“部署即结算、结算即退场”。
+        /// 为什么需要：即时卡部署后不产生在场单位，按单位断言或按移动能力筛选的用例必须跳过它。
+        /// </summary>
+        static bool IsInstant(GameSession session, string typeId)
+        {
+            return session.Configuration.Cards.TryGetValue(typeId, out var archetype) && archetype.Instant != null;
         }
 
         /// <summary>判断某卡种是否具备移动能力。输入：对局与卡种 ID；输出：是否配置了移动距离。</summary>
@@ -565,6 +813,56 @@ namespace Spotlight.Tests
                 Invoke(bootstrap, "OnCardClicked", hand.GetCard(discard.Id));
                 yield return null;
             }
+        }
+
+        /// <summary>
+        /// 创建移动渲染用例的独立配置，避免随机起手、欠费与 Boss 击杀干扰测试准备。
+        /// 输入：已加载正式配置的引导器；输出：仅供本用例重开的配置副本，不修改生成资产。
+        /// 保留召唤失调和真实动画时长，用单一卡种牌堆消除洗牌顺序对准备条件的影响。
+        /// 抽牌堆说明：Deck 表已废除，抽牌堆改由“张数 + 阶级比例”生成后由玩家选卡，
+        /// 因此这里用 WithDeck 显式给回原来的 3 张固定牌堆；第二个参数为 false，
+        /// 因为测试夹具的 3 张牌堆本来就不等于 drawPileSize，不能按配置值校验总张数。
+        /// </summary>
+        static GameConfiguration CreateMovementConfiguration(GameBootstrap bootstrap)
+        {
+            var document = JsonUtility.FromJson<ConfigDocument>(JsonUtility.ToJson(bootstrap.CurrentAsset.ToDocument()));
+            var rules = document.rules[0];
+            rules.firstSide = "player";
+            rules.playerControlsBoss = false;
+            rules.drawCount = 1;
+            rules.handLimit = 10;
+            rules.summoningSickness = true;
+            rules.bossBombInterval = 1000;
+            // 抽牌堆构成规则显式写进夹具：配置校验仍要求“每个阶级至少一种卡”与比例合法，
+            // 写死可以既不依赖 Excel 当前取值，也不受生成资产是否已重新编译影响。
+            rules.drawPileSize = 24;
+            rules.tierRatioBasic = 70;
+            rules.tierRatioIntermediate = 20;
+            rules.tierRatioAdvanced = 10;
+            rules.maxTypesBasic = 5;
+            rules.maxTypesIntermediate = 3;
+            rules.maxTypesAdvanced = 2;
+            var fighter = document.cards.Single(c => c.id == "blade1");
+            fighter.moveDistance = 1;
+            fighter.upkeep = 0;
+            var boss = document.cards.Single(c => c.id == rules.bossCardType);
+            boss.atk = 0;
+            boss.moveDistance = 0;
+            return new GameConfiguration(document).WithDeck(new[] { new DeckEntry("blade1", 3) }, false);
+        }
+
+        /// <summary>
+        /// 等待阶段演示结束，使后续输入和合法动作查询可用。
+        /// 输入：当前对局引导器；输出：有限时间的逐帧等待，超时明确报告当时的对局阶段。
+        /// 按实际完成状态继续，避免固定延时误把动画中的输入屏蔽当成无法移动。
+        /// </summary>
+        static IEnumerator WaitForPresentation(GameBootstrap bootstrap)
+        {
+            var deadline = Time.realtimeSinceStartup + 10f;
+            while (bootstrap.IsPresentingTurn && Time.realtimeSinceStartup < deadline) yield return null;
+            var snapshot = bootstrap.Session.GetSnapshot();
+            Assert.That(bootstrap.IsPresentingTurn, Is.False,
+                $"阶段演示超时：回合={snapshot.Round}，行动方={snapshot.ActiveSide}，阶段={snapshot.Phase}");
         }
 
         /// <summary>按真实时间等待若干秒。输入：秒数；输出：协程。</summary>

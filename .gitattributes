@@ -166,7 +166,8 @@
 *.otf   filter=lfs diff=lfs merge=lfs -text
 *.woff  filter=lfs diff=lfs merge=lfs -text
 *.woff2 filter=lfs diff=lfs merge=lfs -text
-# TextCore 字体内嵌图集超过 5 MiB；仅迁移此路径，其他 .asset 仍保留文本 diff。
+# 合并字形后的 TMP / TextCore 内嵌图集超过 5 MiB；仅这两个路径走 LFS，其他 .asset 仍保留文本 diff。
+"Assets/Spotlight/Fonts/SimHei SDF.asset" filter=lfs diff=lfs merge=lfs -text
 "Assets/Spotlight/Fonts/SimHei TextCore.asset" filter=lfs diff=lfs merge=lfs -text
 # 位图与贴图（PSD/TGA/EXR 动辄几十 MB，PNG 也常被当作高清贴图直接塞进来）
 *.psd   filter=lfs diff=lfs merge=lfs -text

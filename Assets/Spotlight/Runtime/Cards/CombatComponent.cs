@@ -21,16 +21,16 @@ namespace Spotlight
 
         /// <summary>战斗配置资产（可能为 null，表示未配置）。</summary>
         public CombatConfigSO Config => _config;
-        /// <summary>配置的生命上限；无配置时返回 0。</summary>
-        public int MaxHp => _config != null ? _config.Hp : 0;
+        /// <summary>生命上限：已绑定单位时取单位快照，否则取配置初值。</summary>
+        public int MaxHp => _state != null ? _state.MaxHp : _config != null ? _config.Hp : 0;
         /// <summary>当前生命：已绑定单位时取实时值，否则回退到上限。</summary>
         public int CurrentHp => _state != null ? _state.Hp : MaxHp;
-        /// <summary>攻击力。</summary>
-        public int Attack => _config != null ? _config.Attack : 0;
-        /// <summary>曼哈顿射程。</summary>
-        public int Range => _config != null ? _config.Range : 0;
-        /// <summary>单次移动最大格数。</summary>
-        public int MoveDistance => _config != null ? _config.MoveDistance : 0;
+        /// <summary>当前攻击力：已绑定单位时取场上值（可被一次性减攻降低），未绑定时取配置初值。</summary>
+        public int Attack => _state != null ? _state.Attack : _config != null ? _config.Attack : 0;
+        /// <summary>当前射程：已绑定单位时取场上值，未绑定时取配置初值。</summary>
+        public int Range => _state != null ? _state.Range : _config != null ? _config.Range : 0;
+        /// <summary>当前移动距离：已绑定单位时取场上值，未绑定时取配置初值。</summary>
+        public int MoveDistance => _state != null ? _state.MoveDistance : _config != null ? _config.MoveDistance : 0;
         /// <summary>本回合是否仍可行动（未行动且维持费已付）。</summary>
         public bool CanAct => _state == null || _state.CanAct;
 

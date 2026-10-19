@@ -1,0 +1,86 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-1204591627541096566
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3099d18b4ff55c4cbe7732b2d6561a9, type: 3}
+  m_Name: kyoto_01_Combat
+  m_EditorClassIdentifier: 
+  _hp: 1
+  _attack: 0
+  _range: 0
+  _moveDistance: 0
+  _canAttackResources: 1
+  _canSwap: 1
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f286b130caf66f84cbd77f9f1a0c2cc5, type: 3}
+  m_Name: kyoto_01
+  m_EditorClassIdentifier: 
+  _id: kyoto_01
+  _name: "\u4EAC\u90FD\u58F9\u53F7"
+  _category: resource
+  _tier: basic
+  _viewKey: default
+  _requiresUpgrade: 0
+  _upgradeFrom: 
+  _deployHomeOnly: 0
+  _avoidAdjacentSameType: 0
+  _deployCost: 0
+  _deployRequireAdjacentCategory: 
+  _deployRequireAdjacentCount: 0
+  _attacksAlliesAsHeal: 0
+  _combat: {fileID: -1204591627541096566}
+  _resource: {fileID: 7259732543708987672}
+  _teleport: {fileID: 0}
+  _deploymentPenalty: {fileID: 1862716182059364987}
+  _markOnEnter: {fileID: 0}
+  _deathGrowth: {fileID: 0}
+  _instant: {fileID: 0}
+  _spawn: {fileID: 0}
+  _adjacentClearance: {fileID: 0}
+  _killAction: {fileID: 0}
+  _damageMark: {fileID: 0}
+  _prefab: {fileID: 8625650688822247178, guid: cb2f220942b572f4393440fd8b31e98c, type: 3}
+  _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
+  _sourceSheet: Cards
+--- !u!114 &1862716182059364987
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b8ace8ba4be4daaac688825787baf50, type: 3}
+  m_Name: kyoto_01_DeploymentPenalty
+  m_EditorClassIdentifier: 
+  _attackReduction: 2
+--- !u!114 &7259732543708987672
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f46270952f46ef441a82ecbe84dc9fd9, type: 3}
+  m_Name: kyoto_01_Resource
+  m_EditorClassIdentifier: 
+  _produce: 3
+  _upkeep: 0

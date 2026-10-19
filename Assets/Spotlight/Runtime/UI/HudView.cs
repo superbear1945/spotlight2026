@@ -44,6 +44,14 @@ namespace Spotlight
         public event Action DebugRequested;
         /// <summary>点击“离场”：请求让当前选中的己方单位离开棋盘。</summary>
         public event Action WithdrawRequested;
+        /// <summary>点击齿轮：请求进入菜单（隐藏战斗界面，显示原有面板与「继续 / 重开」）。</summary>
+        public event Action MenuRequested;
+        /// <summary>点击菜单里的“继续”：请求关闭菜单并恢复对局。</summary>
+        public event Action MenuResumeRequested;
+        /// <summary>点击菜单里的“选卡”：请求进入携带选择（确认后会重开对局）。</summary>
+        public event Action DeckSelectRequested;
+        /// <summary>点击菜单里的“退出游戏”：请求结束本次运行（对局不保存，也不会返回棋盘）。</summary>
+        public event Action QuitRequested;
 
         /// <summary>界面根元素。</summary>
         VisualElement _root;
@@ -65,6 +73,8 @@ namespace Spotlight
         VisualElement _opponentTurnIndicator;
         /// <summary>Boss 兵位与手动模式提示文本。</summary>
         Label _bossLabel;
+        /// <summary>顶部常驻 Boss 阶段摘要，战斗中无需打开暂停菜单即可查看锁血和战舰数量。</summary>
+        Label _bossPhaseLabel;
         /// <summary>阶段提示（弃牌、模态等）。</summary>
         Label _phaseLabel;
         /// <summary>选中对象详情文本。</summary>
@@ -93,6 +103,23 @@ namespace Spotlight
         Button _bombDeployButton, _bombSkipButton;
         /// <summary>刷怪卡部署与跳过按钮，仅在 Boss 技能准备窗口显示。</summary>
         Button _spawnerDeployButton, _spawnerSkipButton;
+        /// <summary>齿轮按钮（战斗界面显示，菜单打开时隐藏）。</summary>
+        Button _menuButton;
+        /// <summary>菜单遮罩（含「继续 / 重开 / 退出游戏」三个按钮）。</summary>
+        VisualElement _menuOverlay;
+        /// <summary>当前是否显示齿轮菜单；Render 用它避免把菜单中的 Boss 状态面板按普通战斗界面规则再次隐藏。</summary>
+        bool _menuVisible;
+        /// <summary>战斗界面的左右详情区：左为我方选中，右为敌方选中。</summary>
+        VisualElement _detailLeft, _detailRight;
+        /// <summary>左右详情区的标题与正文。</summary>
+        Label _detailLeftTitle, _detailLeftBody, _detailRightTitle, _detailRightBody;
+        /// <summary>手牌同一行两侧的计数区与墓地 / 抽牌堆数字。</summary>
+        VisualElement _pileLeft, _pileRight;
+        Label _graveCount;
+        /// <summary>抽牌堆按阶级实时剩余张数（高级 / 中级 / 初级）。</summary>
+        Label _drawAdvanced, _drawIntermediate, _drawBasic;
+        /// <summary>携带选择面板（开局前与菜单里共用）。</summary>
+        DeckSelectionPanel _deckSelectionPanel;
         /// <summary>胜负遮罩。</summary>
         VisualElement _victoryOverlay;
         /// <summary>胜负文本。</summary>
@@ -135,6 +162,7 @@ namespace Spotlight
             _roundCounter = _root.Q<VisualElement>("round-counter");
             _opponentTurnIndicator = _root.Q<VisualElement>("opponent-turn-indicator");
             _bossLabel = _root.Q<Label>("boss-info-label");
+            _bossPhaseLabel = _root.Q<Label>("boss-phase-label");
             _phaseLabel = _root.Q<Label>("phase-label");
             _detailLabel = _root.Q<Label>("unit-detail");
             _errorLabel = _root.Q<Label>("error-label");
@@ -151,6 +179,22 @@ namespace Spotlight
             _bombSkipButton = _root.Q<Button>("bomb-skip-button");
             _spawnerDeployButton = _root.Q<Button>("spawner-deploy-button");
             _spawnerSkipButton = _root.Q<Button>("spawner-skip-button");
+            _menuButton = _root.Q<Button>("menu-button");
+            _menuOverlay = _root.Q<VisualElement>("menu-overlay");
+            _detailLeft = _root.Q<VisualElement>("detail-left");
+            _detailRight = _root.Q<VisualElement>("detail-right");
+            _detailLeftTitle = _root.Q<Label>("detail-left-title");
+            _detailLeftBody = _root.Q<Label>("detail-left-body");
+            _detailRightTitle = _root.Q<Label>("detail-right-title");
+            _detailRightBody = _root.Q<Label>("detail-right-body");
+            _pileLeft = _root.Q<VisualElement>("pile-left");
+            _pileRight = _root.Q<VisualElement>("pile-right");
+            _graveCount = _root.Q<Label>("grave-count");
+            _drawAdvanced = _root.Q<Label>("draw-count-advanced");
+            _drawIntermediate = _root.Q<Label>("draw-count-intermediate");
+            _drawBasic = _root.Q<Label>("draw-count-basic");
+            _deckSelectionPanel = new DeckSelectionPanel();
+            _deckSelectionPanel.Bind(_root);
             _victoryOverlay = _root.Q<VisualElement>("victory-overlay");
             _victoryLabel = _root.Q<Label>("victory-label");
             _victoryArt = _root.Q<VisualElement>("victory-art");
@@ -177,8 +221,20 @@ namespace Spotlight
             if (_pauseExitButton != null) { _pauseExitButton.clicked -= ExitFromPause; _pauseExitButton.clicked += ExitFromPause; }
             var restart = _root.Q<Button>("restart-button");
             if (restart != null) restart.clicked += () => RestartRequested?.Invoke();
+            if (_menuButton != null) _menuButton.clicked += () => MenuRequested?.Invoke();
+            var menuDeckSelect = _root.Q<Button>("menu-deck-select-button");
+            if (menuDeckSelect != null) menuDeckSelect.clicked += () => DeckSelectRequested?.Invoke();
+            var menuResume = _root.Q<Button>("menu-resume-button");
+            if (menuResume != null) menuResume.clicked += () => MenuResumeRequested?.Invoke();
+            var menuRestart = _root.Q<Button>("menu-restart-button");
+            if (menuRestart != null) menuRestart.clicked += () => RestartRequested?.Invoke();
+            // 退出游戏是宿主环境行为（关播放模式 / 结束进程），HUD 只上报点击，具体怎么做由 GameBootstrap 决定。
+            var menuQuit = _root.Q<Button>("menu-quit-button");
+            if (menuQuit != null) menuQuit.clicked += () => QuitRequested?.Invoke();
             var debug = _root.Q<Button>("debug-button");
             if (debug != null) debug.clicked += () => DebugRequested?.Invoke();
+            var quickDebug = _root.Q<Button>("quick-debug-button");
+            if (quickDebug != null) quickDebug.clicked += () => DebugRequested?.Invoke();
             var victoryRestart = _root.Q<Button>("victory-restart-button");
             if (victoryRestart != null) victoryRestart.clicked += () => RestartRequested?.Invoke();
             if (_victoryOverlay != null) _victoryOverlay.style.display = DisplayStyle.None;
@@ -188,9 +244,12 @@ namespace Spotlight
             if (_pauseOverlay != null) _pauseOverlay.style.display = DisplayStyle.None;
             if (_errorLabel != null) _errorLabel.style.display = DisplayStyle.None;
             if (_withdrawButton != null) _withdrawButton.style.display = DisplayStyle.None;
+            // 战斗界面是默认视图：原有面板（日志、Boss 状态与选中详情）先隐藏，只在齿轮菜单里显示。
+            SetMenuVisible(false);
 
             // 调试入口只在编辑器或 Development Build 提供。
             if (debug != null && !DebugSupport.IsDebugAvailable) debug.style.display = DisplayStyle.None;
+            if (quickDebug != null && !DebugSupport.IsDebugAvailable) quickDebug.style.display = DisplayStyle.None;
         }
 
         /// <summary>
@@ -223,12 +282,13 @@ namespace Spotlight
             var phaseLine = BuildPhaseLine(snapshot);
             var detailLine = BuildDetail(selection, snapshot, configuration);
             if (_bossLabel != null) _bossLabel.text = bossLine;
+            if (_bossPhaseLabel != null) _bossPhaseLabel.text = BuildBossPhaseSummary(snapshot);
             if (_phaseLabel != null) _phaseLabel.text = phaseLine;
             if (_detailLabel != null) _detailLabel.text = detailLine;
             if (_sidePanel != null)
             {
                 var showDetails = selection.Kind != SelectionKind.None || !string.IsNullOrEmpty(phaseLine);
-                _sidePanel.style.display = showDetails ? DisplayStyle.Flex : DisplayStyle.None;
+                _sidePanel.style.display = _menuVisible || showDetails ? DisplayStyle.Flex : DisplayStyle.None;
             }
             if (_endTurnButton != null) _endTurnButton.SetEnabled(showEndTurn && !inputBlocked && snapshot.Phase != MatchPhase.Finished && !snapshot.BossBombPending && !snapshot.BossSpawnerPending);
             var spawnerReady = snapshot.BossSpawnerPending && snapshot.Phase == MatchPhase.Action;
@@ -253,6 +313,9 @@ namespace Spotlight
                 var canWithdraw = actions != null && actions.CanWithdraw;
                 _withdrawButton.style.display = canWithdraw ? DisplayStyle.Flex : DisplayStyle.None;
             }
+            FillDetailFaces(selection, snapshot, configuration);
+            if (_graveCount != null) _graveCount.text = snapshot.Graveyard.Count.ToString();
+            RenderDrawPileByTier(snapshot, configuration);
             AppendLog(snapshot.Log);
             if (_victoryOverlay != null)
             {
@@ -265,6 +328,16 @@ namespace Spotlight
                 if (finished && _victoryLabel != null)
                     _victoryLabel.text = snapshot.Outcome == MatchOutcome.Draw ? "平局" : snapshot.Outcome == MatchOutcome.PlayerWins ? "玩家获胜" : "Boss 获胜";
             }
+        }
+
+        /// <summary>输入只读快照，输出顶部常驻摘要；只呈现结算结果，不在 UI 推算阶段或战舰状态。</summary>
+        string BuildBossPhaseSummary(GameSnapshot snapshot)
+        {
+            var summary = $"Boss 第 {(int)snapshot.BossPhase + 1} 阶段" + (snapshot.BossInvulnerable ? " · 锁血" : "");
+            if (snapshot.BossWarships.Count == 0) return summary;
+            return summary + $"\n战舰 待部署 {snapshot.BossWarships.Count(s => s.Status == BossWarshipStatus.Pending)}" +
+                $" · 存活 {snapshot.BossWarships.Count(s => s.Status == BossWarshipStatus.Alive)}" +
+                $" · 已击败 {snapshot.BossWarships.Count(s => s.Status == BossWarshipStatus.Defeated)}";
         }
 
         /// <summary>
@@ -328,20 +401,25 @@ namespace Spotlight
         string BuildBossLine(GameSnapshot snapshot, GameConfiguration configuration)
         {
             var sb = new StringBuilder();
+            sb.Append("Boss 第 ").Append((int)snapshot.BossPhase + 1).Append(" 阶段").AppendLine(snapshot.BossInvulnerable ? " · 锁血，无法被攻击" : "");
+            if (snapshot.BossWarships.Count > 0)
+                sb.Append("战舰：待部署 ").Append(snapshot.BossWarships.Count(s => s.Status == BossWarshipStatus.Pending))
+                    .Append(" · 存活 ").Append(snapshot.BossWarships.Count(s => s.Status == BossWarshipStatus.Alive))
+                    .Append(" · 已击败 ").Append(snapshot.BossWarships.Count(s => s.Status == BossWarshipStatus.Defeated)).AppendLine();
             foreach (var bomb in snapshot.BossBombs)
                 sb.Append("炸弹 ").Append(bomb.Position).Append(" · 第 ").Append(bomb.DueRound).Append(" 回合玩家行动前爆炸 · 伤害 ").Append(bomb.Damage).AppendLine();
             if (snapshot.BossBombPending) sb.AppendLine("炸弹机会：请先布置或跳过");
             if (snapshot.BossSpawnerPending) sb.AppendLine("刷怪卡机会：请先部署或跳过");
             var spawner = snapshot.Units.FirstOrDefault(u => u.IsBossSpawner);
             if (spawner != null)
-                sb.Append("刷怪卡：").Append(spawner.Hp).Append(" 血 · ").AppendLine(snapshot.Round <= spawner.DeployedRound ? "下个 Boss 回合开始生成战机" : "每个 Boss 回合尝试生成一架战机");
+                sb.Append("刷怪卡：").Append(spawner.Hp).AppendLine(" 血 · 从部署后下一次 Boss 回合起尝试生成一架战机");
             if (snapshot.PlayerControlsBoss)
             {
                 var bossName = configuration != null && configuration.Cards.TryGetValue(configuration.Rules.BossCardType, out var boss) ? boss.Name : configuration?.Rules.BossCardType;
                 sb.Append("手动 Boss 模式：放牌 ").Append(configuration?.Rules.BossPlays ?? 0).Append(" 张（").Append(bossName).Append("）");
                 return sb.ToString();
             }
-            sb.Append("AI 兵位：");
+            sb.Append(snapshot.BossPhase == BossPhase.PhaseOne ? "AI 兵位：" : "固定兵位（补兵已暂停）：");
             foreach (var slot in snapshot.BossReplacements)
             {
                 sb.Append(slot.SlotId).Append("=");
@@ -359,6 +437,7 @@ namespace Spotlight
             if (snapshot.BossBombPending) return "先布置炸弹或跳过炸弹，再开始玩家行动";
             if (snapshot.BossSpawnerPending) return "先部署刷怪卡或跳过，再开始 Boss 普通行动";
             if (snapshot.Phase == MatchPhase.Discard) return $"请弃牌至上限（剩余 {snapshot.Hand.Count} 张）";
+            if (snapshot.BossInvulnerable) return "Boss 二阶段锁血：击败两艘战舰以解除锁血";
             if (snapshot.ActiveSide == Side.Boss && !snapshot.PlayerControlsBoss) return "Boss 回合（AI 自动结算）";
             return string.Empty;
         }
@@ -381,15 +460,15 @@ namespace Spotlight
             {
                 var unit = snapshot.Units.FirstOrDefault(u => u.Id == selection.Id);
                 if (unit == null) return string.Empty;
-                if (unit.IsBossSpawner) return $"{configuration.Cards[unit.TypeId].Name} · 当前生命 {unit.Hp}\n固定据点，不能攻击、移动或互换。下个 Boss 回合起，每回合在周围八格生成一架战机；满格时随机顶替玩家单位，无可用位置则暂停。";
-                var text = configuration.Cards.TryGetValue(unit.TypeId, out var arch) ? CardText.DetailLine(arch, unit.Owner) : string.Empty;
-                return text + Environment.NewLine + $"当前生命 {unit.Hp} · 行动机会 {(unit.CanAct ? "可用" : unit.Acted ? "已用完" : "维持费不足")}";
+                // 单位详情必须用单位快照（当前攻击/射程/移动与一次性减攻状态），不能用卡种基础配置。
+                var text = configuration.Cards.TryGetValue(unit.TypeId, out var arch) ? CardText.UnitDetail(arch, unit) : string.Empty;
+                return text + Environment.NewLine + $"行动机会 {(unit.CanAct ? "可用" : unit.Acted ? "已用完" : "维持费不足")}";
             }
             if (selection.Kind == SelectionKind.Home)
             {
                 var home = snapshot.Homes.FirstOrDefault(h => h.Id == selection.Id);
                 if (home == null) return string.Empty;
-                return $"{(home.Owner == Side.Player ? "玩家" : "Boss")}的家 · 生命 {home.Hp} · {(home.Acted ? "本回合已移动" : "本回合可移动一格")}";
+                return $"{(home.Owner == Side.Player ? "玩家" : "Boss")}的家 · 生命 {home.Hp}{(home.Owner == Side.Boss && snapshot.BossInvulnerable ? "（锁血，无法被攻击）" : "")} · {(home.Acted ? "本回合已移动" : "本回合可移动一格")}";
             }
             if (selection.Kind == SelectionKind.BossDeployment) return "选择一个高亮格放置 Boss 卡";
             return "点击手牌、己方单位或己方家进行操作";
@@ -411,6 +490,112 @@ namespace Spotlight
             _renderedLogCount = log.Count;
             _lastRenderedEvent = last;
             if (_logScroll != null) _logScroll.scrollOffset = new Vector2(0f, float.MaxValue);
+        }
+
+        /// <summary>
+        /// 按阶级统计抽牌堆剩余张数并刷新三行文本。
+        /// 输入：当前快照与配置；输出：无。
+        /// 为什么按快照统计而不是读配置：Q23 要求显示“实时剩余”，
+        /// 开局时正好等于选卡生成的构成，抽牌后递减，墓地洗回后回涨。
+        /// 卡种未注册（配置被改坏）时该张卡不计入任何阶级，避免显示错误的阶级数字。
+        /// </summary>
+        void RenderDrawPileByTier(GameSnapshot snapshot, GameConfiguration configuration)
+        {
+            var basic = 0;
+            var intermediate = 0;
+            var advanced = 0;
+            if (configuration != null)
+            {
+                foreach (var card in snapshot.DrawPile)
+                {
+                    var archetype = configuration.FindCard(card.TypeId);
+                    if (archetype == null) continue;
+                    switch (archetype.Tier)
+                    {
+                        case CardTier.Basic: basic++; break;
+                        case CardTier.Intermediate: intermediate++; break;
+                        case CardTier.Advanced: advanced++; break;
+                    }
+                }
+            }
+            if (_drawAdvanced != null) _drawAdvanced.text = $"高级 {advanced}";
+            if (_drawIntermediate != null) _drawIntermediate.text = $"中级 {intermediate}";
+            if (_drawBasic != null) _drawBasic.text = $"初级 {basic}";
+        }
+
+        /// <summary>携带选择面板（供 GameBootstrap 打开、订阅确认/取消事件）。</summary>
+        public DeckSelectionPanel DeckSelectionPanel => _deckSelectionPanel;
+
+        /// <summary>
+        /// 切换“战斗界面”与“原有面板”两套视图。
+        /// 输入：true 表示进入齿轮菜单；输出：无。
+        /// 行为：进入菜单时隐藏战斗界面（左右详情区、卡牌计数、齿轮），显示原有面板（日志、Boss 状态与选中详情）
+        /// 以及中间卡片上的「继续 / 重开」；退出时反向恢复。
+        /// 为什么保留原有面板：日志与兵位计时是排查问题的主要视图，做成菜单里的第二套界面后，
+        /// 战斗界面可以保持干净，同时这些信息不会丢失。
+        /// 棋盘与手牌不受影响：它们是对局本体，两套视图下都可见。
+        /// </summary>
+        public void SetMenuVisible(bool visible)
+        {
+            _menuVisible = visible;
+            ShowElement(_detailLeft, !visible);
+            ShowElement(_detailRight, !visible);
+            ShowElement(_pileLeft, !visible);
+            ShowElement(_pileRight, !visible);
+            ShowElement(_menuButton, !visible);
+            ShowElement(_logPanel, visible);
+            ShowElement(_sidePanel, visible);
+            ShowElement(_menuOverlay, visible);
+        }
+
+        /// <summary>按显示标记设置元素显隐。输入：元素与是否显示；输出：无。</summary>
+        static void ShowElement(VisualElement element, bool visible)
+        {
+            if (element != null) element.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        /// <summary>
+        /// 填充左右详情区（单选中槽）。
+        /// 输入：当前选择、快照与配置；输出：无。
+        /// 行为：我方的手牌或单位显示在左侧，敌方单位显示在右侧；未选中、选中家或 Boss 部署阶段时两侧都清空。
+        /// 为什么保持单槽：界面同一时刻只有一个选择，另一侧留空可以避免“两侧都被选中”的误导；
+        /// 区域本身仍然占位，后续要改成对比或其它用途时不必改布局。
+        /// 为什么属性文本不在这里拼：卡面文本统一由 CardText 提供，界面只负责摆放。
+        /// </summary>
+        void FillDetailFaces(Selection selection, GameSnapshot snapshot, GameConfiguration configuration)
+        {
+            var leftTitle = string.Empty;
+            var leftBody = string.Empty;
+            var rightTitle = string.Empty;
+            var rightBody = string.Empty;
+            if (snapshot != null && configuration != null)
+            {
+                if (selection.Kind == SelectionKind.Hand)
+                {
+                    var card = snapshot.Hand.FirstOrDefault(c => c.Id == selection.Id);
+                    if (card != null && configuration.Cards.TryGetValue(card.TypeId, out var handArch))
+                    {
+                        leftTitle = CardText.CategoryLabel(handArch.Category) + " · 玩家";
+                        leftBody = CardText.DetailLine(handArch, Side.Player);
+                    }
+                }
+                else if (selection.Kind == SelectionKind.Unit)
+                {
+                    var unit = snapshot.Units.FirstOrDefault(u => u.Id == selection.Id);
+                    if (unit != null && configuration.Cards.TryGetValue(unit.TypeId, out var unitArch))
+                    {
+                        var title = CardText.CategoryLabel(unitArch.Category) + (unit.Owner == Side.Player ? " · 玩家" : " · Boss");
+                        var body = CardText.UnitDetail(unitArch, unit) + Environment.NewLine
+                            + $"行动机会 {(unit.CanAct ? "可用" : unit.Acted ? "已用完" : "维持费不足")}";
+                        if (unit.Owner == Side.Player) { leftTitle = title; leftBody = body; }
+                        else { rightTitle = title; rightBody = body; }
+                    }
+                }
+            }
+            if (_detailLeftTitle != null) _detailLeftTitle.text = leftTitle;
+            if (_detailLeftBody != null) _detailLeftBody.text = leftBody;
+            if (_detailRightTitle != null) _detailRightTitle.text = rightTitle;
+            if (_detailRightBody != null) _detailRightBody.text = rightBody;
         }
 
         /// <summary>重置日志渲染计数。输入：无；输出：无。用途：重开后清空日志列表。</summary>

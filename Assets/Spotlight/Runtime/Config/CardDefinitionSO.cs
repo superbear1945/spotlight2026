@@ -1,5 +1,5 @@
 // 卡种定义资产：一个卡种的全部共享配置入口。
-// 生成方式：每张 Cards 表数据行生成一个定义资产，三个组件 SO 作为其子资产集中保存，
+// 生成方式：每张 Cards 表数据行生成一个定义资产，启用的五种能力 SO 作为其子资产集中保存，
 // 保证同一卡种的数值只有一份来源；Prefab 只保存组件组合与引用，不重复存数值。
 using UnityEngine;
 
@@ -21,6 +21,8 @@ namespace Spotlight
         [SerializeField] string _name;
         /// <summary>分类文本：resource / attack / special。</summary>
         [SerializeField] string _category;
+        /// <summary>独立于卡牌分类的阶级；玩家卡为 basic/intermediate/advanced，Boss 专用卡为 none。</summary>
+        [SerializeField] string _tier;
         /// <summary>外观模板键；当前用于把卡种映射到 Prefab 外观模板。</summary>
         [SerializeField] string _viewKey;
         /// <summary>是否必须覆盖指定己方资源单位才能部署。</summary>
@@ -31,12 +33,36 @@ namespace Spotlight
         [SerializeField] bool _deployHomeOnly;
         /// <summary>是否禁止部署在任何同类单位的四邻。</summary>
         [SerializeField] bool _avoidAdjacentSameType;
+        /// <summary>成功部署的一次性资源消耗；0 表示免费，资源不足时该卡不可部署。</summary>
+        [SerializeField] int _deployCost;
+        /// <summary>部署时四邻必须存在的单位分类文本（resource/attack/special）；空表示没有邻域要求。</summary>
+        [SerializeField] string _deployRequireAdjacentCategory;
+        /// <summary>四邻中该分类单位的最小数量；0 表示没有邻域要求。</summary>
+        [SerializeField] int _deployRequireAdjacentCount;
+        /// <summary>是否允许攻击友方单位并把结算改为治疗（仅攻击卡可启用）。</summary>
+        [SerializeField] bool _attacksAlliesAsHeal;
         /// <summary>战斗组件配置；为 null 表示该卡种没有战斗组件。</summary>
         [SerializeField] CombatConfigSO _combat;
         /// <summary>资源组件配置；为 null 表示没有资源组件。</summary>
         [SerializeField] ResourceConfigSO _resource;
         /// <summary>传送组件配置；为 null 表示没有传送组件。</summary>
         [SerializeField] TeleportConfigSO _teleport;
+        /// <summary>一次性部署减攻组件配置；为 null 表示该卡种没有这项能力。</summary>
+        [SerializeField] DeploymentPenaltyConfigSO _deploymentPenalty;
+        /// <summary>入场标记配置；为 null 表示该卡种没有这项能力。</summary>
+        [SerializeField] MarkOnEnterConfigSO _markOnEnter;
+        /// <summary>死亡加攻配置；为 null 表示该卡种没有这项能力。</summary>
+        [SerializeField] DeathGrowthConfigSO _deathGrowth;
+        /// <summary>即时卡效果配置；为 null 表示该卡部署后留在场上。</summary>
+        [SerializeField] InstantEffectConfigSO _instant;
+        /// <summary>刷怪能力配置，禁用时为空。</summary>
+        [SerializeField] SpawnConfigSO _spawn;
+        /// <summary>四邻空格限制配置；为 null 表示没有这项能力。</summary>
+        [SerializeField] AdjacentClearanceConfigSO _adjacentClearance;
+        /// <summary>击杀恢复行动配置；为 null 表示没有这项能力。</summary>
+        [SerializeField] KillActionConfigSO _killAction;
+        /// <summary>伤害标记配置；为 null 表示没有这项能力。</summary>
+        [SerializeField] DamageMarkConfigSO _damageMark;
         /// <summary>卡牌 Prefab，由外观模板生成；手牌与棋盘共用同一模板。</summary>
         [SerializeField] Card _prefab;
         /// <summary>源工作簿文件名，用于 Inspector 提示与校验报告。</summary>
@@ -50,6 +76,8 @@ namespace Spotlight
         public string Name => _name;
         /// <summary>分类文本，运行期由 ToArchetype 转成枚举。</summary>
         public string CategoryText => _category;
+        /// <summary>卡种阶级文本，转为配置的严格枚举时不推测缺失值。</summary>
+        public string TierText => _tier;
         /// <summary>外观模板键。</summary>
         public string ViewKey => _viewKey;
         /// <summary>是否必须覆盖升级。</summary>
@@ -60,12 +88,36 @@ namespace Spotlight
         public bool DeployHomeOnly => _deployHomeOnly;
         /// <summary>是否禁止四邻部署同卡种。</summary>
         public bool AvoidAdjacentSameType => _avoidAdjacentSameType;
+        /// <summary>成功部署的一次性资源消耗；0 表示免费。</summary>
+        public int DeployCost => _deployCost;
+        /// <summary>部署时四邻必须存在的单位分类文本；空表示无要求。</summary>
+        public string DeployRequireAdjacentCategory => _deployRequireAdjacentCategory;
+        /// <summary>四邻中该分类单位的最小数量；0 表示无要求。</summary>
+        public int DeployRequireAdjacentCount => _deployRequireAdjacentCount;
+        /// <summary>是否允许攻击友方并改为治疗。</summary>
+        public bool AttacksAlliesAsHeal => _attacksAlliesAsHeal;
         /// <summary>战斗配置 SO（可能为 null）。</summary>
         public CombatConfigSO Combat => _combat;
         /// <summary>资源配置 SO（可能为 null）。</summary>
         public ResourceConfigSO Resource => _resource;
         /// <summary>传送配置 SO（可能为 null）。</summary>
         public TeleportConfigSO Teleport => _teleport;
+        /// <summary>一次性部署减攻配置 SO（可能为 null）。</summary>
+        public DeploymentPenaltyConfigSO DeploymentPenalty => _deploymentPenalty;
+        /// <summary>入场标记配置 SO（可能为 null）。</summary>
+        public MarkOnEnterConfigSO MarkOnEnter => _markOnEnter;
+        /// <summary>死亡加攻配置 SO（可能为 null）。</summary>
+        public DeathGrowthConfigSO DeathGrowth => _deathGrowth;
+        /// <summary>即时卡效果配置 SO（可能为 null）。</summary>
+        public InstantEffectConfigSO Instant => _instant;
+        /// <summary>通用刷怪配置子资产（可能为 null）。</summary>
+        public SpawnConfigSO Spawn => _spawn;
+        /// <summary>四邻空格限制配置 SO（可能为 null）。</summary>
+        public AdjacentClearanceConfigSO AdjacentClearance => _adjacentClearance;
+        /// <summary>击杀恢复行动配置 SO（可能为 null）。</summary>
+        public KillActionConfigSO KillAction => _killAction;
+        /// <summary>伤害标记配置 SO（可能为 null）。</summary>
+        public DamageMarkConfigSO DamageMark => _damageMark;
         /// <summary>卡牌 Prefab，UI 实例化手牌与棋盘单位时使用。</summary>
         public Card Prefab => _prefab;
         /// <inheritdoc />
@@ -86,12 +138,17 @@ namespace Spotlight
                 id = _id,
                 name = _name,
                 category = _category,
+                tier = _tier,
                 upgradeFrom = _upgradeFrom,
                 viewKey = _viewKey,
                 hp = _combat != null ? _combat.Hp : 1,
                 atk = _combat != null ? _combat.Attack : 0,
                 range = _combat != null ? _combat.Range : 0,
                 moveDistance = _combat != null ? _combat.MoveDistance : 0,
+                canAttackResources = _combat != null && _combat.CanAttackResources,
+                canSwap = _combat != null && _combat.CanSwap,
+                spawnComponent = _spawn != null,
+                spawnCardType = _spawn != null ? _spawn.SpawnCardType : string.Empty,
                 produce = _resource != null ? _resource.Produce : 0,
                 upkeep = _resource != null ? _resource.Upkeep : 0,
                 resourceComponent = _resource != null,
@@ -99,7 +156,26 @@ namespace Spotlight
                 permitsAttackDeploy = _teleport != null && _teleport.PermitsAttackDeploy,
                 deployHomeOnly = _deployHomeOnly,
                 avoidAdjacentSameType = _avoidAdjacentSameType,
-                requiresUpgrade = _requiresUpgrade
+                requiresUpgrade = _requiresUpgrade,
+                deploymentPenaltyComponent = _deploymentPenalty != null,
+                deploymentAttackReduction = _deploymentPenalty != null ? _deploymentPenalty.AttackReduction : 0,
+                deployCost = _deployCost,
+                deployRequireAdjacentCategory = _deployRequireAdjacentCategory,
+                deployRequireAdjacentCount = _deployRequireAdjacentCount,
+                markOnEnterComponent = _markOnEnter != null,
+                markOnEnterRadius = _markOnEnter != null ? _markOnEnter.Radius : 0,
+                markRewardResource = _markOnEnter != null ? _markOnEnter.Reward : 0,
+                deathGrowthComponent = _deathGrowth != null,
+                deathGrowthPerKill = _deathGrowth != null ? _deathGrowth.PerKill : 0,
+                deathGrowthLimit = _deathGrowth != null ? _deathGrowth.Limit : 0,
+                leaveAfterDeploy = _instant != null,
+                deployGainResource = _instant != null ? _instant.GainResource : 0,
+                attacksAlliesAsHeal = _attacksAlliesAsHeal,
+                adjacentClearanceComponent = _adjacentClearance != null,
+                adjacentClearanceMinEmpty = _adjacentClearance != null ? _adjacentClearance.MinEmptyNeighbors : 0,
+                killActionComponent = _killAction != null,
+                damageMarkComponent = _damageMark != null,
+                damageMarkDamagePerStack = _damageMark != null ? _damageMark.DamagePerStack : 0
             };
         }
 
@@ -110,27 +186,42 @@ namespace Spotlight
         public CardArchetype ToArchetype()
         {
             var row = ToCardRow();
-            return new CardArchetype(row, _combat, _resource, _teleport);
+            return new CardArchetype(row, _combat, _resource, _teleport, _deploymentPenalty, _markOnEnter, _deathGrowth, _instant, _spawn, _adjacentClearance, _killAction, _damageMark);
         }
 
         /// <summary>
         /// 编译期写入全部字段。
         /// 输入：已校验的行数据、组件 SO 与 Prefab；输出：无。
         /// 说明：只允许编辑器编译器调用；运行时不修改已发布资产。
+        /// 一次性减攻配置为 null 时引用被清空，因此 SO 与 Excel 行始终一致（禁用即无能力）。
         /// </summary>
-        public void EditorApply(CardRow row, CombatConfigSO combat, ResourceConfigSO resource, TeleportConfigSO teleport, Card prefab, string sourceWorkbook, string sourceSheet)
+        public void EditorApply(CardRow row, CombatConfigSO combat, ResourceConfigSO resource, TeleportConfigSO teleport, DeploymentPenaltyConfigSO deploymentPenalty, Card prefab, string sourceWorkbook, string sourceSheet, MarkOnEnterConfigSO markOnEnter = null, DeathGrowthConfigSO deathGrowth = null, InstantEffectConfigSO instant = null,
+            SpawnConfigSO spawn = null, AdjacentClearanceConfigSO adjacentClearance = null, KillActionConfigSO killAction = null, DamageMarkConfigSO damageMark = null)
         {
             _id = row.id;
             _name = row.name.Trim();
             _category = row.category;
+            _tier = row.tier;
             _viewKey = row.viewKey;
             _requiresUpgrade = row.requiresUpgrade;
             _upgradeFrom = row.upgradeFrom;
             _deployHomeOnly = row.deployHomeOnly;
             _avoidAdjacentSameType = row.avoidAdjacentSameType;
+            _deployCost = row.deployCost;
+            _deployRequireAdjacentCategory = row.deployRequireAdjacentCategory;
+            _deployRequireAdjacentCount = row.deployRequireAdjacentCount;
+            _attacksAlliesAsHeal = row.attacksAlliesAsHeal;
             _combat = combat;
             _resource = resource;
             _teleport = teleport;
+            _deploymentPenalty = deploymentPenalty;
+            _markOnEnter = markOnEnter;
+            _deathGrowth = deathGrowth;
+            _instant = instant;
+            _spawn = spawn;
+            _adjacentClearance = adjacentClearance;
+            _killAction = killAction;
+            _damageMark = damageMark;
             _prefab = prefab;
             _sourceWorkbook = sourceWorkbook;
             _sourceSheet = sourceSheet;

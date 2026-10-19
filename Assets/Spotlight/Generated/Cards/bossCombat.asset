@@ -15,14 +15,27 @@ MonoBehaviour:
   _id: bossCombat
   _name: "Boss\u654C\u5175"
   _category: attack
+  _tier: none
   _viewKey: default
   _requiresUpgrade: 0
   _upgradeFrom: 
   _deployHomeOnly: 0
   _avoidAdjacentSameType: 0
+  _deployCost: 0
+  _deployRequireAdjacentCategory: 
+  _deployRequireAdjacentCount: 0
+  _attacksAlliesAsHeal: 0
   _combat: {fileID: 7755972576799590082}
   _resource: {fileID: 0}
   _teleport: {fileID: 0}
+  _deploymentPenalty: {fileID: 0}
+  _markOnEnter: {fileID: 0}
+  _deathGrowth: {fileID: 0}
+  _instant: {fileID: 0}
+  _spawn: {fileID: 0}
+  _adjacentClearance: {fileID: 0}
+  _killAction: {fileID: 0}
+  _damageMark: {fileID: 0}
   _prefab: {fileID: 8937936972991684706, guid: e791ecba3115f6944a092a704dd37f49, type: 3}
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
   _sourceSheet: Cards
@@ -42,3 +55,5 @@ MonoBehaviour:
   _attack: 1
   _range: 1
   _moveDistance: 1
+  _canAttackResources: 1
+  _canSwap: 1

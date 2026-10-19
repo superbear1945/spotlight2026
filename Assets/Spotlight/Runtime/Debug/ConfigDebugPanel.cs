@@ -52,8 +52,6 @@ namespace Spotlight
         Label _errorLabel;
         /// <summary>“应用并重开”按钮（校验失败时禁用）。</summary>
         Button _applyButton;
-        /// <summary>JSON 编辑框。</summary>
-        TextField _json;
         /// <summary>JSON 区域状态文本。</summary>
         Label _jsonStatus;
 
@@ -101,7 +99,6 @@ namespace Spotlight
             _deckSummary = null;
             _errorLabel = root.Q<Label>("debug-error");
             _applyButton = root.Q<Button>("debug-apply-button");
-            _json = root.Q<TextField>("debug-json");
             _jsonStatus = root.Q<Label>("debug-json-status");
 
             Hook("debug-close-button", Close);
@@ -174,7 +171,7 @@ namespace Spotlight
             {
                 var document = _draft.Document;
                 // 配置资产缺失时草稿可能只有空文档；此时只保留 JSON 区域，
-                // 让策划仍能通过“从下方导入”恢复一份可用配置，而不是在表单构建时抛空引用。
+                // 让策划仍能通过剪贴板导入恢复一份可用配置，而不是在表单构建时抛空引用。
                 if (document == null || document.rules == null || document.rules.Length == 0
                     || document.homes == null || document.homes.Length < 2
                     || document.cards == null || document.cards.Length == 0
@@ -184,11 +181,10 @@ namespace Spotlight
                     if (_deckSummary != null) _deckSummary.text = string.Empty;
                     if (_errorLabel != null)
                     {
-                        _errorLabel.text = "没有可用的配置：请先执行 Tools/Spotlight/编译全部配置，或在下方粘贴 JSON 后点击“从下方导入”。";
+                        _errorLabel.text = "没有可用的配置：请先执行 Tools/Spotlight/编译全部配置，或复制配置 JSON 后点击“从剪贴板导入”。";
                         _errorLabel.style.display = DisplayStyle.Flex;
                     }
                     if (_applyButton != null) _applyButton.SetEnabled(false);
-                    if (_json != null) _json.value = _draft.ExportJson();
                     return;
                 }
                 Clear(_boardContainer, _homeContainer, _deckContainer, _cardsContainer, _bossContainer, _turnContainer);
@@ -199,7 +195,6 @@ namespace Spotlight
                 BuildBoss(document);
                 BuildTurn(document);
                 BuildToggles(document);
-                if (_json != null) _json.value = _draft.ExportJson();
                 RefreshSummaryAndValidation();
             }
             finally
@@ -256,21 +251,42 @@ namespace Spotlight
             _homeContainer.Add(section);
         }
 
-        /// <summary>构建“卡组”摘要分区。输入：草稿文档；输出：无。</summary>
+        /// <summary>
+        /// 构建“抽牌堆”分区：张数、三阶级比例、三阶级携带上限与调试用强制牌堆。
+        /// 输入：草稿文档；输出：无。
+        /// 为什么这里不再逐卡种设置数量：Deck 表已废除，抽牌堆由“张数 + 比例”推导，
+        /// 具体带哪些卡由玩家在开局选卡界面决定；逐卡种数量只作为调试压测手段保留。
+        /// </summary>
         void BuildDeck(ConfigDocument document)
         {
-            var section = new VisualElement();
-            section.AddToClassList("cfg-section");
-            var head = new VisualElement();
-            head.AddToClassList("cfg-section-head");
-            var title = new Label("卡组");
-            title.AddToClassList("cfg-section-title");
-            head.Add(title);
-            section.Add(head);
+            var rules = document.rules[0];
+            var section = ConfigFieldBuilder.Section("抽牌堆（选卡与阶级比例）", out var content, ConfigFieldBuilder.Grid(
+                ConfigFieldBuilder.Number("抽牌堆张数（默认 24，至少 3）", () => rules.drawPileSize, value => { rules.drawPileSize = value; Changed(); }, 3),
+                ConfigFieldBuilder.Number("初级比例 %（默认 70）", () => rules.tierRatioBasic, value => { rules.tierRatioBasic = value; Changed(); }, 1, 100),
+                ConfigFieldBuilder.Number("中级比例 %（默认 20）", () => rules.tierRatioIntermediate, value => { rules.tierRatioIntermediate = value; Changed(); }, 1, 100),
+                ConfigFieldBuilder.Number("高级比例 %（默认 10）", () => rules.tierRatioAdvanced, value => { rules.tierRatioAdvanced = value; Changed(); }, 1, 100),
+                ConfigFieldBuilder.Number("初级携带上限（种）", () => rules.maxTypesBasic, value => { rules.maxTypesBasic = value; Changed(); }, 1),
+                ConfigFieldBuilder.Number("中级携带上限（种）", () => rules.maxTypesIntermediate, value => { rules.maxTypesIntermediate = value; Changed(); }, 1),
+                ConfigFieldBuilder.Number("高级携带上限（种）", () => rules.maxTypesAdvanced, value => { rules.maxTypesAdvanced = value; Changed(); }, 1)));
             _deckSummary = new Label();
             _deckSummary.AddToClassList("cfg-deck-summary");
-            section.Add(_deckSummary);
-            section.Add(ConfigFieldBuilder.Note("在下方逐种设置卡组数量，0 表示不加入卡组。新增卡默认 0 张。"));
+            content.Add(_deckSummary);
+            content.Add(ConfigFieldBuilder.Note("三阶级比例之和必须为 100，且每阶级至少 1%；抽牌堆张数至少 3。开局时按比例算张数（向下取整，缺额全部给初级，每阶级至少 1 张），再把张数均分给玩家选中的卡种。携带上限的实际值 = min(本值, 该阶级卡种数)。"));
+
+            content.Add(ConfigFieldBuilder.Note("调试用强制牌堆：任一卡种填大于 0 的张数即整体覆盖抽牌堆（与选卡结果无关），仅在本次运行会话生效，不写入任何资产；全部为 0 表示按选卡结果生成。"));
+            var forcedGrid = new VisualElement();
+            forcedGrid.AddToClassList("cfg-grid");
+            foreach (var card in document.cards)
+            {
+                if (card == null) continue;
+                var id = card.id;
+                var label = string.IsNullOrWhiteSpace(card.name) ? id : card.name.Trim();
+                forcedGrid.Add(ConfigFieldBuilder.Number($"{label}（强制）", () => _draft.GetForcedDeckCount(id), value => { _draft.SetForcedDeckCount(id, value); Changed(); }, 0, 999));
+            }
+            content.Add(forcedGrid);
+            var clearForced = new Button(() => { _draft.ClearForcedDeck(); Rebuild(); }) { text = "清空强制牌堆" };
+            clearForced.AddToClassList("cfg-add-button");
+            content.Add(clearForced);
             _deckContainer.Add(section);
         }
 
@@ -306,7 +322,7 @@ namespace Spotlight
         /// <summary>
         /// 构建单个卡种编辑框。
         /// 输入：卡行；输出：卡种编辑框元素。
-        /// 字段顺序与网页版一致：名字、卡组数量、（资源卡）产出、维持费、生命、攻击、射程、移动，
+        /// 字段顺序与网页版一致：名字、卡牌阶级、（资源卡）产出、维持费、生命、攻击、射程、移动，
         /// 之后按分类追加覆盖升级或四邻部署扩展等专属开关。
         /// </summary>
         VisualElement BuildCardBox(CardRow card)
@@ -325,7 +341,7 @@ namespace Spotlight
                     title.text = string.IsNullOrWhiteSpace(value) ? "未命名卡牌" : value.Trim();
                     Changed();
                 }),
-                ConfigFieldBuilder.Number("卡组数量", () => _draft.GetDeckCount(card.id), value => { _draft.SetDeckCountValue(card.id, value); Changed(); }, 0, 999)
+                ConfigFieldBuilder.Choice("卡牌阶级", TierOptions(card.tier), () => card.tier, value => { card.tier = value; Changed(); })
             };
             if (card.category == "resource")
             {
@@ -337,6 +353,162 @@ namespace Spotlight
             fields.Add(ConfigFieldBuilder.Number("攻击距离（曼哈顿）", () => card.range, value => { card.range = value; Changed(); }, 0));
             fields.Add(ConfigFieldBuilder.Number("移动距离", () => card.moveDistance, value => { card.moveDistance = value; Changed(); }, 0));
             box.Add(ConfigFieldBuilder.Grid(fields.ToArray()));
+
+            // 部署消耗与邻域部署要求：与 Excel 的 deployCost / deployRequireAdjacent* 一一对应。
+            // 两者都只参与“能不能部署到这格”的判定、不产生任何组件，因此属于卡牌级字段。
+            box.Add(ConfigFieldBuilder.Grid(ConfigFieldBuilder.Number("部署一次性消耗资源（0 = 免费）", () => card.deployCost, value => { card.deployCost = value; Changed(); }, 0)));
+            box.Add(ConfigFieldBuilder.Toggle("部署时要求四邻有指定分类单位", () => card.deployRequireAdjacentCount > 0, value =>
+            {
+                if (value)
+                {
+                    if (card.deployRequireAdjacentCount < 1) card.deployRequireAdjacentCount = 1;
+                    if (string.IsNullOrEmpty(card.deployRequireAdjacentCategory)) card.deployRequireAdjacentCategory = "resource";
+                }
+                else
+                {
+                    card.deployRequireAdjacentCount = 0;
+                    card.deployRequireAdjacentCategory = string.Empty;
+                }
+                Changed();
+            }));
+            if (card.deployRequireAdjacentCount > 0)
+            {
+                box.Add(ConfigFieldBuilder.Grid(
+                    ConfigFieldBuilder.Choice("四邻需要的分类", new[] { ("resource", "资源卡"), ("attack", "攻击卡"), ("special", "特殊卡") },
+                        () => string.IsNullOrEmpty(card.deployRequireAdjacentCategory) ? "resource" : card.deployRequireAdjacentCategory,
+                        value => { card.deployRequireAdjacentCategory = value; Changed(); }),
+                    ConfigFieldBuilder.Number("四邻需要的数量", () => card.deployRequireAdjacentCount, value => { card.deployRequireAdjacentCount = value; Changed(); }, 1)));
+                box.Add(ConfigFieldBuilder.Note("只统计四邻（上下左右）的在场单位，不含家，不区分阵营；数量不足时该格不合法也不会高亮。"));
+            }
+
+            // 入场标记：与 Excel 的 markOnEnterComponent / markOnEnterRadius / markRewardResource 一一对应。
+            // 关闭能力时两个数值必须归零，否则校验会阻止“应用并重开”。
+            box.Add(ConfigFieldBuilder.Toggle("入场标记：上场时标记半径内其它单位", () => card.markOnEnterComponent, value =>
+            {
+                if (value)
+                {
+                    if (card.markOnEnterRadius < 1) card.markOnEnterRadius = 1;
+                    if (card.markRewardResource < 1) card.markRewardResource = 1;
+                }
+                else
+                {
+                    card.markOnEnterRadius = 0;
+                    card.markRewardResource = 0;
+                }
+                Changed();
+            }));
+            if (card.markOnEnterComponent)
+            {
+                box.Add(ConfigFieldBuilder.Grid(
+                    ConfigFieldBuilder.Number("标记半径（1 = 3×3）", () => card.markOnEnterRadius, value => { card.markOnEnterRadius = value; Changed(); }, 1),
+                    ConfigFieldBuilder.Number("阵亡奖励资源", () => card.markRewardResource, value => { card.markRewardResource = value; Changed(); }, 1)));
+                box.Add(ConfigFieldBuilder.Note("标记永久保留、先到先得不叠加；只有因战斗阵亡才发奖励，Boss 侧暂无资源系统。"));
+            }
+
+            // 死亡加攻：与 Excel 的 deathGrowthComponent / deathGrowthPerKill / deathGrowthLimit 一一对应。
+            box.Add(ConfigFieldBuilder.Toggle("死亡加攻：任一单位阵亡时提升攻击力", () => card.deathGrowthComponent, value =>
+            {
+                if (value)
+                {
+                    if (card.deathGrowthPerKill < 1) card.deathGrowthPerKill = 1;
+                    if (card.deathGrowthLimit < 1) card.deathGrowthLimit = 4;
+                }
+                else
+                {
+                    card.deathGrowthPerKill = 0;
+                    card.deathGrowthLimit = 0;
+                }
+                Changed();
+            }));
+            if (card.deathGrowthComponent)
+            {
+                box.Add(ConfigFieldBuilder.Grid(
+                    ConfigFieldBuilder.Number("每次阵亡加攻", () => card.deathGrowthPerKill, value => { card.deathGrowthPerKill = value; Changed(); }, 1),
+                    ConfigFieldBuilder.Number("最多触发次数", () => card.deathGrowthLimit, value => { card.deathGrowthLimit = value; Changed(); }, 1)));
+                box.Add(ConfigFieldBuilder.Note("全棋盘任一单位因战斗阵亡时触发；次数上限不是攻击力上限；非战斗移除不触发。"));
+            }
+
+            // 治疗型攻击：与 Excel 的 attacksAlliesAsHeal 对应，仅攻击卡可启用。
+            if (card.category == "attack")
+            {
+                box.Add(ConfigFieldBuilder.Toggle("可攻击友方，并把友方结算改为治疗", () => card.attacksAlliesAsHeal, value => { card.attacksAlliesAsHeal = value; Changed(); }));
+                box.Add(ConfigFieldBuilder.Note("治疗量 = 当前攻击力，受生命上限限流；满血也允许白打并照常消耗行动；家不可治疗。"));
+            }
+
+            // 即时卡：与 Excel 的 leaveAfterDeploy / deployGainResource 一一对应。
+            // 关闭时收益必须归零，否则校验会阻止“应用并重开”。
+            box.Add(ConfigFieldBuilder.Toggle("即时卡：部署后立即结算并离场", () => card.leaveAfterDeploy, value =>
+            {
+                card.leaveAfterDeploy = value;
+                if (!value) card.deployGainResource = 0;
+                else if (card.deployGainResource < 1) card.deployGainResource = 1;
+                Changed();
+            }));
+            if (card.leaveAfterDeploy)
+            {
+                box.Add(ConfigFieldBuilder.Grid(ConfigFieldBuilder.Number("结算时获得资源", () => card.deployGainResource, value => { card.deployGainResource = value; Changed(); }, 1)));
+                box.Add(ConfigFieldBuilder.Note("在场时间视为 0：不参与一次性减攻与入场标记，退场原因记为“结算后离场”，不触发补兵、死亡加攻或标记奖励。Boss 卡种与刷怪卡卡种不能是即时卡。"));
+            }
+            box.Add(ConfigFieldBuilder.Toggle("允许直接攻击资源卡", () => card.canAttackResources, value => { card.canAttackResources = value; Changed(); }));
+            box.Add(ConfigFieldBuilder.Toggle("允许互换", () => card.canSwap, value => { card.canSwap = value; Changed(); }));
+            box.Add(ConfigFieldBuilder.Toggle("每回合生成战机", () => card.spawnComponent, value =>
+            {
+                card.spawnComponent = value;
+                card.spawnCardType = value ? _draft.Document.rules[0].bossCardType : string.Empty;
+                ChangedStructure();
+            }));
+            if (card.spawnComponent)
+                box.Add(ConfigFieldBuilder.Grid(ConfigFieldBuilder.Choice("生成战机卡种", CardOptions(_draft.Document, "attack", card.spawnCardType), () => card.spawnCardType, value => { card.spawnCardType = value; Changed(); })));
+
+            // 四邻空格限制：与 Excel 的 adjacentClearanceComponent / adjacentClearanceMinEmpty 一一对应。
+            // 关闭时阈值必须归零，否则集中校验会阻止“应用并重开”。
+            box.Add(ConfigFieldBuilder.Toggle("四邻空格限制：部署与移动/互换前后至少 N 格为空", () => card.adjacentClearanceComponent, value =>
+            {
+                if (!value) card.adjacentClearanceMinEmpty = 0;
+                else if (card.adjacentClearanceMinEmpty < 1) card.adjacentClearanceMinEmpty = 2;
+                ChangedStructure();
+            }));
+            if (card.adjacentClearanceComponent)
+            {
+                box.Add(ConfigFieldBuilder.Grid(ConfigFieldBuilder.Number("四邻最少空格数（1～4）", () => card.adjacentClearanceMinEmpty, value => { card.adjacentClearanceMinEmpty = value; Changed(); }, 1)));
+                box.Add(ConfigFieldBuilder.Note("只统计上下左右四邻，斜角不计，棋盘外按空计算；部署检查目标格，移动与互换同时检查起点与终点的最终布局。被围后仍可攻击，只是不能移动与互换。"));
+            }
+
+            // 击杀恢复行动与伤害标记都只允许攻击类卡启用（与治疗型攻击相同的分类约束）。
+            // 非攻击卡不展示开关；若旧草稿残留非法组合，集中校验会给出错误而不是静默保留。
+            if (card.category == "attack")
+            {
+                box.Add(ConfigFieldBuilder.Toggle("击杀恢复行动：直接攻击击杀后再行动一次", () => card.killActionComponent, value => { card.killActionComponent = value; Changed(); }));
+                box.Add(ConfigFieldBuilder.Note("包括伤害标记追加击杀；可连续触发，但不重开回合（不抽牌、不重复扣维持费），未使用机会不跨回合保存。炸弹与其它单位击杀不会触发。"));
+
+                box.Add(ConfigFieldBuilder.Toggle("伤害标记：直接攻击后使目标获得 1 层", () => card.damageMarkComponent, value =>
+                {
+                    card.damageMarkComponent = value;
+                    if (!value) card.damageMarkDamagePerStack = 0;
+                    else if (card.damageMarkDamagePerStack < 1) card.damageMarkDamagePerStack = 1;
+                    ChangedStructure();
+                }));
+                if (card.damageMarkComponent)
+                {
+                    box.Add(ConfigFieldBuilder.Grid(ConfigFieldBuilder.Number("每层追加伤害", () => card.damageMarkDamagePerStack, value => { card.damageMarkDamagePerStack = value; Changed(); }, 1)));
+                    box.Add(ConfigFieldBuilder.Note("新层从下一次受伤起生效；普通攻击与炸弹都会触发已有层，追加伤害不递归、不挂新层、不消耗炸弹预算；家不挂层。"));
+                }
+            }
+
+            // 一次性部署减攻：与 Excel 的 deploymentPenaltyComponent / deploymentAttackReduction 一一对应。
+            // 两个字段必须同时生效：启用必须有正整数减攻量，禁用则减攻量归零，否则校验会阻止应用。
+            box.Add(ConfigFieldBuilder.Toggle("在场期间一次：减攻随后上场的一个己方攻击类单位", () => card.deploymentPenaltyComponent, value =>
+            {
+                card.deploymentPenaltyComponent = value;
+                if (!value) card.deploymentAttackReduction = 0;
+                else if (card.deploymentAttackReduction < 1) card.deploymentAttackReduction = 1;
+                ChangedStructure();
+            }));
+            if (card.deploymentPenaltyComponent)
+            {
+                box.Add(ConfigFieldBuilder.Grid(ConfigFieldBuilder.Number("一次性减攻量（默认 2）", () => card.deploymentAttackReduction, value => { card.deploymentAttackReduction = value; Changed(); }, 1)));
+                box.Add(ConfigFieldBuilder.Note("该单位成功上场后拥有一次未消耗效果：随后同阵营攻击类单位成功上场时按部署顺序取最早的来源，攻击力降低该值，最低为 0，持续到目标单位离场。多个来源依次触发，每个目标最多承受一次；来源提前离场则未触发效果消失。"));
+            }
 
             if (card.category == "special")
             {
@@ -399,9 +571,28 @@ namespace Spotlight
                 ConfigFieldBuilder.Number("攻击单位数量下限（默认 2）", () => rules.bossSpawnerUnitThreshold, value => { rules.bossSpawnerUnitThreshold = value; Changed(); }, 1),
                 ConfigFieldBuilder.Number("刷怪卡部署起始列（默认 5）", () => rules.bossSpawnerDeployFromColumn, value => { rules.bossSpawnerDeployFromColumn = value; Changed(); }, 1),
                 ConfigFieldBuilder.Choice("刷怪卡卡种", CardOptions(document, "special", rules.bossSpawnerCardType), () => rules.bossSpawnerCardType, value => { rules.bossSpawnerCardType = value; ChangedStructure(); }),
-                ConfigFieldBuilder.Choice("生成战机卡种", CardOptions(document, "attack", rules.bossSpawnerSpawnCardType), () => rules.bossSpawnerSpawnCardType, value => { rules.bossSpawnerSpawnCardType = value; Changed(); })));
+                ConfigFieldBuilder.Number("二阶段锁血阈值（默认 20）", () => rules.bossPhaseTwoHp, value => { rules.bossPhaseTwoHp = value; Changed(); }, 1),
+                ConfigFieldBuilder.Number("战舰部署列（默认 8，玩家一侧起算）", () => rules.bossWarshipColumn, value => { rules.bossWarshipColumn = value; Changed(); }, 1),
+                ConfigFieldBuilder.Choice("战舰卡种", CardOptions(document, "attack", rules.bossWarshipCardType), () => rules.bossWarshipCardType, value => { rules.bossWarshipCardType = value; ChangedStructure(); })));
             var spawner = _draft.FindCard(rules.bossSpawnerCardType);
-            if (spawner != null) content.Add(ConfigFieldBuilder.Number("刷怪卡生命（默认 1）", () => spawner.hp, value => { spawner.hp = value; Changed(); }, 1));
+            if (spawner != null)
+            {
+                content.Add(ConfigFieldBuilder.Number("刷怪卡生命（默认 1）", () => spawner.hp, value => { spawner.hp = value; Changed(); }, 1));
+                content.Add(ConfigFieldBuilder.Choice("刷怪卡生成战机卡种", CardOptions(document, "attack", spawner.spawnCardType), () => spawner.spawnCardType, value => { spawner.spawnCardType = value; Changed(); }));
+            }
+            var warship = _draft.FindCard(rules.bossWarshipCardType);
+            if (warship != null) content.Add(BuildCardBox(warship));
+            var guards = ConfigFieldBuilder.Section("三阶段护卫舰", out var guardContent);
+            guards.name = "boss-phase-three-guards";
+            guardContent.Add(ConfigFieldBuilder.Grid(
+                ConfigFieldBuilder.Choice("前列护卫舰卡种", CardOptions(document, "attack", rules.bossPhaseThreeFrontCardType), () => rules.bossPhaseThreeFrontCardType, value => { rules.bossPhaseThreeFrontCardType = value; ChangedStructure(); }),
+                ConfigFieldBuilder.Choice("当前列护卫舰卡种", CardOptions(document, "attack", rules.bossPhaseThreeRearCardType), () => rules.bossPhaseThreeRearCardType, value => { rules.bossPhaseThreeRearCardType = value; ChangedStructure(); })));
+            var frontGuard = _draft.FindCard(rules.bossPhaseThreeFrontCardType);
+            var rearGuard = _draft.FindCard(rules.bossPhaseThreeRearCardType);
+            if (frontGuard != null) guardContent.Add(BuildCardBox(frontGuard));
+            if (rearGuard != null && rearGuard != frontGuard) guardContent.Add(BuildCardBox(rearGuard));
+            guardContent.Add(ConfigFieldBuilder.Note("进入三阶段立即在 Boss 家当前列和朝玩家方向的前一列生成一次护卫舰，跳过双方的家。占位单位视作死亡，护卫舰不补回并遵守召唤失调。索敌顺序：攻击单位、玩家家、特殊单位、资源单位；攻击单位先看距 Boss 家的距离，同距离优先当前攻击力更高者。修改仅在应用并重开后生效。"));
+            content.Add(guards);
             content.Add(ConfigFieldBuilder.Note("每个 Boss 回合开始仅检查一次。总攻击力包含全部玩家单位，数量只统计攻击类；列号从玩家一侧起算并包含本列，超过棋盘宽度则范围为空。刷怪卡同时最多一张，固定不动，从下个 Boss 回合起持续在八邻生成战机；满格优先顶替玩家单位，无可用位置暂停，下回合重试。技能不消耗普通放牌次数。"));
             content.Add(ConfigFieldBuilder.Grid(
                 ConfigFieldBuilder.Number("炸弹部署间隔（回合）", () => rules.bossBombInterval, value => { rules.bossBombInterval = value; Changed(); }, 1),
@@ -432,6 +623,21 @@ namespace Spotlight
             foreach (var card in document.cards)
                 if (card != null && card.category == category) options.Add((card.id, $"{card.name}（{card.id}）"));
             if (!options.Exists(option => option.Value == current)) options.Insert(0, (current, $"无效引用（{current}）"));
+            return options;
+        }
+
+        /// <summary>
+        /// 生成独立阶级选项。输入：当前配置文本；输出：三种玩家阶级与 Boss 专用不适用状态。
+        /// 缺失或非法旧值保留为显式错误选项，防止界面显示初级却仍存储空值，便于修复旧 JSON。
+        /// </summary>
+        static List<(string Value, string Label)> TierOptions(string current)
+        {
+            var options = new List<(string Value, string Label)>
+            {
+                ("basic", "初级"), ("intermediate", "中级"), ("advanced", "高级"), ("none", "不适用（Boss 专用）")
+            };
+            if (!options.Exists(option => option.Value == current))
+                options.Insert(0, (current ?? string.Empty, $"请补齐阶级（{current}）"));
             return options;
         }
 
@@ -476,9 +682,13 @@ namespace Spotlight
         void RefreshSummaryAndValidation()
         {
             if (_draft == null) return;
-            var summary = _draft.GetDeckSummary();
+            var pile = _draft.GetDrawPileSummary();
             if (_deckSummary != null)
-                _deckSummary.text = $"共 {summary.Total} 张 → 资源卡 {summary.Resource} 张 / 战斗卡 {summary.Combat} 张 / 特殊卡 {summary.Special} 张";
+            {
+                _deckSummary.text = _draft.HasForcedDeck
+                    ? $"强制牌堆 {pile.Total} 张 → 初级 {pile.Basic} 张 / 中级 {pile.Intermediate} 张 / 高级 {pile.Advanced} 张（仅本次运行会话）"
+                    : $"抽牌堆 {pile.Total} 张 → 初级 {pile.Basic} 张 / 中级 {pile.Intermediate} 张 / 高级 {pile.Advanced} 张（按比例推导，实际卡种由玩家开局时选择）";
+            }
             var errors = _draft.Validate();
             if (_errorLabel != null)
             {
@@ -497,26 +707,27 @@ namespace Spotlight
             Rebuild();
         }
 
-        /// <summary>导出草稿 JSON 到编辑框。输入：无；输出：无。</summary>
+        /// <summary>
+        /// 复制完整草稿 JSON 到系统剪贴板。输入：当前草稿；输出：剪贴板文本与简短成功提示。
+        /// 不把 JSON 放入任何界面文本元素，避免长配置超过 UI Toolkit 单元素文本顶点上限。
+        /// </summary>
         void ExportJson()
         {
             if (_draft == null) return;
-            if (_json != null) _json.value = _draft.ExportJson();
-            if (_jsonStatus != null) _jsonStatus.text = "已导出当前草稿 JSON。";
+            GUIUtility.systemCopyBuffer = _draft.ExportJson();
+            if (_jsonStatus != null) _jsonStatus.text = "已复制完整配置 JSON，可粘贴到文本文件保存。";
         }
 
         /// <summary>
-        /// 从编辑框导入 JSON。
-        /// 输入：无（读取界面文本）；输出：无。
-        /// 成功时提示被移除的废弃字段，失败时回滚到导入前的草稿并显示原因。
+        /// 从系统剪贴板导入 JSON。输入：剪贴板全文；输出：草稿表单及导入结果提示。
+        /// 不渲染原始 JSON；Import 仅在解析成功后替换文档，失败不重新导入旧文档，
+        /// 从而保留原草稿的字段引用和强制牌堆设置。成功仍需“应用并重开”才影响对局。
         /// </summary>
         void ImportJson()
         {
-            if (_draft == null || _json == null) return;
-            var previous = _draft.ExportJson();
-            if (!_draft.Import(_json.value, out var error, out var notices))
+            if (_draft == null) return;
+            if (!_draft.Import(GUIUtility.systemCopyBuffer, out var error, out var notices))
             {
-                _draft.Import(previous, out _, out _);
                 if (_jsonStatus != null) _jsonStatus.text = "导入失败：" + error;
                 RefreshSummaryAndValidation();
                 return;

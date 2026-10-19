@@ -22,8 +22,13 @@ namespace Spotlight.Tests
             return d;
         }
 
-        /// <summary>建立真实对局。输入：配置与固定随机种子；输出：可执行公开命令的规则内核。</summary>
-        static GameSession Start(ConfigDocument d, int seed = 17) => new GameSession(new GameConfiguration(d), new SeededRandom(seed), 1000);
+        /// <summary>
+        /// 建立真实对局。输入：配置与固定随机种子；输出：可执行公开命令的规则内核。
+        /// 抽牌堆固定使用 <see cref="GameSessionTests.DefaultDeck"/>（16 张），
+        /// 因为本文件的用例断言“手牌 + 抽牌堆 + 墓地”总数不变，需要与迁移前完全一致的牌堆张数。
+        /// </summary>
+        static GameSession Start(ConfigDocument d, int seed = 17) =>
+            new GameSession(new GameConfiguration(d).WithDeck(GameSessionTests.DefaultDeck(), false), new SeededRandom(seed), 1000);
 
         /// <summary>执行并断言成功。输入：对局、命令；输出：有序事件结果，失败时显示规则错误。</summary>
         static CommandResult Do(GameSession g, GameCommand command)
@@ -94,9 +99,12 @@ namespace Spotlight.Tests
             Assert.That(g.GetSnapshot().Units.Any(u => u.Id == center), Is.False);
             Assert.That(g.GetSnapshot().Units.Single(u => u.Id == up).Hp, Is.EqualTo(1));
             Assert.That(old.Units.Single(u => u.Id == center).Hp, Is.EqualTo(2));
-            Assert.That(g.GetSnapshot().Hand.Count + g.GetSnapshot().DrawPile.Count + g.GetSnapshot().Graveyard.Count, Is.EqualTo(16));
+            // 卡片守恒：手牌 + 抽牌堆 + 墓地始终等于配置的抽牌堆张数（Deck 表废除后由 drawPileSize 决定）。
+            // 夹具用 WithDeck(..., false) 显式指定牌堆，因此这里只断言守恒，不断言“等于 drawPileSize”。
+            var pileSize = g.Configuration.Deck.Sum(e => e.Count);
+            Assert.That(g.GetSnapshot().Hand.Count + g.GetSnapshot().DrawPile.Count + g.GetSnapshot().Graveyard.Count, Is.EqualTo(pileSize));
             var cards = g.GetSnapshot().Hand.Concat(g.GetSnapshot().DrawPile).Concat(g.GetSnapshot().Graveyard).ToArray();
-            Assert.That(cards.Select(c => c.Id).Distinct().Count(), Is.EqualTo(16));
+            Assert.That(cards.Select(c => c.Id).Distinct().Count(), Is.EqualTo(pileSize));
         }
 
         /// <summary>同距离按屏幕上右下左共享预算，镜像后仍保持相同视觉优先级。</summary>
@@ -217,9 +225,13 @@ namespace Spotlight.Tests
             var d = Document(10); var g = Start(d); End(g);
             Assert.That(g.Execute(new GameCommand(CommandKind.DeployBossBomb, Side.Boss, target: new Cell(0, 4))).Success, Is.False);
             Assert.That(Start(d).GetSnapshot().BossBombs, Is.Empty);
-            var lethal = Document(); var miner = lethal.cards.Single(c => c.id == "miner"); miner.atk = 10; miner.range = 10;
+            var lethal = Document(); var miner = lethal.cards.Single(c => c.id == "miner"); miner.atk = 100; miner.range = 30; lethal.rules[0].homeRegionWidth = 10;
             var match = Start(lethal); var id = Put(match, new Cell(0, 8));
             Do(match, new GameCommand(CommandKind.Attack, Side.Player, id, targetId: -2));
+            var ships = match.GetSnapshot().BossWarships.ToArray();
+            for (var i = 0; i < 2; i++)
+                Do(match, new GameCommand(CommandKind.Attack, Side.Player, Put(match, new Cell(0, i + 3)), targetId: ships[i].UnitId.Value));
+            Do(match, new GameCommand(CommandKind.Attack, Side.Player, Put(match, new Cell(0, 5)), targetId: -2));
             Assert.That(match.Execute(new GameCommand(CommandKind.EndTurn, Side.Player)).Success, Is.False);
             Assert.That(match.GetSnapshot().BossBombs, Is.Empty);
         }

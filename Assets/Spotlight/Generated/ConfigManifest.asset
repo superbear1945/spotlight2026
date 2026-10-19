@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: ConfigManifest
   m_EditorClassIdentifier: 
   _sourceWorkbookPath: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceHash: eb6087b17ca76d0405d0e54d9b21dbcd4c831486044a43c5d5f07d82c51ec15c
-  _compiledAtUtc: 2026-10-14T12:08:53.2083370Z
+  _sourceHash: 19c5f987b4716e6976ad9848462c6bbd10c8090aa3d9f52ac0fd2f6abce84117
+  _compiledAtUtc: 2026-10-19T02:17:46.4400117Z
   _generatedPaths:
   - Assets/Spotlight/Generated/Cards/ge1.asset
   - Assets/Spotlight/Generated/Cards/ge1.prefab
@@ -32,4 +32,38 @@ MonoBehaviour:
   - Assets/Spotlight/Generated/Cards/bossCombat.prefab
   - Assets/Spotlight/Generated/Cards/bossSpawner.asset
   - Assets/Spotlight/Generated/Cards/bossSpawner.prefab
+  - Assets/Spotlight/Generated/Cards/kyoto_01.asset
+  - Assets/Spotlight/Generated/Cards/kyoto_01.prefab
+  - Assets/Spotlight/Generated/Cards/kepler1.asset
+  - Assets/Spotlight/Generated/Cards/kepler1.prefab
+  - Assets/Spotlight/Generated/Cards/kepler2.asset
+  - Assets/Spotlight/Generated/Cards/kepler2.prefab
+  - Assets/Spotlight/Generated/Cards/landing1.asset
+  - Assets/Spotlight/Generated/Cards/landing1.prefab
+  - Assets/Spotlight/Generated/Cards/houyi1.asset
+  - Assets/Spotlight/Generated/Cards/houyi1.prefab
+  - Assets/Spotlight/Generated/Cards/collector1.asset
+  - Assets/Spotlight/Generated/Cards/collector1.prefab
+  - Assets/Spotlight/Generated/Cards/force1.asset
+  - Assets/Spotlight/Generated/Cards/force1.prefab
+  - Assets/Spotlight/Generated/Cards/flounder1.asset
+  - Assets/Spotlight/Generated/Cards/flounder1.prefab
+  - Assets/Spotlight/Generated/Cards/reserve1.asset
+  - Assets/Spotlight/Generated/Cards/reserve1.prefab
+  - Assets/Spotlight/Generated/Cards/bossWarship.asset
+  - Assets/Spotlight/Generated/Cards/bossWarship.prefab
+  - Assets/Spotlight/Generated/Cards/houyi2.asset
+  - Assets/Spotlight/Generated/Cards/houyi2.prefab
+  - Assets/Spotlight/Generated/Cards/texasRanger.asset
+  - Assets/Spotlight/Generated/Cards/texasRanger.prefab
+  - Assets/Spotlight/Generated/Cards/viking2056.asset
+  - Assets/Spotlight/Generated/Cards/viking2056.prefab
+  - Assets/Spotlight/Generated/Cards/snpEu.asset
+  - Assets/Spotlight/Generated/Cards/snpEu.prefab
+  - Assets/Spotlight/Generated/Cards/napoleon1769.asset
+  - Assets/Spotlight/Generated/Cards/napoleon1769.prefab
+  - Assets/Spotlight/Generated/Cards/bossGuardType1.asset
+  - Assets/Spotlight/Generated/Cards/bossGuardType1.prefab
+  - Assets/Spotlight/Generated/Cards/bossGuardType2.asset
+  - Assets/Spotlight/Generated/Cards/bossGuardType2.prefab
   - Assets/Spotlight/Generated/Resources/SpotlightConfig.asset

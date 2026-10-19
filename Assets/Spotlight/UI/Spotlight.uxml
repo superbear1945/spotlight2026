@@ -17,6 +17,7 @@
         <ui:VisualElement name="round-counter" picking-mode="Ignore" class="round-counter">
           <ui:Label name="round-number-label" text="01" picking-mode="Ignore" class="round-number-label" />
         </ui:VisualElement>
+        <ui:Label name="boss-phase-label" text="Boss 第 1 阶段" picking-mode="Ignore" class="info-label boss-phase-label" />
         <ui:Label name="turn-label" text="第 1 回合 · 玩家行动" picking-mode="Ignore" class="title-label" style="display: none;" />
         <ui:Label name="plays-label" text="剩余出牌 5" picking-mode="Ignore" class="plays-label" style="display: none;" />
       </ui:VisualElement>
@@ -28,11 +29,13 @@
       </ui:VisualElement>
       <ui:VisualElement picking-mode="Ignore" class="entry-toolbar">
         <ui:Button name="pause-button" text="" tooltip="暂停" class="icon-button pause-button entry-first" />
-        <ui:Button name="debug-button" text="" tooltip="配置 / 调试" class="icon-button settings-button" />
+        <ui:Button name="menu-button" text="" tooltip="菜单" class="icon-button settings-button menu-button" />
+        <ui:Button name="quick-debug-button" text="" tooltip="配置 / 调试" class="icon-button settings-button" />
         <ui:Button name="history-button" text="" tooltip="显示或隐藏对局日志" class="icon-button history-button log-hidden" />
         <ui:Button name="help-button" text="" tooltip="规则帮助" class="icon-button help-button" />
       </ui:VisualElement>
     </ui:VisualElement>
+
     <ui:VisualElement name="log-panel" picking-mode="Ignore" class="panel log-panel" style="display: none;">
       <ui:Label text="对局日志" picking-mode="Ignore" class="section-label" />
       <ui:ScrollView name="log-list" class="log-list">
@@ -45,8 +48,18 @@
       <ui:Label name="phase-label" picking-mode="Ignore" class="warn-label" />
       <ui:Label text="选中详情" picking-mode="Ignore" class="section-label" />
       <ui:Label name="unit-detail" text="点击手牌、己方单位或己方家进行操作" picking-mode="Ignore" class="detail-label" />
+    </ui:VisualElement>
+
+    <ui:VisualElement name="detail-left" picking-mode="Ignore" class="panel detail-panel detail-panel-left">
+      <ui:Label name="detail-left-title" picking-mode="Ignore" class="detail-title" />
+      <ui:Label name="detail-left-body" picking-mode="Ignore" class="detail-body" />
       <ui:Button name="withdraw-button" text="离场" class="action-button secondary-action withdraw-button" style="display: none;" />
     </ui:VisualElement>
+    <ui:VisualElement name="detail-right" picking-mode="Ignore" class="panel detail-panel detail-panel-right">
+      <ui:Label name="detail-right-title" picking-mode="Ignore" class="detail-title" />
+      <ui:Label name="detail-right-body" picking-mode="Ignore" class="detail-body" />
+    </ui:VisualElement>
+
     <ui:VisualElement name="bottom-bar" picking-mode="Ignore" class="bottom-bar">
       <ui:Button name="bomb-deploy-button" text="布置炸弹" class="action-button primary-action bomb-button" style="display: none;" />
       <ui:Button name="bomb-skip-button" text="跳过炸弹" class="action-button secondary-action bomb-button" style="display: none;" />
@@ -55,6 +68,29 @@
       <ui:Button name="skip-deploy-button" text="跳过放牌并结束" class="action-button secondary-action" style="display: none;" />
       <ui:Button name="restart-button" text="重开" class="action-button secondary-action" style="display: none;" />
     </ui:VisualElement>
+
+    <ui:VisualElement name="pile-left" picking-mode="Ignore" class="panel pile-panel pile-left">
+      <ui:Label text="墓地" picking-mode="Ignore" class="pile-title" />
+      <ui:Label name="grave-count" text="0" picking-mode="Ignore" class="pile-count" />
+    </ui:VisualElement>
+    <ui:VisualElement name="pile-right" picking-mode="Ignore" class="panel pile-panel pile-right">
+      <ui:Label text="抽牌堆" picking-mode="Ignore" class="pile-title" />
+      <ui:Label name="draw-count-advanced" text="高级 0" picking-mode="Ignore" class="pile-tier-count" />
+      <ui:Label name="draw-count-intermediate" text="中级 0" picking-mode="Ignore" class="pile-tier-count" />
+      <ui:Label name="draw-count-basic" text="初级 0" picking-mode="Ignore" class="pile-tier-count" />
+    </ui:VisualElement>
+
+    <ui:VisualElement name="menu-overlay" class="overlay menu-overlay" style="display: none;">
+      <ui:VisualElement picking-mode="Ignore" class="overlay-card">
+        <ui:Label text="菜单" class="victory-label" />
+        <ui:Button name="menu-resume-button" text="继续" class="action-button" />
+        <ui:Button name="menu-deck-select-button" text="选卡" class="action-button" />
+        <ui:Button name="menu-restart-button" text="重开" class="action-button" />
+        <ui:Button name="menu-quit-button" text="退出游戏" class="action-button menu-quit-button" />
+        <ui:Button name="debug-button" text="配置/调试" class="action-button menu-debug-button" />
+      </ui:VisualElement>
+    </ui:VisualElement>
+
     <ui:Label name="error-label" picking-mode="Ignore" class="error-label" style="display: none;" />
     <ui:VisualElement name="victory-overlay" picking-mode="Ignore" class="overlay victory-overlay" style="display: none;">
       <ui:VisualElement picking-mode="Ignore" class="overlay-card">
@@ -64,6 +100,40 @@
         <ui:Button name="victory-restart-button" text="再来一局" class="action-button primary-action victory-restart-button" />
       </ui:VisualElement>
     </ui:VisualElement>
+
+    <ui:VisualElement name="deck-select-confirm-overlay" class="overlay menu-overlay" style="display: none;">
+      <ui:VisualElement picking-mode="Ignore" class="overlay-card">
+        <ui:Label text="进入选卡？" class="victory-label" />
+        <ui:Label text="确认后当前对局将重开，进度不会保留。" class="info-label" />
+        <ui:Button name="deck-select-confirm-yes" text="进入选卡" class="action-button" />
+        <ui:Button name="deck-select-confirm-no" text="继续当前对局" class="action-button" />
+      </ui:VisualElement>
+    </ui:VisualElement>
+    <ui:VisualElement name="deck-select-mask" class="cfg-mask deck-select-mask" style="display: none;">
+      <ui:VisualElement class="cfg-panel deck-select-panel">
+        <ui:VisualElement class="cfg-head">
+          <ui:VisualElement class="cfg-head-top">
+            <ui:Label name="deck-select-title" text="携带选择" class="cfg-title" />
+            <ui:VisualElement class="cfg-head-actions">
+              <ui:Button name="deck-select-default-button" text="恢复默认" />
+            </ui:VisualElement>
+          </ui:VisualElement>
+          <ui:Label name="deck-select-error" class="cfg-error" />
+        </ui:VisualElement>
+        <ui:VisualElement class="cfg-body">
+          <ui:ScrollView name="deck-select-scroll" mode="Vertical" class="cfg-scroll">
+            <ui:Label name="deck-select-hint" class="cfg-note" />
+            <ui:VisualElement name="deck-select-cards" />
+          </ui:ScrollView>
+        </ui:VisualElement>
+        <ui:VisualElement class="deck-select-foot">
+          <ui:Label name="deck-select-preview" class="deck-select-preview" />
+          <ui:Button name="deck-select-cancel-button" text="取消" class="action-button" />
+          <ui:Button name="deck-select-apply-button" text="确认并开局" class="action-button primary" />
+        </ui:VisualElement>
+      </ui:VisualElement>
+    </ui:VisualElement>
+
     <ui:VisualElement name="modal-overlay" class="overlay modal-overlay" style="display: none;" />
     <ui:VisualElement name="pause-overlay" class="overlay pause-overlay" style="display: none;">
       <ui:VisualElement name="pause-panel" picking-mode="Ignore" class="pause-panel" />
@@ -72,6 +142,7 @@
       <ui:Button name="pause-restart-button" text="重新开始" class="pause-menu-button pause-restart-button" />
       <ui:Button name="pause-exit-button" text="退出战斗" class="pause-menu-button pause-exit-button" />
     </ui:VisualElement>
+
     <ui:VisualElement name="debug-panel" class="cfg-mask">
       <ui:VisualElement class="cfg-panel">
         <ui:VisualElement class="cfg-head">
@@ -97,12 +168,11 @@
             <ui:VisualElement name="debug-toggles" />
             <ui:VisualElement class="cfg-section">
               <ui:Label text="JSON 导入 / 导出" class="cfg-section-title" />
-              <ui:Label text="cardTypes 声明 category（resource / attack / special）与 stats（名字、生命、攻防、射程、移动、产出、维持费）；rules 声明回合与开关；deck 配置数量清单。" class="cfg-note" />
+              <ui:Label text="复制完整配置 JSON 后可粘贴到文本文件保存。导入前请先复制文件中的全部 JSON；导入只修改草稿，应用并重开后生效。" class="cfg-note" />
               <ui:VisualElement class="cfg-json-actions">
-                <ui:Button name="debug-export-button" text="导出到下方" />
-                <ui:Button name="debug-import-button" text="从下方导入" />
+                <ui:Button name="debug-export-button" text="复制 JSON" />
+                <ui:Button name="debug-import-button" text="从剪贴板导入" />
               </ui:VisualElement>
-              <ui:TextField name="debug-json" multiline="true" class="cfg-json" />
               <ui:Label name="debug-json-status" class="cfg-note" />
             </ui:VisualElement>
           </ui:ScrollView>

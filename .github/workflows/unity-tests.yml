@@ -17,13 +17,18 @@ on:
   pull_request:
   workflow_dispatch:
 
-# 同一 ref 只保留一次运行：反复往同一个 PR 推修复时避免多个运行叠在一起（实测同时跑了 3 个），
-# 白白消耗 CI 时间，也让“哪次失败对应哪个 commit”变得难查。
+# 全仓库共用一个组名：Unity 个人版授权是账号级“席位”，同一时刻只能有一个 Unity 进程。
+# 为什么不再按 ref 分组（原来写的是 unity-tests-${{ github.ref }}）：不同 ref 落在不同组里，
+# 两个 PR（refs/pull/N/merge 各不相同）可能同时启动，各自 --activate-all 抢同一个席位，
+# 输的一方拿到 “0 free entitlements” 而整轮假失败。改成固定组名后，仓库内任意两个
+# Unity 运行都会自动排队。
+# 代价（必须清楚）：GitHub 的并发组只留 1 个 running + 1 个 pending，新排队的运行会
+# *取消掉更早的那个排队中的运行*——于是某个 PR 可能看到检查直接变成 cancelled，重跑即可。
 # 刻意不设 cancel-in-progress：个人版授权是“席位”制，中途取消正在运行的 job 可能来不及归还席位
 # （CLI 只在 EXIT trap 能执行完时归还），泄漏的席位会让该账号之后所有运行报 no available seats。
-# 默认行为只会取消“排队中”的旧运行，正在执行的那次不受影响。
 concurrency:
-  group: unity-tests-${{ github.ref }}
+  # 必须是固定名（不含任何变量）：scripts/check-ci-config.sh 会拦住按 ref 分组的写法。
+  group: unity-seat
 
 # 为什么需要显式声明权限：仓库默认的 Workflow permissions 是「只读」，
 # 而 unity-test-runner 会用 githubToken 创建 check run 来汇报测试结果（对应下面的 checkName），

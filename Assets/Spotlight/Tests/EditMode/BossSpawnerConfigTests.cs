@@ -45,10 +45,10 @@ namespace Spotlight.Tests
         public void ReferencesAndSpawnerCapabilitiesAreValidated()
         {
             var d = BossSpawnerTests.Document();
-            d.rules[0].bossSpawnerCardType = "missing"; d.rules[0].bossSpawnerSpawnCardType = "miner";
+            d.rules[0].bossSpawnerCardType = "missing"; d.cards.Single(c => c.id == "spawner").spawnCardType = "miner";
             var errors = ConfigValidation.Validate(d);
             Assert.That(errors.Any(e => e.Contains("bossSpawnerCardType")), Is.True);
-            Assert.That(errors.Any(e => e.Contains("bossSpawnerSpawnCardType")), Is.True);
+            Assert.That(errors.Any(e => e.Contains("spawnCardType")), Is.True);
             foreach (var field in new[] { "hp", "atk", "range", "moveDistance", "category", "resourceComponent", "teleportComponent" })
             {
                 d = BossSpawnerTests.Document(); var card = d.cards.Single(c => c.id == "spawner");
@@ -75,9 +75,9 @@ namespace Spotlight.Tests
             Assert.That(draft.Validate().Any(e => e.Contains("bossSpawnerAttackThreshold")), Is.True);
         }
 
-        /// <summary>默认生成器写出六个中文表头批注与生命批注，不增加数据行，且新工作簿可直接通过正式编译校验。</summary>
+        /// <summary>默认生成器写出全部中文表头批注与生命批注，不增加数据行，且新工作簿可直接通过正式编译校验。</summary>
         [Test]
-        public void DefaultWorkbookHasSevenNativeNotesAndCompiles()
+        public void DefaultWorkbookHasNativeNotesAndCompiles()
         {
             var path = Path.Combine(Path.GetTempPath(), "spotlight-spawner-" + Guid.NewGuid().ToString("N") + ".xlsx");
             try
@@ -87,9 +87,10 @@ namespace Spotlight.Tests
                 Assert.That(report.Issues, Is.Empty, string.Join("\n", report.Issues));
                 var r = report.Document.rules[0];
                 Assert.That(new[] { r.bossSpawnerAttackThreshold, r.bossSpawnerCountFromColumn, r.bossSpawnerUnitThreshold, r.bossSpawnerDeployFromColumn }, Is.EqualTo(new[] { 12,4,2,5 }));
-                Assert.That(r.bossSpawnerSpawnCardType, Is.EqualTo("bossCombat"));
+                Assert.That(report.Document.cards.Single(c => c.id == r.bossSpawnerCardType).spawnCardType, Is.EqualTo("bossCombat"));
                 Assert.That(report.Document.cards.Single(c => c.id == r.bossSpawnerCardType).hp, Is.EqualTo(1));
-                Assert.That(report.Document.deck.Any(e => e.cardType == r.bossSpawnerCardType && e.count > 0), Is.False);
+                Assert.That(report.Document.cards.Single(c => c.id == r.bossSpawnerCardType).tier, Is.EqualTo("none"),
+                    "刷怪卡为不适用阶级，不可能被选进玩家抽牌堆");
                 using (var zip = ZipFile.OpenRead(path))
                 {
                     XNamespace ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
@@ -99,11 +100,21 @@ namespace Spotlight.Tests
                         {
                             var notes = XDocument.Load(stream).Descendants(ns + "comment").ToArray();
                             count += notes.Length;
-                            Assert.That(notes.All(n => n.Value.Contains("默认")), Is.True);
+                            Assert.That(notes.All(n => n.Value.Contains("默认") || n.Value.Contains("卡牌阶级")), Is.True);
                         }
-                    Assert.That(count, Is.EqualTo(7));
-                    Assert.That(zip.GetEntry("xl/worksheets/_rels/sheet3.xml.rels"), Is.Not.Null);
-                    Assert.That(zip.GetEntry("xl/drawings/notes3.vml"), Is.Not.Null);
+                    // 原有 40 条说明加上三阶段前列、当前列护卫舰的两项 Rules 引用说明，共 42 条。
+                    // 保留精确数量检查，避免遗漏批注；额外检查新字段内容，防止错误批注恰好凑足数量。
+                    Assert.That(count, Is.EqualTo(42));
+                    using (var stream = zip.GetEntry("xl/comments2.xml").Open())
+                    {
+                        var notes = XDocument.Load(stream).Descendants(ns + "comment").Select(n => n.Value).ToArray();
+                        Assert.That(notes.Any(n => n.Contains("bossGuardType1")), Is.True, "前列护卫舰引用缺少默认卡种说明");
+                        Assert.That(notes.Any(n => n.Contains("bossGuardType2")), Is.True, "当前列护卫舰引用缺少默认卡种说明");
+                    }
+                    // Deck 表已废除，工作表顺序为 Cards、Rules、Homes、BossSlots、Presentation，
+                    // 因此带批注的 Rules 是第 2 张表。
+                    Assert.That(zip.GetEntry("xl/worksheets/_rels/sheet2.xml.rels"), Is.Not.Null);
+                    Assert.That(zip.GetEntry("xl/drawings/notes2.vml"), Is.Not.Null);
                 }
             }
             finally { if (File.Exists(path)) File.Delete(path); }
