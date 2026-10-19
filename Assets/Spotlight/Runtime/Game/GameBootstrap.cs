@@ -54,8 +54,12 @@ namespace Spotlight
         bool _playingFeedback;
         /// <summary>正在展示已结算的炸弹准备或自动 Boss 行动；与调试面板闸门独立，禁止操作未来状态。</summary>
         bool _presentingTurn;
-        /// <summary>调试面板是否打开，动画结束不能解除此闸门。</summary>
+        /// <summary>调试面板或暂停面板是否打开，动画结束不能解除此闸门。</summary>
         bool _modalOpen;
+        /// <summary>暂停面板是否打开；与调试面板状态分开保存，避免关闭其中一个时错误解除另一个的输入闸门。</summary>
+        bool _pauseOpen;
+        /// <summary>进入暂停前的时间缩放值，用于继续战斗或销毁组件时精确恢复。</summary>
+        float _timeScaleBeforePause = 1f;
         /// <summary>当前正在展示的阶段，避免选择或面板刷新提前读取最终快照。</summary>
         GameSnapshot _displaySnapshot;
 
@@ -87,6 +91,16 @@ namespace Spotlight
         }
 
         /// <summary>
+        /// 组件销毁时恢复暂停前的时间缩放。
+        /// 输入：无；输出：无。
+        /// 为什么需要：在编辑器停止 Play Mode 或场景切换时，不能把全局 Time.timeScale 永久留在 0。
+        /// </summary>
+        void OnDestroy()
+        {
+            if (_pauseOpen) Time.timeScale = _timeScaleBeforePause;
+        }
+
+        /// <summary>
         /// 绑定视图事件。
         /// 输入：无；输出：无。
         /// 所有输入都经此进入，形成统一输入入口，便于模态面板一次性阻断。
@@ -114,6 +128,10 @@ namespace Spotlight
                 _hudView.SpawnerSkipRequested += OnSpawnerSkipRequested;
                 _hudView.RestartRequested -= OnRestartRequested;
                 _hudView.RestartRequested += OnRestartRequested;
+                _hudView.PauseChanged -= OnPauseChanged;
+                _hudView.PauseChanged += OnPauseChanged;
+                _hudView.ExitRequested -= OnExitRequested;
+                _hudView.ExitRequested += OnExitRequested;
                 _hudView.DebugRequested -= OnDebugRequested;
                 _hudView.DebugRequested += OnDebugRequested;
             }
@@ -170,10 +188,10 @@ namespace Spotlight
         /// </summary>
         public void SetModalOpen(bool blocked)
         {
-            _modalOpen = blocked;
+            _modalOpen = blocked || _pauseOpen;
             UpdateInputGate();
-            _hudView?.SetModalVisible(blocked);
-            if (blocked) _selection = new Selection(SelectionKind.None);
+            _hudView?.SetModalVisible(_modalOpen);
+            if (_modalOpen) _selection = new Selection(SelectionKind.None);
             Refresh();
         }
 
@@ -423,6 +441,41 @@ namespace Spotlight
         {
             if (_configuration == null) return;
             RestartWith(_configuration);
+        }
+
+        /// <summary>
+        /// 响应 HUD 暂停状态变化。
+        /// 输入：paused 表示暂停面板是否打开；输出：更新全局时间缩放、规则输入闸门与通用模态遮罩。
+        /// 为什么保存旧 timeScale：其它系统可能使用非 1 的缩放值，继续战斗时必须恢复进入暂停前的值，而不是强制写回 1。
+        /// </summary>
+        void OnPauseChanged(bool paused)
+        {
+            if (_pauseOpen == paused) return;
+            if (paused)
+            {
+                _timeScaleBeforePause = Time.timeScale;
+                Time.timeScale = 0f;
+            }
+            else
+            {
+                Time.timeScale = _timeScaleBeforePause;
+            }
+            _pauseOpen = paused;
+            SetModalOpen(_debugPanel != null && _debugPanel.IsOpen);
+        }
+
+        /// <summary>
+        /// 响应暂停面板的退出请求。
+        /// 输入：无；输出：独立运行包退出应用；编辑器内保留运行并给出提示，避免误以为 Unity 崩溃。
+        /// </summary>
+        void OnExitRequested()
+        {
+            if (Application.isEditor)
+            {
+                Debug.Log("退出战斗：编辑器中不会关闭 Unity；请停止 Play Mode。独立运行包会直接退出应用。");
+                return;
+            }
+            Application.Quit();
         }
 
         /// <summary>HUD 请求打开配置面板。输入：无；输出：无。</summary>

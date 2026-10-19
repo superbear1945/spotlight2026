@@ -1,0 +1,92 @@
+{
+  "id": "lingtu",
+  "source": "03-lingtu.png",
+  "kind": 2,
+  "canvas": [
+    1536,
+    1536
+  ],
+  "hover": 6,
+  "engines": [
+    [
+      482,
+      481,
+      111,
+      31,
+      -0.98,
+      -0.22
+    ],
+    [
+      197,
+      869,
+      117,
+      34,
+      -0.98,
+      -0.22
+    ]
+  ],
+  "sourceSize": [
+    1254,
+    1254
+  ],
+  "sourceOffset": [
+    141,
+    141
+  ],
+  "loopDuration": 6,
+  "rigLayers": [
+    {
+      "name": "body",
+      "motion": 0,
+      "sourceRect": [
+        163,
+        162,
+        1232,
+        1233
+      ],
+      "atlasRect": [
+        4,
+        4,
+        1232,
+        1233
+      ]
+    },
+    {
+      "name": "upper-barrel-sleeve",
+      "motion": 20,
+      "sourceRect": [
+        1239,
+        589,
+        155,
+        133
+      ],
+      "atlasRect": [
+        1418,
+        4,
+        155,
+        133
+      ]
+    },
+    {
+      "name": "lower-barrel-sleeve",
+      "motion": 21,
+      "sourceRect": [
+        931,
+        1040,
+        166,
+        150
+      ],
+      "atlasRect": [
+        1244,
+        4,
+        166,
+        150
+      ]
+    }
+  ],
+  "atlasSize": [
+    2048,
+    2048
+  ],
+  "rigVersion": 2
+}

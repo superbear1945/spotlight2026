@@ -1,0 +1,148 @@
+{
+  "id": "aodexiusi",
+  "source": "01-aodexiusi.png",
+  "kind": 0,
+  "canvas": [
+    1536,
+    1536
+  ],
+  "hover": 7,
+  "engines": [
+    [
+      244,
+      604,
+      88,
+      21,
+      -0.99,
+      -0.14
+    ],
+    [
+      202,
+      763,
+      82,
+      21,
+      -0.99,
+      -0.14
+    ],
+    [
+      248,
+      891,
+      84,
+      20,
+      -0.99,
+      -0.14
+    ]
+  ],
+  "sourceSize": [
+    1254,
+    1254
+  ],
+  "sourceOffset": [
+    141,
+    141
+  ],
+  "loopDuration": 6,
+  "rigLayers": [
+    {
+      "name": "body",
+      "motion": 0,
+      "sourceRect": [
+        185,
+        235,
+        1150,
+        1104
+      ],
+      "atlasRect": [
+        4,
+        4,
+        1150,
+        1104
+      ]
+    },
+    {
+      "name": "shield-upper-left",
+      "motion": 10,
+      "sourceRect": [
+        533,
+        281,
+        437,
+        503
+      ],
+      "atlasRect": [
+        1517,
+        4,
+        437,
+        503
+      ]
+    },
+    {
+      "name": "shield-upper-right",
+      "motion": 11,
+      "sourceRect": [
+        966,
+        233,
+        383,
+        500
+      ],
+      "atlasRect": [
+        4,
+        1116,
+        383,
+        500
+      ]
+    },
+    {
+      "name": "shield-lower-left",
+      "motion": 12,
+      "sourceRect": [
+        533,
+        857,
+        451,
+        470
+      ],
+      "atlasRect": [
+        395,
+        1116,
+        451,
+        470
+      ]
+    },
+    {
+      "name": "shield-lower-right",
+      "motion": 13,
+      "sourceRect": [
+        1001,
+        765,
+        347,
+        529
+      ],
+      "atlasRect": [
+        1162,
+        4,
+        347,
+        529
+      ]
+    },
+    {
+      "name": "central-hub",
+      "motion": 0,
+      "sourceRect": [
+        920,
+        668,
+        213,
+        279
+      ],
+      "atlasRect": [
+        854,
+        1116,
+        213,
+        279
+      ]
+    }
+  ],
+  "atlasSize": [
+    2048,
+    2048
+  ],
+  "rigVersion": 2
+}

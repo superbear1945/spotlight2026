@@ -1,0 +1,503 @@
+{
+  "tool": "built-in image_gen",
+  "scope": {
+    "scope": "原油战线外围功能与装饰UI；排除棋盘和卡牌",
+    "authorization": "2026-10-18 用户要求全部UI和所有可交互组件状态副本，现在开始",
+    "new_mode": "创意生成（无母本），已查看原页面与正常按钮只作风格参考",
+    "state_mode": "以逐个组件正常态为母本，交互状态受控增量，轮廓/部件/字体为锚点；允许生成细节轻微漂移，不声称逐像素一致",
+    "states": [
+      "normal",
+      "hover",
+      "pressed",
+      "disabled"
+    ],
+    "toggle_logic": [
+      "off",
+      "on"
+    ],
+    "tab_logic": [
+      "unselected",
+      "selected"
+    ],
+    "delivery": "独立透明PNG，按组件和状态命名；共用背景与运行时文案映射；全量ZIP和索引",
+    "hard_sources": [
+      "当前用户全量授权",
+      "本对话分离组件要求",
+      "四态区别明显且同一按钮身份",
+      "原页面风格、海军蓝/暖白/橙",
+      "保留光晕但主体清晰"
+    ],
+    "design_choices": [
+      "标准外围系统控件清单",
+      "可变文字引擎叠加",
+      "主要与次要按钮家族复用"
+    ]
+  },
+  "new_component_base": "Generate ONE isolated production-ready 2D game UI component for the space-punk starship game 原油战线. Creative generation: no existing master for this new component. Reference image 1 controls ONLY palette, painted-metal texture, clipped-corner geometric vocabulary and shallow bevel rendering. Reference image 2 controls ONLY how restrained UI relates to the colorful 2D game background. Never reproduce the screen, board, cards, landscape, round dial, or the reference button itself. Palette: deep navy, warm ivory, orange small accent pieces. Clean hand-painted 2D artwork with precise continuous antialiased edges, simple broad color planes, shallow relief, sparse deliberate paint chips, small dark fastener dots where relevant. Preserve clean readable shapes at game size, no hazy surface, excessive distressed speckles, realistic chrome, huge 3D shadows or dense decorative machinery. NORMAL idle state, no hover glow. Exactly one complete centered component with generous even transparent margins. Actual transparent background, no checkerboard printed into image, no gradient backdrop, no floor, no labels outside component, no comparison sheet or other objects. Component brief: ",
+  "normal_component_briefs": [
+    {
+      "id": "pause",
+      "name": "暂停入口",
+      "shape": "square",
+      "description": "A compact square pause icon button. A single ivory pause symbol of two equal upright bars centered on a navy inset face. Clipped-corner ivory rim, navy backing, two tiny orange side accents; one dark fastener at each corner. Minimal sparse edge wear."
+    },
+    {
+      "id": "settings",
+      "name": "设置入口",
+      "shape": "square",
+      "description": "A compact square settings icon button. One clean ivory eight-tooth gear icon with a circular navy hole centered on a navy inset face. Clipped-corner ivory rim, navy backing, two tiny orange side accents and four small fasteners."
+    },
+    {
+      "id": "history",
+      "name": "战斗记录入口",
+      "shape": "square",
+      "description": "A compact square battle-history icon button. One ivory minimal log icon: three stacked horizontal lines with three small square bullets, inside a simple open notebook-shaped outline. Navy inset face, clipped-corner ivory rim, navy backing, tiny orange side accents, four small dark fasteners. Readable icon at small size."
+    },
+    {
+      "id": "help",
+      "name": "规则帮助入口",
+      "shape": "square",
+      "description": "A compact square help icon button. One large bold ivory question mark, centered on navy inset face. Clipped-corner ivory rim, navy backing, tiny orange side accents, four small dark fasteners. No other text."
+    },
+    {
+      "id": "close",
+      "name": "关闭按钮",
+      "shape": "square",
+      "description": "A compact square close icon button, a bold ivory diagonal X centered on navy inset face. Clipped-corner ivory rim, navy backing and tiny orange side accents, four small fasteners. Compact secondary control."
+    },
+    {
+      "id": "back",
+      "name": "返回按钮",
+      "shape": "square",
+      "description": "A compact square back icon button, a single clear ivory left-pointing chevron without a tail, centered on navy inset face. Clipped-corner ivory rim, navy backing, tiny orange side accents, four small fasteners."
+    },
+    {
+      "id": "primary",
+      "name": "主要文字按钮底板",
+      "shape": "wide",
+      "description": "A medium-wide blank PRIMARY action button backing, approximately 3.7 to 1 aspect ratio. Long navy inset face with a completely empty center reserved for a runtime label. Clipped-corner ivory armor rim, navy backing, small orange clips at both short ends, four small dark screw dots. Same family as reference end-turn button but simpler and more compact. Absolutely no text or icon."
+    },
+    {
+      "id": "secondary",
+      "name": "次要文字按钮底板",
+      "shape": "wide",
+      "description": "A medium-wide blank SECONDARY action button backing, approximately 3.7 to 1 aspect ratio. Long navy inset face with empty center for a runtime label. A thinner muted ivory rim than the reference primary button, navy backing and very small orange side tabs. Four small dark screw dots. Same clipped-corner design family, less visual weight than primary button. Absolutely no text or icon."
+    },
+    {
+      "id": "toggle_off",
+      "name": "开关关态",
+      "shape": "wide",
+      "description": "One complete compact horizontal OFF toggle switch, body aspect ratio about 2.4 to 1. Clipped-corner navy housing with thin ivory rim and tiny orange corner insets. A chunky warm-ivory mechanical thumb occupies the LEFT half. RIGHT half is dark navy showing switch is OFF. Small raised ivory thumb with one navy central groove. No text, no symbols."
+    },
+    {
+      "id": "toggle_on",
+      "name": "开关开态",
+      "shape": "wide",
+      "description": "One complete compact horizontal ON toggle switch, body aspect ratio about 2.4 to 1. Clipped-corner navy housing with thin ivory rim and tiny orange corner insets. A chunky warm-ivory mechanical thumb occupies the RIGHT half. LEFT half exposes a solid orange active indicator. Small raised ivory thumb with one navy central groove. No text, no symbols."
+    },
+    {
+      "id": "tab_off",
+      "name": "页签未选中",
+      "shape": "wide",
+      "description": "One blank horizontal inactive navigation TAB, aspect ratio about 3 to 1. Navy painted face, thin ivory clipped-corner rim with navy outer backing, tiny orange corner tab. One tiny ivory notch centered on bottom edge. Empty center for a runtime text label. No text, no icons. Flat and compact rather than thick armored."
+    },
+    {
+      "id": "tab_on",
+      "name": "页签已选中",
+      "shape": "wide",
+      "description": "One blank horizontal selected navigation TAB, aspect ratio about 3 to 1. Warm-ivory painted face with a navy clipped-corner rim and navy backing; a solid orange selection strip along the bottom edge. Empty center for runtime navy text. Tiny dark fasteners near ends. Flat and compact rather than thick armored. No text, no icons."
+    },
+    {
+      "id": "slider_handle",
+      "name": "滑杆拖动柄",
+      "shape": "square",
+      "description": "A single isolated small slider THUMB only: a simple clipped-corner warm ivory square mechanical grip with navy outline, thin navy under-bevel and a narrow vertical orange center groove. Small flat 2D painted material with sparse edge wear. No rail, no slider track, no text."
+    },
+    {
+      "id": "scroll_handle",
+      "name": "滚动条拖动柄",
+      "shape": "vertical",
+      "description": "A single isolated vertical scrollbar THUMB only, aspect ratio 1 to 3.4. Slender clipped-corner warm-ivory painted grip with navy outline and narrow navy under-bevel; three short dark horizontal grip notches centered, tiny orange tabs at top and bottom. Flat 2D painted material. No rail, no track, no text."
+    }
+  ],
+  "static_component_briefs": [
+    {
+      "id": "player_life",
+      "name": "我方生命信息框",
+      "shape": "wide",
+      "description": "One horizontal player LIFE display module, body aspect ratio about 3.7 to 1. A large empty deep-navy number field dominates the right three quarters. On the left, a simple warm-ivory heart silhouette with a red center acts as life icon. Thin ivory clipped-corner frame, navy backing, one small orange clip at the left short end, four tiny dark fasteners. A narrow upper-left label reads 生命. No number, no bar segments, no secondary resource or buttons."
+    },
+    {
+      "id": "enemy_life",
+      "name": "对方生命信息框",
+      "shape": "wide",
+      "description": "One horizontal opponent LIFE display module, body aspect ratio about 3.7 to 1. Mirrored to the player display: a large empty warm-ivory number field dominates left three quarters, a simple navy heart silhouette with red center sits at right. Thin navy clipped-corner frame, navy backing, a small orange clip on the right short end and four tiny fasteners. A narrow upper-right label reads 生命 in navy. No number, bar segments, secondary resource or buttons. Use direct navy/ivory color inversion, orange remains orange."
+    },
+    {
+      "id": "player_energy",
+      "name": "我方能量总数框",
+      "shape": "wide",
+      "description": "One slim horizontal player TOTAL ENERGY display module, body aspect ratio about 4.8 to 1, visually lighter than a life display. Navy face and thin ivory clipped-corner rim, navy backing, tiny orange accent on left. One simple ivory lightning-bolt icon at left, small label 能量总数 to its right, empty wider space at far right for one dynamic integer. No number, no current/max fraction, no capacity pips, no buttons."
+    },
+    {
+      "id": "enemy_energy",
+      "name": "对方能量总数框",
+      "shape": "wide",
+      "description": "One slim horizontal opponent TOTAL ENERGY display module, body aspect ratio about 4.8 to 1. Mirror a player energy module and invert navy/ivory: warm-ivory face, thin navy clipped-corner rim and navy backing, tiny orange accent on right. One simple navy lightning bolt at right, small navy label 能量总数 immediately to its left, empty wider space on left for one dynamic integer. No number, current/max fraction, capacity pips or buttons."
+    },
+    {
+      "id": "opponent_turn",
+      "name": "对方回合状态牌",
+      "shape": "wide",
+      "description": "One standalone horizontal noninteractive opponent-turn status plaque. The face is warm ivory, exact dark-navy Chinese text 对方回合 centered, navy outer clipped-corner armor with small ivory bevel and orange clips at both short ends. Shape family of reference end-turn button but its navy/ivory colors directly inverted. Crisp readable text. No round counter, no attached dial, no active glow, no icon."
+    },
+    {
+      "id": "panel_large",
+      "name": "通用功能面板",
+      "shape": "landscape",
+      "description": "One empty standalone rectangular large modal panel background, overall aspect ratio about 1.45 to 1. Broad uninterrupted deep-navy painted face for future menu, rules, settings or battle-log content. Thin warm-ivory clipped-corner armor rim with navy backing, tiny orange joint clips at corners, a few small dark fasteners. A narrow EMPTY title band along top, separated by one thin ivory rule. The rest is completely empty: no text, icons, rows, controls, buttons, header words or fabricated data. Restrained frame thickness and shallow bevel."
+    },
+    {
+      "id": "dialog",
+      "name": "确认弹窗底板",
+      "shape": "landscape",
+      "description": "One empty standalone compact confirmation-dialog background, overall aspect ratio 1.7 to 1. Warm-ivory inner face intended for navy text, thin navy clipped-corner rim, navy backing with two tiny orange side anchors. One subtle navy divider line near bottom delimiting future action-button area. Completely empty: no text, icons, controls, buttons or numbers. Same restrained painted-metal frame family."
+    },
+    {
+      "id": "tooltip",
+      "name": "悬浮说明底板",
+      "shape": "landscape",
+      "description": "One empty small dark-navy tooltip background, overall aspect ratio about 2 to 1. Thin warm-ivory clipped-corner rim and a single small downward pointer centered at bottom, tiny orange accent dash on upper-left rim. Very lightweight flat 2D painted UI, little bevel and very sparse edge wear. Uninterrupted empty navy writing area, no text, no controls, no buttons."
+    },
+    {
+      "id": "notice",
+      "name": "全局提示条",
+      "shape": "wide",
+      "description": "One empty slim horizontal global-notice banner background, body aspect ratio about 5.5 to 1. Deep-navy face, slim ivory clipped-corner edge, navy backing and one small orange signal stripe at left. Empty center for transient gameplay notices. Lightweight decorative ends, no text, icons, attached buttons, counters or glow."
+    },
+    {
+      "id": "victory",
+      "name": "胜利结算标题",
+      "shape": "wide",
+      "description": "One isolated horizontal victory RESULT TITLE PLAQUE, body aspect ratio about 3.8 to 1. Exact large ivory Chinese text 战斗胜利 centered on deep-navy face; small restrained orange V-shaped victory chevron above text inside the plaque. Ivory clipped-corner rim with navy backing and orange side clips. A little more ceremonial than a common control but still flat simple painted space-punk game UI. No rewards, scores, characters, ribbons extending off canvas, buttons, panels or background scene."
+    },
+    {
+      "id": "defeat",
+      "name": "失败结算标题",
+      "shape": "wide",
+      "description": "One isolated horizontal defeat RESULT TITLE PLAQUE, body aspect ratio about 3.8 to 1. Exact large muted-ivory Chinese text 战斗失败 centered on deep-navy face; a small restrained downward orange chevron above text inside the plaque. Muted-ivory clipped-corner rim with navy backing and dim orange side clips, subdued material illumination. Same geometric family as a victory plaque, no damage explosion, shattered parts, rewards, scores, characters, attached buttons or background scene."
+    },
+    {
+      "id": "slider_track",
+      "name": "滑杆空轨",
+      "shape": "wide",
+      "description": "One isolated empty horizontal VOLUME SLIDER TRACK only, body aspect ratio about 12 to 1. Recessed navy channel bounded by a thin warm-ivory clipped-corner rail and a navy outer edge. Tiny orange end caps, clean simple straight geometry. Empty navy central channel, no thumb, no fill, text, tick labels or additional objects."
+    },
+    {
+      "id": "slider_fill",
+      "name": "滑杆填充条",
+      "shape": "wide",
+      "description": "One isolated horizontal SLIDER FILL STRIP only, body aspect ratio about 14 to 1. A solid orange painted bar with a thin brighter orange top edge and very thin deep-orange lower edge, square straight ends suitable for UI clipping. Extremely minimal, no thumb, no track, no surrounding frame, no text or extra objects."
+    },
+    {
+      "id": "scroll_track",
+      "name": "滚动条空轨",
+      "shape": "vertical",
+      "description": "One isolated vertical SCROLLBAR TRACK only, body aspect ratio 1 to 12. Slim recessed navy channel with thin muted-ivory parallel edge rails, clipped-corner top and bottom caps. Clean quiet dark channel with no thumb, fill, text, arrows, labels or extra objects."
+    },
+    {
+      "id": "decor_horizontal",
+      "name": "横向装饰导轨",
+      "shape": "wide",
+      "description": "One isolated HORIZONTAL narrow decorative UI edge rail, body aspect ratio about 12 to 1. A straight slim navy painted metal beam, one warm-ivory inset stripe, three small widely spaced orange connector plates and small dark dot fasteners near ends. Straight horizontal ends for tiling, sparse deliberate chips. No text, icons, empty panel, buttons, curve or 3D perspective."
+    },
+    {
+      "id": "decor_vertical",
+      "name": "纵向装饰导轨",
+      "shape": "vertical",
+      "description": "One isolated VERTICAL narrow decorative UI edge rail, body aspect ratio 1 to 9. A straight slim navy painted metal beam, warm-ivory inset stripe, two small orange connector plates spaced along it and tiny dark fasteners near ends. Straight ends for modular use, sparse chips. No text, symbols, icons, panel, buttons, curve or perspective."
+    },
+    {
+      "id": "decor_corner",
+      "name": "转角装饰件",
+      "shape": "square",
+      "description": "One isolated upper-left L-SHAPED UI frame corner connector. Two perpendicular slim navy beams of equal length meet through one clipped diagonal corner; thin warm-ivory inset stripe follows the L, one small orange joint plate at bend, two tiny dark fastener dots. The inner and outer sides of the L are clean, rest of square canvas fully transparent. No full rectangular frame, no text, icons, buttons or background."
+    }
+  ],
+  "state_prompts": [
+    {
+      "id": "pause",
+      "name": "暂停入口",
+      "state": "hover",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. HOVER: a clearly visible orange/amber luminous highlight follows the EXISTING inner bevel perimeter, with a thin crisp bright core and a localized smooth soft halo. The halo softly lights only adjacent material; face, icon, lettering, seams, fasteners and outer contour remain sharply resolved. Keep the face at its original navy or ivory color, lifting its value only slightly; no wholesale bright-blue wash. Keep the physical dark seam readable. Do not add geometry or thicken the frame. This is an inviting illuminated state of the same control."
+    },
+    {
+      "id": "pause",
+      "name": "暂停入口",
+      "state": "pressed",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. PRESSED / HELD: make the existing inner face or movable grip visibly sit lower within the fixed outer shell. Add a clear dark inset shadow below the upper edge and upper diagonals, a narrow reflected lower interior bevel, suppress the raised face highlight. Existing symbol/text moves down a small amount with that face at unchanged scale, suggesting mechanical travel. Keep the same original colors. No hover glow, no alternate fill palette. Outer frame remains stationary. Keep all contours sharp; show convincing depression rather than simply dimming everything."
+    },
+    {
+      "id": "pause",
+      "name": "暂停入口",
+      "state": "disabled",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. DISABLED: apply one coherent inactive treatment to the entire original control: greatly reduce saturation (around 80%), reduce overall brightness around 25%, compress highlights and remove active emission. Original navy stays dim blue charcoal, ivory becomes muted warm gray, orange becomes subdued warm brown-gray. Icon or text remains legible but dim. Geometry, material markings, symbols, scale and placement stay the same. Do not recolor only one panel or add a new panel palette; the whole same control is powered down."
+    },
+    {
+      "id": "settings",
+      "name": "设置入口",
+      "state": "hover",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. HOVER: a clearly visible orange/amber luminous highlight follows the EXISTING inner bevel perimeter, with a thin crisp bright core and a localized smooth soft halo. The halo softly lights only adjacent material; face, icon, lettering, seams, fasteners and outer contour remain sharply resolved. Keep the face at its original navy or ivory color, lifting its value only slightly; no wholesale bright-blue wash. Keep the physical dark seam readable. Do not add geometry or thicken the frame. This is an inviting illuminated state of the same control."
+    },
+    {
+      "id": "settings",
+      "name": "设置入口",
+      "state": "pressed",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. PRESSED / HELD: make the existing inner face or movable grip visibly sit lower within the fixed outer shell. Add a clear dark inset shadow below the upper edge and upper diagonals, a narrow reflected lower interior bevel, suppress the raised face highlight. Existing symbol/text moves down a small amount with that face at unchanged scale, suggesting mechanical travel. Keep the same original colors. No hover glow, no alternate fill palette. Outer frame remains stationary. Keep all contours sharp; show convincing depression rather than simply dimming everything."
+    },
+    {
+      "id": "settings",
+      "name": "设置入口",
+      "state": "disabled",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. DISABLED: apply one coherent inactive treatment to the entire original control: greatly reduce saturation (around 80%), reduce overall brightness around 25%, compress highlights and remove active emission. Original navy stays dim blue charcoal, ivory becomes muted warm gray, orange becomes subdued warm brown-gray. Icon or text remains legible but dim. Geometry, material markings, symbols, scale and placement stay the same. Do not recolor only one panel or add a new panel palette; the whole same control is powered down."
+    },
+    {
+      "id": "history",
+      "name": "战斗记录入口",
+      "state": "hover",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. HOVER: a clearly visible orange/amber luminous highlight follows the EXISTING inner bevel perimeter, with a thin crisp bright core and a localized smooth soft halo. The halo softly lights only adjacent material; face, icon, lettering, seams, fasteners and outer contour remain sharply resolved. Keep the face at its original navy or ivory color, lifting its value only slightly; no wholesale bright-blue wash. Keep the physical dark seam readable. Do not add geometry or thicken the frame. This is an inviting illuminated state of the same control."
+    },
+    {
+      "id": "history",
+      "name": "战斗记录入口",
+      "state": "pressed",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. PRESSED / HELD: make the existing inner face or movable grip visibly sit lower within the fixed outer shell. Add a clear dark inset shadow below the upper edge and upper diagonals, a narrow reflected lower interior bevel, suppress the raised face highlight. Existing symbol/text moves down a small amount with that face at unchanged scale, suggesting mechanical travel. Keep the same original colors. No hover glow, no alternate fill palette. Outer frame remains stationary. Keep all contours sharp; show convincing depression rather than simply dimming everything."
+    },
+    {
+      "id": "history",
+      "name": "战斗记录入口",
+      "state": "disabled",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. DISABLED: apply one coherent inactive treatment to the entire original control: greatly reduce saturation (around 80%), reduce overall brightness around 25%, compress highlights and remove active emission. Original navy stays dim blue charcoal, ivory becomes muted warm gray, orange becomes subdued warm brown-gray. Icon or text remains legible but dim. Geometry, material markings, symbols, scale and placement stay the same. Do not recolor only one panel or add a new panel palette; the whole same control is powered down."
+    },
+    {
+      "id": "help",
+      "name": "规则帮助入口",
+      "state": "hover",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. HOVER: a clearly visible orange/amber luminous highlight follows the EXISTING inner bevel perimeter, with a thin crisp bright core and a localized smooth soft halo. The halo softly lights only adjacent material; face, icon, lettering, seams, fasteners and outer contour remain sharply resolved. Keep the face at its original navy or ivory color, lifting its value only slightly; no wholesale bright-blue wash. Keep the physical dark seam readable. Do not add geometry or thicken the frame. This is an inviting illuminated state of the same control."
+    },
+    {
+      "id": "help",
+      "name": "规则帮助入口",
+      "state": "pressed",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. PRESSED / HELD: make the existing inner face or movable grip visibly sit lower within the fixed outer shell. Add a clear dark inset shadow below the upper edge and upper diagonals, a narrow reflected lower interior bevel, suppress the raised face highlight. Existing symbol/text moves down a small amount with that face at unchanged scale, suggesting mechanical travel. Keep the same original colors. No hover glow, no alternate fill palette. Outer frame remains stationary. Keep all contours sharp; show convincing depression rather than simply dimming everything."
+    },
+    {
+      "id": "help",
+      "name": "规则帮助入口",
+      "state": "disabled",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. DISABLED: apply one coherent inactive treatment to the entire original control: greatly reduce saturation (around 80%), reduce overall brightness around 25%, compress highlights and remove active emission. Original navy stays dim blue charcoal, ivory becomes muted warm gray, orange becomes subdued warm brown-gray. Icon or text remains legible but dim. Geometry, material markings, symbols, scale and placement stay the same. Do not recolor only one panel or add a new panel palette; the whole same control is powered down."
+    },
+    {
+      "id": "close",
+      "name": "关闭按钮",
+      "state": "hover",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. HOVER: a clearly visible orange/amber luminous highlight follows the EXISTING inner bevel perimeter, with a thin crisp bright core and a localized smooth soft halo. The halo softly lights only adjacent material; face, icon, lettering, seams, fasteners and outer contour remain sharply resolved. Keep the face at its original navy or ivory color, lifting its value only slightly; no wholesale bright-blue wash. Keep the physical dark seam readable. Do not add geometry or thicken the frame. This is an inviting illuminated state of the same control."
+    },
+    {
+      "id": "close",
+      "name": "关闭按钮",
+      "state": "pressed",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. PRESSED / HELD: make the existing inner face or movable grip visibly sit lower within the fixed outer shell. Add a clear dark inset shadow below the upper edge and upper diagonals, a narrow reflected lower interior bevel, suppress the raised face highlight. Existing symbol/text moves down a small amount with that face at unchanged scale, suggesting mechanical travel. Keep the same original colors. No hover glow, no alternate fill palette. Outer frame remains stationary. Keep all contours sharp; show convincing depression rather than simply dimming everything."
+    },
+    {
+      "id": "close",
+      "name": "关闭按钮",
+      "state": "disabled",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. DISABLED: apply one coherent inactive treatment to the entire original control: greatly reduce saturation (around 80%), reduce overall brightness around 25%, compress highlights and remove active emission. Original navy stays dim blue charcoal, ivory becomes muted warm gray, orange becomes subdued warm brown-gray. Icon or text remains legible but dim. Geometry, material markings, symbols, scale and placement stay the same. Do not recolor only one panel or add a new panel palette; the whole same control is powered down."
+    },
+    {
+      "id": "back",
+      "name": "返回按钮",
+      "state": "hover",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. HOVER: a clearly visible orange/amber luminous highlight follows the EXISTING inner bevel perimeter, with a thin crisp bright core and a localized smooth soft halo. The halo softly lights only adjacent material; face, icon, lettering, seams, fasteners and outer contour remain sharply resolved. Keep the face at its original navy or ivory color, lifting its value only slightly; no wholesale bright-blue wash. Keep the physical dark seam readable. Do not add geometry or thicken the frame. This is an inviting illuminated state of the same control."
+    },
+    {
+      "id": "back",
+      "name": "返回按钮",
+      "state": "pressed",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. PRESSED / HELD: make the existing inner face or movable grip visibly sit lower within the fixed outer shell. Add a clear dark inset shadow below the upper edge and upper diagonals, a narrow reflected lower interior bevel, suppress the raised face highlight. Existing symbol/text moves down a small amount with that face at unchanged scale, suggesting mechanical travel. Keep the same original colors. No hover glow, no alternate fill palette. Outer frame remains stationary. Keep all contours sharp; show convincing depression rather than simply dimming everything."
+    },
+    {
+      "id": "back",
+      "name": "返回按钮",
+      "state": "disabled",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. DISABLED: apply one coherent inactive treatment to the entire original control: greatly reduce saturation (around 80%), reduce overall brightness around 25%, compress highlights and remove active emission. Original navy stays dim blue charcoal, ivory becomes muted warm gray, orange becomes subdued warm brown-gray. Icon or text remains legible but dim. Geometry, material markings, symbols, scale and placement stay the same. Do not recolor only one panel or add a new panel palette; the whole same control is powered down."
+    },
+    {
+      "id": "primary",
+      "name": "主要文字按钮底板",
+      "state": "pressed",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. PRESSED / HELD: make the existing inner face or movable grip visibly sit lower within the fixed outer shell. Add a clear dark inset shadow below the upper edge and upper diagonals, a narrow reflected lower interior bevel, suppress the raised face highlight. Existing symbol/text moves down a small amount with that face at unchanged scale, suggesting mechanical travel. Keep the same original colors. No hover glow, no alternate fill palette. Outer frame remains stationary. Keep all contours sharp; show convincing depression rather than simply dimming everything."
+    },
+    {
+      "id": "primary",
+      "name": "主要文字按钮底板",
+      "state": "disabled",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. DISABLED: apply one coherent inactive treatment to the entire original control: greatly reduce saturation (around 80%), reduce overall brightness around 25%, compress highlights and remove active emission. Original navy stays dim blue charcoal, ivory becomes muted warm gray, orange becomes subdued warm brown-gray. Icon or text remains legible but dim. Geometry, material markings, symbols, scale and placement stay the same. Do not recolor only one panel or add a new panel palette; the whole same control is powered down."
+    },
+    {
+      "id": "secondary",
+      "name": "次要文字按钮底板",
+      "state": "hover",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. HOVER: a clearly visible orange/amber luminous highlight follows the EXISTING inner bevel perimeter, with a thin crisp bright core and a localized smooth soft halo. The halo softly lights only adjacent material; face, icon, lettering, seams, fasteners and outer contour remain sharply resolved. Keep the face at its original navy or ivory color, lifting its value only slightly; no wholesale bright-blue wash. Keep the physical dark seam readable. Do not add geometry or thicken the frame. This is an inviting illuminated state of the same control."
+    },
+    {
+      "id": "secondary",
+      "name": "次要文字按钮底板",
+      "state": "pressed",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. PRESSED / HELD: make the existing inner face or movable grip visibly sit lower within the fixed outer shell. Add a clear dark inset shadow below the upper edge and upper diagonals, a narrow reflected lower interior bevel, suppress the raised face highlight. Existing symbol/text moves down a small amount with that face at unchanged scale, suggesting mechanical travel. Keep the same original colors. No hover glow, no alternate fill palette. Outer frame remains stationary. Keep all contours sharp; show convincing depression rather than simply dimming everything."
+    },
+    {
+      "id": "secondary",
+      "name": "次要文字按钮底板",
+      "state": "disabled",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. DISABLED: apply one coherent inactive treatment to the entire original control: greatly reduce saturation (around 80%), reduce overall brightness around 25%, compress highlights and remove active emission. Original navy stays dim blue charcoal, ivory becomes muted warm gray, orange becomes subdued warm brown-gray. Icon or text remains legible but dim. Geometry, material markings, symbols, scale and placement stay the same. Do not recolor only one panel or add a new panel palette; the whole same control is powered down."
+    },
+    {
+      "id": "toggle_off",
+      "name": "开关关态",
+      "state": "hover",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. HOVER: a clearly visible orange/amber luminous highlight follows the EXISTING inner bevel perimeter, with a thin crisp bright core and a localized smooth soft halo. The halo softly lights only adjacent material; face, icon, lettering, seams, fasteners and outer contour remain sharply resolved. Keep the face at its original navy or ivory color, lifting its value only slightly; no wholesale bright-blue wash. Keep the physical dark seam readable. Do not add geometry or thicken the frame. This is an inviting illuminated state of the same control. The toggle's functional OFF position (thumb on LEFT, dark right channel) is frozen in every interaction state. Pressing affects depth only, never slides the thumb to the other side. Apply feedback to the existing thumb and existing inner housing, add no parts."
+    },
+    {
+      "id": "toggle_off",
+      "name": "开关关态",
+      "state": "pressed",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. PRESSED / HELD: make the existing inner face or movable grip visibly sit lower within the fixed outer shell. Add a clear dark inset shadow below the upper edge and upper diagonals, a narrow reflected lower interior bevel, suppress the raised face highlight. Existing symbol/text moves down a small amount with that face at unchanged scale, suggesting mechanical travel. Keep the same original colors. No hover glow, no alternate fill palette. Outer frame remains stationary. Keep all contours sharp; show convincing depression rather than simply dimming everything. The toggle's functional OFF position (thumb on LEFT, dark right channel) is frozen in every interaction state. Pressing affects depth only, never slides the thumb to the other side. Apply feedback to the existing thumb and existing inner housing, add no parts."
+    },
+    {
+      "id": "toggle_off",
+      "name": "开关关态",
+      "state": "disabled",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. DISABLED: apply one coherent inactive treatment to the entire original control: greatly reduce saturation (around 80%), reduce overall brightness around 25%, compress highlights and remove active emission. Original navy stays dim blue charcoal, ivory becomes muted warm gray, orange becomes subdued warm brown-gray. Icon or text remains legible but dim. Geometry, material markings, symbols, scale and placement stay the same. Do not recolor only one panel or add a new panel palette; the whole same control is powered down. The toggle's functional OFF position (thumb on LEFT, dark right channel) is frozen in every interaction state. Pressing affects depth only, never slides the thumb to the other side. Apply feedback to the existing thumb and existing inner housing, add no parts."
+    },
+    {
+      "id": "toggle_on",
+      "name": "开关开态",
+      "state": "hover",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. HOVER: a clearly visible orange/amber luminous highlight follows the EXISTING inner bevel perimeter, with a thin crisp bright core and a localized smooth soft halo. The halo softly lights only adjacent material; face, icon, lettering, seams, fasteners and outer contour remain sharply resolved. Keep the face at its original navy or ivory color, lifting its value only slightly; no wholesale bright-blue wash. Keep the physical dark seam readable. Do not add geometry or thicken the frame. This is an inviting illuminated state of the same control. The toggle's functional ON position (thumb on RIGHT, orange left channel) is frozen in every interaction state. Pressing affects depth only, never slides the thumb to the other side. Apply feedback to the existing thumb and existing inner housing, add no parts."
+    },
+    {
+      "id": "toggle_on",
+      "name": "开关开态",
+      "state": "pressed",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. PRESSED / HELD: make the existing inner face or movable grip visibly sit lower within the fixed outer shell. Add a clear dark inset shadow below the upper edge and upper diagonals, a narrow reflected lower interior bevel, suppress the raised face highlight. Existing symbol/text moves down a small amount with that face at unchanged scale, suggesting mechanical travel. Keep the same original colors. No hover glow, no alternate fill palette. Outer frame remains stationary. Keep all contours sharp; show convincing depression rather than simply dimming everything. The toggle's functional ON position (thumb on RIGHT, orange left channel) is frozen in every interaction state. Pressing affects depth only, never slides the thumb to the other side. Apply feedback to the existing thumb and existing inner housing, add no parts."
+    },
+    {
+      "id": "toggle_on",
+      "name": "开关开态",
+      "state": "disabled",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. DISABLED: apply one coherent inactive treatment to the entire original control: greatly reduce saturation (around 80%), reduce overall brightness around 25%, compress highlights and remove active emission. Original navy stays dim blue charcoal, ivory becomes muted warm gray, orange becomes subdued warm brown-gray. Icon or text remains legible but dim. Geometry, material markings, symbols, scale and placement stay the same. Do not recolor only one panel or add a new panel palette; the whole same control is powered down. The toggle's functional ON position (thumb on RIGHT, orange left channel) is frozen in every interaction state. Pressing affects depth only, never slides the thumb to the other side. Apply feedback to the existing thumb and existing inner housing, add no parts."
+    },
+    {
+      "id": "tab_off",
+      "name": "页签未选中",
+      "state": "hover",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. HOVER: a clearly visible orange/amber luminous highlight follows the EXISTING inner bevel perimeter, with a thin crisp bright core and a localized smooth soft halo. The halo softly lights only adjacent material; face, icon, lettering, seams, fasteners and outer contour remain sharply resolved. Keep the face at its original navy or ivory color, lifting its value only slightly; no wholesale bright-blue wash. Keep the physical dark seam readable. Do not add geometry or thicken the frame. This is an inviting illuminated state of the same control. The functional selection status is frozen: unselected navy face. Hover/press/disabled must never select or deselect this tab."
+    },
+    {
+      "id": "tab_off",
+      "name": "页签未选中",
+      "state": "pressed",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. PRESSED / HELD: make the existing inner face or movable grip visibly sit lower within the fixed outer shell. Add a clear dark inset shadow below the upper edge and upper diagonals, a narrow reflected lower interior bevel, suppress the raised face highlight. Existing symbol/text moves down a small amount with that face at unchanged scale, suggesting mechanical travel. Keep the same original colors. No hover glow, no alternate fill palette. Outer frame remains stationary. Keep all contours sharp; show convincing depression rather than simply dimming everything. The functional selection status is frozen: unselected navy face. Hover/press/disabled must never select or deselect this tab."
+    },
+    {
+      "id": "tab_off",
+      "name": "页签未选中",
+      "state": "disabled",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. DISABLED: apply one coherent inactive treatment to the entire original control: greatly reduce saturation (around 80%), reduce overall brightness around 25%, compress highlights and remove active emission. Original navy stays dim blue charcoal, ivory becomes muted warm gray, orange becomes subdued warm brown-gray. Icon or text remains legible but dim. Geometry, material markings, symbols, scale and placement stay the same. Do not recolor only one panel or add a new panel palette; the whole same control is powered down. The functional selection status is frozen: unselected navy face. Hover/press/disabled must never select or deselect this tab."
+    },
+    {
+      "id": "tab_on",
+      "name": "页签已选中",
+      "state": "hover",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. HOVER: a clearly visible orange/amber luminous highlight follows the EXISTING inner bevel perimeter, with a thin crisp bright core and a localized smooth soft halo. The halo softly lights only adjacent material; face, icon, lettering, seams, fasteners and outer contour remain sharply resolved. Keep the face at its original navy or ivory color, lifting its value only slightly; no wholesale bright-blue wash. Keep the physical dark seam readable. Do not add geometry or thicken the frame. This is an inviting illuminated state of the same control. The functional selection status is frozen: selected ivory face and bottom orange selection strip. Hover/press/disabled must never select or deselect this tab."
+    },
+    {
+      "id": "tab_on",
+      "name": "页签已选中",
+      "state": "pressed",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. PRESSED / HELD: make the existing inner face or movable grip visibly sit lower within the fixed outer shell. Add a clear dark inset shadow below the upper edge and upper diagonals, a narrow reflected lower interior bevel, suppress the raised face highlight. Existing symbol/text moves down a small amount with that face at unchanged scale, suggesting mechanical travel. Keep the same original colors. No hover glow, no alternate fill palette. Outer frame remains stationary. Keep all contours sharp; show convincing depression rather than simply dimming everything. The functional selection status is frozen: selected ivory face and bottom orange selection strip. Hover/press/disabled must never select or deselect this tab."
+    },
+    {
+      "id": "tab_on",
+      "name": "页签已选中",
+      "state": "disabled",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. DISABLED: apply one coherent inactive treatment to the entire original control: greatly reduce saturation (around 80%), reduce overall brightness around 25%, compress highlights and remove active emission. Original navy stays dim blue charcoal, ivory becomes muted warm gray, orange becomes subdued warm brown-gray. Icon or text remains legible but dim. Geometry, material markings, symbols, scale and placement stay the same. Do not recolor only one panel or add a new panel palette; the whole same control is powered down. The functional selection status is frozen: selected ivory face and bottom orange selection strip. Hover/press/disabled must never select or deselect this tab."
+    },
+    {
+      "id": "slider_handle",
+      "name": "滑杆拖动柄",
+      "state": "hover",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. HOVER: a clearly visible orange/amber luminous highlight follows the EXISTING inner bevel perimeter, with a thin crisp bright core and a localized smooth soft halo. The halo softly lights only adjacent material; face, icon, lettering, seams, fasteners and outer contour remain sharply resolved. Keep the face at its original navy or ivory color, lifting its value only slightly; no wholesale bright-blue wash. Keep the physical dark seam readable. Do not add geometry or thicken the frame. This is an inviting illuminated state of the same control. This is ONLY an isolated movable grip. Add no track or other control. Apply hover rim light or pressed-depth lighting to its own existing front plate while the same outline and total placement stay stable."
+    },
+    {
+      "id": "slider_handle",
+      "name": "滑杆拖动柄",
+      "state": "pressed",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. PRESSED / HELD: make the existing inner face or movable grip visibly sit lower within the fixed outer shell. Add a clear dark inset shadow below the upper edge and upper diagonals, a narrow reflected lower interior bevel, suppress the raised face highlight. Existing symbol/text moves down a small amount with that face at unchanged scale, suggesting mechanical travel. Keep the same original colors. No hover glow, no alternate fill palette. Outer frame remains stationary. Keep all contours sharp; show convincing depression rather than simply dimming everything. This is ONLY an isolated movable grip. Add no track or other control. Apply hover rim light or pressed-depth lighting to its own existing front plate while the same outline and total placement stay stable."
+    },
+    {
+      "id": "slider_handle",
+      "name": "滑杆拖动柄",
+      "state": "disabled",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. DISABLED: apply one coherent inactive treatment to the entire original control: greatly reduce saturation (around 80%), reduce overall brightness around 25%, compress highlights and remove active emission. Original navy stays dim blue charcoal, ivory becomes muted warm gray, orange becomes subdued warm brown-gray. Icon or text remains legible but dim. Geometry, material markings, symbols, scale and placement stay the same. Do not recolor only one panel or add a new panel palette; the whole same control is powered down. This is ONLY an isolated movable grip. Add no track or other control. Apply hover rim light or pressed-depth lighting to its own existing front plate while the same outline and total placement stay stable."
+    },
+    {
+      "id": "scroll_handle",
+      "name": "滚动条拖动柄",
+      "state": "hover",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. HOVER: a clearly visible orange/amber luminous highlight follows the EXISTING inner bevel perimeter, with a thin crisp bright core and a localized smooth soft halo. The halo softly lights only adjacent material; face, icon, lettering, seams, fasteners and outer contour remain sharply resolved. Keep the face at its original navy or ivory color, lifting its value only slightly; no wholesale bright-blue wash. Keep the physical dark seam readable. Do not add geometry or thicken the frame. This is an inviting illuminated state of the same control. This is ONLY an isolated movable grip. Add no track or other control. Apply hover rim light or pressed-depth lighting to its own existing front plate while the same outline and total placement stay stable."
+    },
+    {
+      "id": "scroll_handle",
+      "name": "滚动条拖动柄",
+      "state": "pressed",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. PRESSED / HELD: make the existing inner face or movable grip visibly sit lower within the fixed outer shell. Add a clear dark inset shadow below the upper edge and upper diagonals, a narrow reflected lower interior bevel, suppress the raised face highlight. Existing symbol/text moves down a small amount with that face at unchanged scale, suggesting mechanical travel. Keep the same original colors. No hover glow, no alternate fill palette. Outer frame remains stationary. Keep all contours sharp; show convincing depression rather than simply dimming everything. This is ONLY an isolated movable grip. Add no track or other control. Apply hover rim light or pressed-depth lighting to its own existing front plate while the same outline and total placement stay stable."
+    },
+    {
+      "id": "scroll_handle",
+      "name": "滚动条拖动柄",
+      "state": "disabled",
+      "prompt": "Generate the SAME referenced standalone game UI control in the specified interaction state. The reference is the exact NORMAL master for this control. Its outer silhouette, proportions, component scale, placement within transparent canvas, clipped corners, frame, fasteners, side pieces, icon/letter shapes, original face color and sparse wear are strong anchors. Keep the same physical control, not a new skin. Preserve any existing text verbatim; preserve empty label areas as empty. Maintain navy / warm ivory / orange relationships, clean 2D painted-metal finish and crisp antialiased edges. Exactly one control on true transparent background, same canvas aspect and margins as its master. No state name, cursor, extra objects or comparison layout. Change only the interaction feedback described below. DISABLED: apply one coherent inactive treatment to the entire original control: greatly reduce saturation (around 80%), reduce overall brightness around 25%, compress highlights and remove active emission. Original navy stays dim blue charcoal, ivory becomes muted warm gray, orange becomes subdued warm brown-gray. Icon or text remains legible but dim. Geometry, material markings, symbols, scale and placement stay the same. Do not recolor only one panel or add a new panel palette; the whole same control is powered down. This is ONLY an isolated movable grip. Add no track or other control. Apply hover rim light or pressed-depth lighting to its own existing front plate while the same outline and total placement stay stable."
+    }
+  ],
+  "extra_component_briefs": [
+    {
+      "id": "player_insignia",
+      "name": "我方阵营标识",
+      "state": "static",
+      "prompt": "Generate ONE standalone player-faction insignia for this 2D painted space-punk game. The provided page controls only the simple orange mechanical-ring symbol visible on the left life/resource panel, plus its painted finish. Output only the emblem, not the page or its panel. Symbol: a thick orange concentric broken circular ring with three short radial cutouts, solid orange center disk, one small detached round orange dot just below. Simple strong geometry with a thin restrained navy lower-edge shadow, shallow painted surface, at most a few deliberate tiny chips. No gear teeth (must be distinct from a settings cog), no text, no button backing, no surrounding armor, no landscape, cards or UI. One complete centered insignia on a square actual transparent canvas."
+    },
+    {
+      "id": "enemy_insignia",
+      "name": "对方阵营标识",
+      "state": "static",
+      "prompt": "Generate ONE standalone opponent-faction insignia for this 2D painted space-punk game. The provided page controls only the warm-ivory three-blade arrow emblem visible on the right life/resource panel, plus its painted finish. Output only that type of emblem, never its panel or page. Symbol: three long sharp tapering ivory blades radiate symmetrically from one center at 120 degrees, one blade points up, other two down-left and down-right, with slender navy negative-space Y-shaped separations. Strong clear geometric silhouette, restrained navy lower-edge shadow and shallow painted surface, at most a few tiny deliberate chips. No text, button backing, armor frame, landscape, cards or other UI. One complete centered emblem on a square actual transparent canvas."
+    },
+    {
+      "id": "round_counter_opponent_blank",
+      "name": "对方回合计数器空数字版",
+      "state": "static",
+      "prompt": "Generate the opponent-turn color counterpart of this exact standalone round counter. Preserve its circular outline, segmentation, scale, placement, label font, small fasteners, side orange clips and sparse paint wear. Directly invert navy and warm ivory on face and structural ring: circular center face becomes warm ivory; label 回合 is dark navy, outer structural ring becomes navy with ivory edge accents. The orange clips remain orange. Keep the lower central face empty for dynamic round numbers. No digit, no attached button or other UI, no glow, no scene. Same clean shallow 2D painted material and actual transparent background."
+    }
+  ],
+  "quality_revision": "Final faction emblems use the normal button for clean painted finish, and original page only for emblem identity; continuous antialiased silhouettes, solid face planes, one or two edge nicks, without scattered alpha pixels or dense weathering.",
+  "existing_assets": [
+    "end_turn/normal",
+    "end_turn/hover",
+    "end_turn/pressed",
+    "end_turn/disabled",
+    "round_counter/static"
+  ]
+}

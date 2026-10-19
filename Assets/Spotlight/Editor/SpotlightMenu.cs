@@ -22,6 +22,10 @@ namespace Spotlight.EditorTools
         public const string BoardCellPrefabPath = "Assets/Spotlight/UI/BoardCell.prefab";
         /// <summary>界面标记路径。</summary>
         public const string UxmlPath = "Assets/Spotlight/UI/Spotlight.uxml";
+        /// <summary>战场全屏背景 Sprite 路径。</summary>
+        public const string BattlefieldBackgroundPath = "Assets/Imported/SpotlightArt/Backgrounds/翡翠异星巨冠原野-1.png";
+        /// <summary>手牌区域背后的装饰底板 Sprite 路径。</summary>
+        public const string HandBackdropArtworkPath = "Assets/Imported/SpotlightArt/UI/Loose/operation.png";
 
         /// <summary>验证配置（只校验不写入任何资产）。输入：无；输出：无（结果打印到 Console）。</summary>
         [MenuItem("Tools/Spotlight/验证配置", priority = 0)]
@@ -109,6 +113,35 @@ namespace Spotlight.EditorTools
         }
 
         /// <summary>
+        /// 把非交互 UGUI 美术应用到当前场景。
+        /// 输入：无；输出：当前场景中的全屏背景、棋盘框与手牌底板。
+        /// 为什么提供独立入口：换皮不应要求重建整个演示场景，也不应触碰棋盘格、卡牌或手牌的交互组件。
+        /// </summary>
+        [MenuItem("Tools/Spotlight/应用界面美术", priority = 25)]
+        public static void ApplyUiArtwork()
+        {
+            if (Application.isPlaying)
+            {
+                Debug.LogWarning("请退出 Play 模式后再应用界面美术。");
+                return;
+            }
+
+            var canvas = Object.FindObjectOfType<Canvas>();
+            if (canvas == null)
+            {
+                Debug.LogError("当前场景中没有 Canvas，无法应用 UGUI 美术。");
+                return;
+            }
+
+            EnsurePassiveArtwork(canvas);
+            var scene = canvas.gameObject.scene;
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!string.IsNullOrEmpty(scene.path)) EditorSceneManager.SaveScene(scene);
+            AssetDatabase.SaveAssets();
+            Debug.Log("已应用非交互 UGUI 美术：战场背景、棋盘框、手牌底板。");
+        }
+
+        /// <summary>
         /// 生成演示场景。
         /// 输入：无；输出：`Assets/Spotlight/Scenes/Spotlight.unity`（并写入 Build Settings 第一位）。
         /// 行为：确保字体、模板、格子 Prefab 与配置资产存在，然后搭出“引导器 + UXML + 棋盘 + 手牌”的可运行场景。
@@ -156,6 +189,7 @@ namespace Spotlight.EditorTools
             var canvas = CreateCanvas();
             var board = CreateBoardView(canvas, cellPrefab, templatePrefab);
             var hand = CreateHandView(canvas, templatePrefab);
+            EnsurePassiveArtwork(canvas);
 
             var bootstrapSerialized = new SerializedObject(bootstrap);
             SetObject(bootstrapSerialized, "_configAsset", config);
@@ -230,8 +264,8 @@ namespace Spotlight.EditorTools
             rect.SetParent(canvas.transform, false);
             rect.anchorMin = Vector2.zero;
             rect.anchorMax = Vector2.one;
-            rect.offsetMin = new Vector2(460f, 250f);
-            rect.offsetMax = new Vector2(-400f, -70f);
+            rect.offsetMin = new Vector2(300f, 300f);
+            rect.offsetMax = new Vector2(-300f, -210f);
 
             var cellsRoot = CreateCellsRoot(rect);
             var board = go.GetComponent<BoardView>();
@@ -256,8 +290,8 @@ namespace Spotlight.EditorTools
             rect.anchorMin = new Vector2(0f, 0f);
             rect.anchorMax = new Vector2(1f, 0f);
             rect.pivot = new Vector2(0.5f, 0f);
-            rect.anchoredPosition = new Vector2(0f, 16f);
-            rect.sizeDelta = new Vector2(-900f, 190f);
+            rect.anchoredPosition = new Vector2(0f, 8f);
+            rect.sizeDelta = new Vector2(-960f, 220f);
 
             var layout = go.GetComponent<HorizontalLayoutGroup>();
             layout.childAlignment = TextAnchor.MiddleCenter;
@@ -274,6 +308,111 @@ namespace Spotlight.EditorTools
             SetObject(serialized, "_cardFallbackPrefab", templatePrefab != null ? templatePrefab.GetComponent<Card>() : null);
             serialized.ApplyModifiedPropertiesWithoutUndo();
             return hand;
+        }
+
+        /// <summary>
+        /// 确保画布中存在示意图要求的两层非交互美术，并同步棋盘与手牌的基准布局。
+        /// 输入：已包含 BoardRoot 与 HandRoot 的画布；输出：幂等更新后的全屏战场背景与整条手牌底板。
+        /// 为什么没有棋盘面板：示意图的格子直接铺在战场背景上，通用功能面板只用于弹窗，
+        /// 不能误当棋盘边框。所有 Image 都关闭 raycastTarget，点击仍落到 BoardCellView 或手牌 Card 上。
+        /// </summary>
+        public static void EnsurePassiveArtwork(Canvas canvas)
+        {
+            if (canvas == null)
+            {
+                Debug.LogError("EnsurePassiveArtwork：Canvas 为空。");
+                return;
+            }
+
+            var canvasRect = canvas.transform as RectTransform;
+            var background = EnsureArtworkImage(canvasRect, "BattlefieldBackground", BattlefieldBackgroundPath, false);
+            Stretch(background.rectTransform, Vector2.zero, Vector2.zero);
+            background.color = Color.white;
+            background.transform.SetAsFirstSibling();
+
+            var boardRoot = canvas.transform.Find("BoardRoot") as RectTransform;
+            if (boardRoot != null)
+            {
+                boardRoot.anchorMin = Vector2.zero;
+                boardRoot.anchorMax = Vector2.one;
+                boardRoot.offsetMin = new Vector2(300f, 300f);
+                boardRoot.offsetMax = new Vector2(-300f, -210f);
+
+                // 旧实现曾把通用弹窗面板误作棋盘框；若场景里已生成则只清理这个工具创建的固定名称对象。
+                var staleBoardFrame = boardRoot.Find("BoardFrame");
+                if (staleBoardFrame != null) Object.DestroyImmediate(staleBoardFrame.gameObject);
+            }
+            else
+            {
+                Debug.LogWarning("未找到 BoardRoot，无法同步棋盘布局。");
+            }
+
+            var handRoot = canvas.transform.Find("HandRoot") as RectTransform;
+            if (handRoot != null)
+            {
+                var handBackdrop = EnsureArtworkImage(canvasRect, "HandBackdrop", HandBackdropArtworkPath, false);
+                var rect = handBackdrop.rectTransform;
+                rect.anchorMin = new Vector2(0f, 0f);
+                rect.anchorMax = new Vector2(1f, 0f);
+                rect.pivot = new Vector2(0.5f, 0f);
+                // operation.png 的主不透明区域约占原图纵向 224..493 / 728。
+                // 用 650 高并向下偏移 210，可让约 240 像素高的可见框从屏幕底边开始，
+                // 而不是把透明画布当作内容高度导致底板只露出一条窄带。
+                rect.anchoredPosition = new Vector2(0f, -210f);
+                rect.sizeDelta = new Vector2(0f, 650f);
+                handBackdrop.color = Color.white;
+
+                handRoot.anchorMin = new Vector2(0f, 0f);
+                handRoot.anchorMax = new Vector2(1f, 0f);
+                handRoot.pivot = new Vector2(0.5f, 0f);
+                handRoot.anchoredPosition = new Vector2(0f, 8f);
+                handRoot.sizeDelta = new Vector2(-960f, 220f);
+
+                // 手牌必须始终画在底板之后；先把手牌放到最后，再把底板插到它前一位，重复调用仍保持稳定。
+                handRoot.SetAsLastSibling();
+                handBackdrop.transform.SetSiblingIndex(Mathf.Max(0, handRoot.GetSiblingIndex() - 1));
+            }
+            else
+            {
+                Debug.LogWarning("未找到 HandRoot，已跳过手牌装饰底板。");
+            }
+        }
+
+        /// <summary>
+        /// 创建或更新一个只显示美术的 UGUI Image。
+        /// 输入：父节点、对象名、Sprite 路径与是否保持图片比例；输出：已配置的 Image。
+        /// 为什么集中处理：三个装饰层必须统一关闭射线并允许重复应用，避免场景里不断产生重名副本。
+        /// </summary>
+        static Image EnsureArtworkImage(RectTransform parent, string name, string spritePath, bool preserveAspect)
+        {
+            var existing = parent != null ? parent.Find(name) : null;
+            var go = existing != null ? existing.gameObject : new GameObject(name, typeof(RectTransform), typeof(Image));
+            var rect = (RectTransform)go.transform;
+            if (rect.parent != parent) rect.SetParent(parent, false);
+
+            var image = go.GetComponent<Image>();
+            if (image == null) image = go.AddComponent<Image>();
+            image.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(spritePath);
+            image.type = Image.Type.Simple;
+            image.preserveAspect = preserveAspect;
+            image.raycastTarget = false;
+            if (image.sprite == null) Debug.LogWarning("找不到界面美术 Sprite：" + spritePath);
+            return image;
+        }
+
+        /// <summary>
+        /// 把矩形铺满父节点，并允许额外向外扩展。
+        /// 输入：矩形、左下与右上偏移；输出：更新后的 RectTransform。
+        /// </summary>
+        static void Stretch(RectTransform rect, Vector2 offsetMin, Vector2 offsetMax)
+        {
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.offsetMin = offsetMin;
+            rect.offsetMax = offsetMax;
+            rect.localScale = Vector3.one;
+            rect.localRotation = Quaternion.identity;
         }
 
         /// <summary>
