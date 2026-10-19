@@ -7,7 +7,7 @@
 | 1 规则内核 | 配置契约、卡牌生命周期、棋盘、回合、Boss AI、EditMode 测试 | 已完成 |
 | 2 配置编译 | Excel、校验、组件 SO、Prefab、运行与构建门禁 | 已完成 |
 | 3 UI 与调试 | UXML、UGUI、场景、DOTween、临时配置 | 已完成 |
-| 4 验证与架构图 | EditMode 全量回归、运行验证、四组 SVG/PNG/HTML、使用说明 | 已完成（Windows 独立构建未执行） |
+| 4 验证与架构图 | EditMode 全量回归、运行验证、四组 SVG/PNG/HTML、使用说明 | 已完成（Windows / Android 独立构建均未执行） |
 | 5 界面同步修复 | 棋盘点击穿透、移动后棋子停在旧格、动画遗留补间与 DOTween 警告 | 已完成（含 EditMode + PlayMode 回归） |
 | 6 高级卡 | 统一伤害结算、伤害标记、四邻空格限制、击杀恢复行动、五张正式高级卡与配置/文档同步 | 已完成（EditMode + PlayMode 用例已提交，待 PR 云端验证） |
 
@@ -95,7 +95,7 @@
 | 策划填写说明 | `docs/策划填写说明.md` |
 | 使用说明 | `docs/使用说明.md` |
 | GitHub Action PR 测试 | `.github/workflows/unity-tests.yml`（game-ci/unity-test-runner，`testMode` 矩阵含 EditMode + PlayMode；**只在 PR 上触发，main 的 push 不重复跑**） |
-| Windows 独立构建 | **未执行**（需要 Windows 构建授权与较长时间；门禁已就位，可在本地执行 `Tools/Spotlight/编译全部配置` 后直接 Build） |
+| Windows / Android 独立构建 | **未执行**（需要构建授权与较长时间；门禁已就位，可在本地执行 `Tools/Spotlight/编译全部配置` 后直接 Build。Android 需编辑器已装 Android Build Support 模块，在 Build Settings 切平台后手动 Build，无专用菜单入口） |
 
 ### 模块 5：界面同步修复（移动后棋子停留在原地 / 点击棋子无反应）
 
@@ -143,4 +143,4 @@
 1. 演示场景的 HUD 与棋盘在 16:9 下布局正常；非 16:9 分辨率下棋盘区域按锚点缩放，未做逐分辨率验证。
 2. 棋盘格与单位卡使用统一占位外观（纯色矩形 + 文本），未接入正式美术；外观模板 `Assets/Spotlight/Runtime/View/CardTemplate.prefab` 可手工替换而不影响重新编译。
 3. `Assets/TextMesh Pro/`、`Assets/UI Toolkit/` 由 TMP 基础资源与编辑器自动生成，属于必要依赖，不建议删除。
-4. Windows 独立构建（非 Development）尚未实际执行，构建门禁已实现但未在真实构建流程中验证。
+4. Windows / Android 独立构建（非 Development）尚未实际执行，构建门禁已实现但未在真实构建流程中验证（Android 为手动出包，不进 CI）。

@@ -2,7 +2,7 @@
 
 ## 0. 项目概述
 
-Spotlight 是一款基于卡牌的战棋对局游戏（首版为 Windows 桌面可玩验证版）。
+Spotlight 是一款基于卡牌的战棋对局游戏（首版为 Windows 桌面可玩验证版；Android 包同样可构建，见第 1 节目标平台一行）。
 
 - 棋盘默认 5 行 × 10 列，双方各有“家”，摧毁敌方家即获胜。
 - 卡牌分资源卡 / 攻击卡 / 特殊卡，可部署、移动、攻击、互换、覆盖升级；星门提供四邻部署扩展。
@@ -23,13 +23,14 @@ Spotlight 是一款基于卡牌的战棋对局游戏（首版为 Windows 桌面�
 | 测试 | Unity Test Framework 1.1.33（NUnit） | EditMode + PlayMode |
 | 动画反馈 | DOTween Free 1.2.765（`Assets/Plugins/Demigiant/DOTween/`） | 仅做表现，不参与结算 |
 | Excel 读取 | ExcelDataReader 3.9.0（`Assets/Plugins/ExcelDataReader/Editor/`） | **仅编辑器**，正式运行包不包含 |
-| 目标平台 | Windows | 首版只交付 Windows 桌面包 |
+| 目标平台 | Windows（首版交付）/ Android（可出包） | 首版只交付 Windows 桌面包，由 `Tools/Spotlight/打包 Windows 版本`（`BuildEntry`）构建；Android 包在 Unity `Build Settings` 切到 Android 后手动构建，无专用菜单入口，也不进 CI |
 
 约束：
 
 - 以上第三方依赖均以本地副本随工程提交，不通过包管理器安装；升级版本需同步更新本文件与 `docs/使用说明.md`。
 - 规则内核（`Spotlight.Core`）必须 `noEngineReferences: true`，不得引用 `UnityEngine`。
 - 汉字显示依赖生成的字体资产与 PanelSettings，新增界面文本前先确认字体资产已生成。
+- Android 出包依赖编辑器已装 Android Build Support 模块（`<编辑器目录>/Data/PlaybackEngines/AndroidPlayer`，含 SDK / NDK / OpenJDK）；Windows 交付与 CI 都不需要该模块，CI 也不构建 Android 包。
 - 工作簿固定 5 张表（`Cards` / `Rules` / `Homes` / `BossSlots` / `Presentation`）。`Deck` 工作表已废除：抽牌堆改由 `Rules` 的 `drawPileSize` + 三阶级比例生成，携带卡种由玩家开局时选择；工作簿里残留 `Deck` 表会被读取阶段直接报错并给出删除提示。
 
 ## 2. 命名空间与程序集
@@ -137,7 +138,7 @@ Assets/Spotlight/
 
 - Excel 管线：`WorkbookReader` / `XlsxInspector`（读取与原始标记扫描）、`TableSchema` / `TableMapper`（表结构与行映射）、`ConfigIssue` / `CompileReport`（问题与报告）、`ConfigCompiler`（校验 + 编译）、`ConfigAssetPublisher`（发布 + 回滚）、`DefaultWorkbookWriter`（默认工作簿）。
 - 资产与模板：`ViewTemplateBuilder`（外观模板与 Prefab）、`CjkFontSetup`（中文字体资产）。
-- 入口与门禁：`SpotlightMenu`（`Tools/Spotlight/*` 菜单）、`ConfigBuildGate` + `ConfigBuildProcessor`（`IPreprocessBuildWithReport` + Play 前检查）。
+- 入口与门禁：`SpotlightMenu`（`Tools/Spotlight/*` 菜单）、`BuildEntry`（`Tools/Spotlight/打包 Windows 版本` 的菜单/命令行打包入口；Android 包不经过它）、`ConfigBuildGate` + `ConfigBuildProcessor`（`IPreprocessBuildWithReport` + Play 前检查）。
 
 ## 5. 关键名词表
 

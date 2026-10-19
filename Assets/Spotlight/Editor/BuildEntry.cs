@@ -2,6 +2,8 @@
 // 为什么需要独立入口：Unity 的 -executeMethod 只能调用静态无参方法，
 // 而菜单里的打包动作必须与命令行走完全相同的流程（场景列表、输出目录、失败退出码），
 // 所以把流程收敛到 BuildEntry 一处，菜单只做转发；路径与场景收集被拆成纯函数以便测试固定规则。
+// Android 包不经过本类：在 Unity 里切到 Android 平台后用 Build Settings 直接构建，
+// 因此这里的平台、产物路径与菜单名都按 Windows 写死，不为了两平台共用而做抽象。
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,7 +16,7 @@ using Debug = UnityEngine.Debug;
 namespace Spotlight.EditorTools
 {
     /// <summary>
-    /// Windows 桌面包的命令行/菜单构建入口。
+    /// Windows 桌面包的命令行/菜单构建入口（Android 包由编辑器 Build Settings 构建，不经过本类）。
     /// 输入：Build Settings 中启用的场景（无参数）；输出：工程根目录下 <see cref="OutputDirectoryName"/> 里的可执行包。
     /// 失败时：批处理模式以退出码 1 结束（CI/脚本能直接判定），编辑器内只打印错误不关闭编辑器。
     /// </summary>
@@ -23,7 +25,7 @@ namespace Spotlight.EditorTools
         /// <summary>默认输出目录名，相对工程根；该目录被 .gitignore 忽略，属于纯产物。</summary>
         public const string OutputDirectoryName = "Build";
 
-        /// <summary>构建目标平台：仅交付 Windows 桌面包，故写死 StandaloneWindows64。</summary>
+        /// <summary>构建目标平台：本入口只交付 Windows 桌面包，故写死 StandaloneWindows64；Android 在 Build Settings 里切平台，不使用本常量。</summary>
         public const BuildTarget Target = BuildTarget.StandaloneWindows64;
 
         /// <summary>
@@ -54,7 +56,7 @@ namespace Spotlight.EditorTools
         }
 
         /// <summary>
-        /// 打包 Windows 64 位桌面包（唯一实际执行构建的入口）。
+        /// 打包 Windows 64 位桌面包（Windows 唯一实际执行构建的入口；Android 包在 Build Settings 里手动构建）。
         /// 输入：无参数（命令行用法见下方注释）；输出：&lt;工程根&gt;/Build/&lt;产品名&gt;.exe 及同目录数据文件。
         /// 命令行用法：
         /// Unity.exe -batchmode -nographics -quit -projectPath &lt;工程根&gt;
