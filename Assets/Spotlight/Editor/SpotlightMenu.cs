@@ -425,9 +425,10 @@ namespace Spotlight.EditorTools
         public static void OpenConfigPanelInPlayMode()
         {
             if (!Application.isPlaying) { Debug.LogWarning("请先进入 Play 模式。"); return; }
-            var panel = Object.FindObjectOfType<ConfigDebugPanel>();
-            if (panel == null) { Debug.LogWarning("当前场景中没有 ConfigDebugPanel。"); return; }
-            panel.Open();
+            var bootstrap = Object.FindObjectOfType<GameBootstrap>();
+            if (bootstrap == null) { Debug.LogWarning("当前场景中没有 GameBootstrap。"); return; }
+            // 调试面板是仅编辑器程序集里的普通类，不再挂在 GameObject 上，必须通过接线器打开。
+            DebugPanelInstaller.Open(bootstrap);
         }
 
         /// <summary>

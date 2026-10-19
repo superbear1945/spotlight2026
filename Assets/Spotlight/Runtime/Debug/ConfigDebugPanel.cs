@@ -14,17 +14,17 @@ namespace Spotlight
 {
     /// <summary>
     /// 配置面板控制器。
-    /// 输入：UXML 中的面板骨架（由 UIDocument 提供）与 GameBootstrap；
+    /// 输入：UXML 中的面板骨架（来自 GameBootstrap 所在对象的 UIDocument）与 GameBootstrap；
     /// 输出：写回草稿的字段编辑、实时校验结果，以及在成功“应用并重开”时请求替换对局。
     /// 为什么用表单而不是 JSON 文本框：策划需要快速调整数值，
     /// JSON 只能作为“导入导出通道”保留；面板打开期间由规则层输入闸门屏蔽棋盘操作。
+    /// 为什么是普通类而不是 MonoBehaviour：本程序集是仅编辑器程序集，Unity 不允许把编辑器脚本挂成组件；
+    /// 面板只操作界面元素与草稿，不需要组件生命周期，普通类反而更干净。
     /// </summary>
-    public sealed class ConfigDebugPanel : MonoBehaviour
+    public sealed class ConfigDebugPanel
     {
-        /// <summary>界面文档，提供面板骨架。</summary>
-        [SerializeField] UIDocument _document;
-        /// <summary>对局引导器，用于取当前配置资产与请求重开。</summary>
-        [SerializeField] GameBootstrap _bootstrap;
+        /// <summary>对局引导器，用于取当前配置资产、界面文档与请求重开。</summary>
+        GameBootstrap _bootstrap;
 
         /// <summary>本次运行会话内保留的草稿；关闭面板不会清空。</summary>
         DebugConfigDraft _draft;
@@ -79,9 +79,9 @@ namespace Spotlight
                 _bootstrap.DebugPanelRequested -= Open;
                 _bootstrap.DebugPanelRequested += Open;
             }
-            if (_document == null) _document = GetComponent<UIDocument>();
-            if (_document == null) { Debug.LogWarning("ConfigDebugPanel：未找到 UIDocument"); return; }
-            BindTo(_document.rootVisualElement, bootstrap);
+            var document = bootstrap != null ? bootstrap.GetComponent<UIDocument>() : null;
+            if (document == null) { Debug.LogWarning("ConfigDebugPanel：未找到 UIDocument"); return; }
+            BindTo(document.rootVisualElement, bootstrap);
         }
 
         /// <summary>
