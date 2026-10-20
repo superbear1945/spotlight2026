@@ -1638,10 +1638,10 @@
 
 .detail-backdrop-blur {
     position: absolute;
-    left: -112px;
-    right: -112px;
-    top: -112px;
-    bottom: -112px;
+    left: -80px;
+    right: -80px;
+    top: -80px;
+    bottom: -80px;
     background-color: rgba(0, 0, 0, 0);
     background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Loose/detail_backdrop_blur.png");
     -unity-background-scale-mode: stretch-to-fill;
