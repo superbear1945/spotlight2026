@@ -197,6 +197,76 @@ namespace Spotlight.Tests
             Assert.That(CardText.StatLine(upgrade), Does.Contain("升级自 ge1"));
         }
 
+        /// <summary>
+        /// 选卡面板的属性行必须与对局内卡面同源：同一份数据经 CardRow 与 CardArchetype 两条路径
+        /// 拼出的文本要逐字相同，否则玩家选卡时看到的数值会和开局后的卡面不一致。
+        /// 输入：一张带资源与部署消耗的卡行；输出：两条路径的 StatLine 相等且包含资源账信息。
+        /// </summary>
+        [Test]
+        public void CardArchetypeStatLineMatchesRowSource()
+        {
+            var row = new CardRow
+            {
+                tier = "advanced", id = "houyi2", name = "后羿-II综合舰", category = "attack", viewKey = "default",
+                hp = 6, atk = 3, range = 2, moveDistance = 1, produce = 0, upkeep = 2, resourceComponent = true,
+                deployCost = 2, adjacentClearanceComponent = true, adjacentClearanceMinEmpty = 2
+            };
+            var archetype = CardArchetype.FromRow(row);
+            Assert.That(CardText.StatLine(archetype), Is.EqualTo(CardText.StatLine(row)),
+                "选卡面板与手牌必须使用同一套属性文本");
+            Assert.That(CardText.StatLine(archetype), Does.Contain("产 0").And.Contain("耗 2"), "付费维持的卡必须显示消耗");
+            Assert.That(CardText.StatLine(archetype), Does.Contain("部署耗 2"), "部署消耗必须可见");
+        }
+
+        /// <summary>
+        /// 特性短标要覆盖配置里的每一种能力，并且不把“部署消耗”重复成短标（它已经在属性行里）。
+        /// 输入：带四邻限制 / 击杀恢复 / 伤害标记的攻击卡；输出：短标与详情正文的分工断言。
+        /// </summary>
+        [Test]
+        public void CardTraitTagsSummarizeConfiguredAbilities()
+        {
+            var row = new CardRow
+            {
+                tier = "advanced", id = "viking2056", name = "维京长船-2056", category = "attack", viewKey = "default",
+                hp = 5, atk = 2, range = 1, moveDistance = 1, produce = 0, upkeep = 1, resourceComponent = true,
+                adjacentClearanceComponent = true, adjacentClearanceMinEmpty = 1,
+                killActionComponent = true,
+                damageMarkComponent = true, damageMarkDamagePerStack = 1
+            };
+            var archetype = CardArchetype.FromRow(row);
+            var tags = CardText.TraitTags(archetype);
+            Assert.That(tags, Is.EqualTo(new[] { "四邻 1 空", "击杀回复", "伤害标记 +1" }), string.Join(" / ", tags));
+
+            var body = CardText.DetailBody(archetype);
+            Assert.That(body, Does.Contain("四邻空格限制").And.Contain("击杀恢复行动").And.Contain("伤害标记："),
+                "详情正文必须把短标展开成可读规则");
+            Assert.That(body, Does.Not.Contain("生命 "), "详情正文不再重复属性行，避免同一数值在面板里出现两次");
+            Assert.That(body, Does.Not.Contain(row.name), "详情正文不重复卡名，卡名由详情标题承担");
+
+            // 手牌详情 = 标题 + 属性行 + 正文；选卡详情复用同一份正文，两处不会各写一套措辞。
+            var detail = CardText.DetailLine(archetype, Side.Player);
+            Assert.That(detail, Does.Contain(row.name));
+            Assert.That(detail, Does.EndWith(body), "DetailLine 的规则部分应与 DetailBody 完全一致");
+        }
+
+        /// <summary>
+        /// 资源卡不应凭空出现特性短标：没有战斗组件的卡也不能提示“不能攻击资源/互换”。
+        /// 输入：一张普通资源卡；输出：短标与详情正文都为空的断言。
+        /// </summary>
+        [Test]
+        public void ResourceCardHasNoTraitTags()
+        {
+            var row = new CardRow
+            {
+                tier = "basic", id = "ge1", name = "GE-1开采机", category = "resource", viewKey = "default",
+                hp = 1, produce = 2, upkeep = 0, resourceComponent = true
+            };
+            var archetype = CardArchetype.FromRow(row);
+            Assert.That(CardText.TraitTags(archetype), Is.Empty, "资源卡没有特性时不应凭空生成短标");
+            Assert.That(CardText.DetailBody(archetype), Is.Empty, "没有额外规则时正文应为空，由界面给出“按普通规则上场”的提示");
+            Assert.That(CardText.StatLine(archetype), Does.Contain("产 2").And.Not.Contain("攻"));
+        }
+
         [Test]
         public void HighlightColorsFollowPresentationConfig()
         {

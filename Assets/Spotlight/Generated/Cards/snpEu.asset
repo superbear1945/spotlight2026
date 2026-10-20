@@ -85,4 +85,4 @@ MonoBehaviour:
   m_Name: snpEu_Resource
   m_EditorClassIdentifier: 
   _produce: 0
-  _upkeep: 3
+  _upkeep: 4

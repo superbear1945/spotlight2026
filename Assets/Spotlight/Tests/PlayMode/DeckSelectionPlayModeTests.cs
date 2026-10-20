@@ -153,6 +153,115 @@ namespace Spotlight.Tests
             Assert.That(borderColors.Distinct().Count(), Is.EqualTo(3), "三个阶级的分组竖条颜色应互不相同");
         }
 
+        /// <summary>
+        /// 选卡界面每行必须能直接读到属性与特性，而不是只有卡名：
+        /// 属性行必须与 CardText.StatLine 同源，特性短标必须与 CardText.TraitTags 逐项一致。
+        /// 输入：演示场景启动后的选卡面板；输出：逐行属性/短标断言与“至少一张卡带特性”的守卫。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SelectionRowsShowStatsAndTraitChips()
+        {
+            var context = new Context();
+            yield return Load(context);
+            var hud = context.Hud;
+            var configuration = hud.DeckSelectionPanel.State.Configuration;
+            var rows = hud.Root.Query<VisualElement>(className: "deck-card-row").ToList();
+            Assert.That(rows, Is.Not.Empty, "选卡界面没有任何卡种行");
+            var rowsWithTraits = 0;
+            foreach (var row in rows)
+            {
+                var id = row.userData as string;
+                Assert.That(id, Is.Not.Null, "每个卡种行都应记录卡种 ID，供详情区定位");
+                var archetype = configuration.FindCard(id);
+                Assert.That(archetype, Is.Not.Null, $"卡种 {id} 不在配置里");
+
+                var stats = row.Q<Label>(className: "deck-card-stats");
+                Assert.That(stats, Is.Not.Null, "每行都应显示属性行（生命/攻/程/移/产/耗）");
+                Assert.That(stats.text, Is.EqualTo(CardText.StatLine(archetype)), "行内属性必须与对局卡面同源");
+                Assert.That(stats.text, Does.Contain("生命"), "属性行至少要能被读懂");
+
+                var chips = row.Query<Label>(className: "deck-card-trait").ToList().Select(chip => chip.text);
+                Assert.That(chips, Is.EqualTo(CardText.TraitTags(archetype)), $"{archetype.Name} 的特性短标应与配置一致");
+                if (chips.Any()) rowsWithTraits++;
+            }
+            Assert.That(rowsWithTraits, Is.GreaterThan(0), "正式配置里应至少有一张带特性的卡，否则界面等于没写");
+        }
+
+        /// <summary>
+        /// 右侧详情区必须能把“当前查看的卡种”完整展开：名称 / 阶级与分类 / 属性 / 特性短标 / 规则正文，
+        /// 并在同一时刻只高亮那一行；切换查看目标时内容跟随。
+        /// 输入：启动后直接调用 ShowDetail（与悬停/点击行共用同一个入口）；输出：详情区文本与高亮行断言。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator DetailPaneExplainsPreviewedCard()
+        {
+            var context = new Context();
+            yield return Load(context);
+            var hud = context.Hud;
+            var panel = hud.DeckSelectionPanel;
+            var configuration = panel.State.Configuration;
+            var target = configuration.CardOrder.FirstOrDefault(card => card != null && CardText.TraitTags(card).Count > 0);
+            Assert.That(target, Is.Not.Null, "正式配置里应至少有一张带特性的卡，否则详情区无法展示特性");
+
+            panel.ShowDetail(target.Id);
+            yield return null;
+
+            Assert.That(panel.DetailCardId, Is.EqualTo(target.Id));
+            Assert.That(hud.Root.Q<Label>("deck-select-detail-title").text, Is.EqualTo(target.Name), "详情标题应为卡名");
+            Assert.That(hud.Root.Q<Label>("deck-select-detail-meta").text,
+                Is.EqualTo($"{CardText.TierLabel(target.Tier)} · {CardText.CategoryLabel(target.Category)}"), "详情标题下应是阶级与分类");
+            Assert.That(hud.Root.Q<Label>("deck-select-detail-stats").text, Is.EqualTo(CardText.StatLine(target)),
+                "详情区属性行必须与行内文本一致，不能两套数字");
+
+            var detailTraits = hud.Root.Q<VisualElement>("deck-select-detail-traits");
+            Assert.That(detailTraits, Is.Not.Null, "UXML 缺少 deck-select-detail-traits");
+            var chips = detailTraits.Query<Label>(className: "deck-card-trait").ToList().Select(chip => chip.text);
+            Assert.That(chips, Is.EqualTo(CardText.TraitTags(target)), "详情区特性短标应与配置一致");
+
+            var body = hud.Root.Q<Label>("deck-select-detail-body").text;
+            var expectedBody = CardText.DetailBody(target);
+            Assert.That(body, Is.EqualTo(expectedBody), "详情正文应展开为完整规则文本");
+            Assert.That(body, Does.Not.Contain("生命 "), "详情正文不再重复属性行");
+
+            var inspected = hud.Root.Query<VisualElement>(className: "deck-card-row").ToList()
+                .Where(row => row.ClassListContains("inspected")).ToList();
+            Assert.That(inspected.Count, Is.EqualTo(1), "同一时刻只应高亮正在查看的一行");
+            Assert.That(inspected[0].userData as string, Is.EqualTo(target.Id));
+
+            // 切换到另一张卡种（这里用表格第一张），详情区必须跟着换，而不是停在上一张。
+            var other = configuration.CardOrder.First(card => card != null && card.Id != target.Id);
+            panel.ShowDetail(other.Id);
+            yield return null;
+            Assert.That(hud.Root.Q<Label>("deck-select-detail-title").text, Is.EqualTo(other.Name));
+            Assert.That(panel.DetailCardId, Is.EqualTo(other.Id));
+            var rechecked = hud.Root.Query<VisualElement>(className: "deck-card-row").ToList()
+                .Where(row => row.ClassListContains("inspected")).ToList();
+            Assert.That(rechecked.Count, Is.EqualTo(1), "切换后旧行应取消高亮");
+            Assert.That(rechecked[0].userData as string, Is.EqualTo(other.Id));
+        }
+
+        /// <summary>
+        /// 资源卡的详情必须直接给出产出与维持费：玩家选卡时最需要比较的就是这两项。
+        /// 输入：选卡面板里的第一张资源卡；输出：详情区属性文本包含“产 / 耗”的断言。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator DetailPaneShowsResourceOutputAndUpkeep()
+        {
+            var context = new Context();
+            yield return Load(context);
+            var hud = context.Hud;
+            var panel = hud.DeckSelectionPanel;
+            var resource = panel.State.Configuration.CardOrder
+                .FirstOrDefault(card => card != null && card.Category == CardCategory.Resource);
+            Assert.That(resource, Is.Not.Null, "正式配置里应有资源卡");
+
+            panel.ShowDetail(resource.Id);
+            yield return null;
+            var stats = hud.Root.Q<Label>("deck-select-detail-stats").text;
+            Assert.That(stats, Does.Contain("产 ").And.Contain("耗 "), "资源卡必须显示产出与维持费");
+            Assert.That(stats, Is.EqualTo(CardText.StatLine(resource)), "详情属性应与 CardText 同源");
+        }
+
         [UnityTest]
         public IEnumerator EmptyTierSelectionBlocksConfirm()
         {

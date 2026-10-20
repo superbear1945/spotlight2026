@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _hp: 2
   _attack: 1
-  _range: 1
+  _range: 2
   _moveDistance: 1
   _canAttackResources: 1
   _canSwap: 1

@@ -2023,9 +2023,24 @@
 }
 
 .deck-select-panel {
-    width: 1000px;
+    width: 1180px;
     flex-grow: 1;
     flex-shrink: 1;
+}
+
+/* 主体分两列：左边是阶级分组的卡种列表，右边是当前查看卡种的完整详情。
+   两列都允许收缩（min-width/min-height: 0），否则长文本会把面板顶出屏幕。 */
+.deck-select-body {
+    flex-direction: row;
+    align-items: stretch;
+    min-height: 0;
+}
+
+.deck-select-list {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    margin-right: 14px;
 }
 
 .deck-select-foot {
@@ -2136,15 +2151,160 @@
     margin-right: 10px;
 }
 
+/* 卡名／属性／特性三行放在同一个信息块里：点这块只看详情，点左边的“携带”才改变选卡。 */
+.deck-card-info {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.deck-card-head {
+    flex-direction: row;
+    align-items: center;
+}
+
 .deck-card-name {
     flex-grow: 1;
+    flex-shrink: 1;
     font-size: 15px;
     color: rgb(240, 245, 255);
+    white-space: normal;
+}
+
+/* 分类短标：颜色与对局中卡面底色的语义一致（资源绿 / 攻击橙 / 特殊紫）。 */
+.deck-card-category {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: #0b1220;
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.deck-card-category.cat-resource { background-color: #3ddc97; }
+.deck-card-category.cat-attack { background-color: #f2a04b; }
+.deck-card-category.cat-special { background-color: #c084fc; }
+
+/* 属性行与对局内卡面同源（生命/攻/程/移/产/耗/部署耗），选卡时即可算清资源账。 */
+.deck-card-stats {
+    font-size: 13px;
+    color: rgb(186, 208, 232);
+    margin-top: 2px;
+    white-space: normal;
+}
+
+/* 特性短标容器：一行放不下就换行，卡种数量再多也不会溢出。 */
+.deck-card-traits {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 1px;
+}
+
+.deck-card-trait {
+    font-size: 11px;
+    color: rgb(255, 224, 163);
+    background-color: rgba(214, 126, 45, 0.18);
+    border-width: 1px;
+    border-color: rgba(214, 126, 45, 0.55);
+    margin-right: 5px;
+    margin-top: 3px;
+    padding: 1px 7px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
 }
 
 .deck-card-copies {
-    width: 110px;
-    font-size: 15px;
+    flex-shrink: 0;
+    width: 96px;
+    font-size: 14px;
     color: rgb(160, 200, 255);
     -unity-text-align: middle-right;
+}
+
+/* “正在查看”的行用黄框标记，与已选中的绿框区分：一个表示看，一个表示带。 */
+.deck-card-row.inspected {
+    border-left-color: #ffd166;
+    background-color: #233047;
+}
+
+/* 已选中的行被查看时仍保持绿框（选卡状态优先于查看状态），只用底色提亮。 */
+.deck-card-row.selected.inspected {
+    border-left-color: #33ff99;
+    background-color: #24364f;
+}
+
+/* ── 选卡详情列 ─────────────────────────────────────────────────────────── */
+
+.deck-select-detail {
+    width: 380px;
+    flex-shrink: 0;
+    flex-direction: column;
+    padding: 14px 16px;
+    background-color: rgb(17, 26, 41);
+    border-width: 1px;
+    border-color: #2a3448;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+/* 空状态（配置异常、没有任何可选卡种）降透明度，让面板本体依然可辨。 */
+.deck-select-detail.empty {
+    opacity: 0.72;
+}
+
+.deck-select-detail-title {
+    font-size: 19px;
+    -unity-font-style: bold;
+    color: rgb(245, 238, 219);
+    white-space: normal;
+}
+
+.deck-select-detail-meta {
+    font-size: 13px;
+    color: rgb(160, 185, 215);
+    margin-top: 3px;
+    white-space: normal;
+}
+
+.deck-select-detail-stats {
+    font-size: 14px;
+    color: rgb(236, 242, 250);
+    margin-top: 10px;
+    padding: 6px 10px;
+    background-color: #1b2436;
+    white-space: normal;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+.deck-select-detail-traits {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.deck-select-detail-traits .deck-card-trait {
+    font-size: 12px;
+}
+
+.deck-select-detail-scroll {
+    flex-grow: 1;
+    min-height: 0;
+    margin-top: 10px;
+}
+
+.deck-select-detail-body {
+    font-size: 13px;
+    color: rgb(210, 222, 236);
+    white-space: normal;
 }
