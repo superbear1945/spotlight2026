@@ -13,7 +13,7 @@ namespace Spotlight
     /// （关联只依赖稳定 ID），运行与构建门禁也能按此资产核对 Prefab 组件组合。
     /// </summary>
     [GeneratedConfig]
-    public sealed class CardDefinitionSO : ScriptableObject, IConfigSourceInfo
+    public sealed class CardDefinitionSO : ScriptableObject
     {
         /// <summary>稳定 ID，字母开头，唯一；升级关联与卡组引用都使用它。</summary>
         [SerializeField] string _id;
@@ -69,10 +69,10 @@ namespace Spotlight
         [SerializeField] Sprite _art;
         /// <summary>卡图来源文本（Cards.cardArt 的原值），用于 Inspector 回显与 SO→行对象的往返。</summary>
         [SerializeField] string _artPath;
-        /// <summary>源工作簿文件名，用于 Inspector 提示与校验报告。</summary>
-        [SerializeField] string _sourceWorkbook;
-        /// <summary>源工作表名。</summary>
-        [SerializeField] string _sourceSheet;
+
+        // 注意：这里刻意不保存源工作簿/工作表名。卡种资产会被主配置引用、随包发布，
+        // 存了就会在拆包后读到“Assets/Spotlight/Config/Spotlight.xlsx”。
+        // 溯源信息只写在不进包的 Generated/ConfigManifest.asset 与编辑器侧的校验报告里。
 
         /// <summary>稳定卡种 ID。</summary>
         public string Id => _id;
@@ -128,10 +128,6 @@ namespace Spotlight
         public Sprite Art => _art;
         /// <summary>卡图来源文本（Cards.cardArt 原值），供调试与往返核对。</summary>
         public string ArtPath => _artPath;
-        /// <inheritdoc />
-        public string SourceWorkbook => _sourceWorkbook;
-        /// <inheritdoc />
-        public string SourceSheet => _sourceSheet;
 
         /// <summary>
         /// 把 SO 还原成表行对象。
@@ -200,11 +196,12 @@ namespace Spotlight
 
         /// <summary>
         /// 编译期写入全部字段。
-        /// 输入：已校验的行数据、组件 SO 与 Prefab；输出：无。
+        /// 输入：已校验的行数据、组件 SO、Prefab 与卡图；输出：无。
         /// 说明：只允许编辑器编译器调用；运行时不修改已发布资产。
         /// 一次性减攻配置为 null 时引用被清空，因此 SO 与 Excel 行始终一致（禁用即无能力）。
+        /// 不再写入源工作簿/工作表名：这两项会随包发布，只保留在 ConfigManifest 与校验报告里。
         /// </summary>
-        public void EditorApply(CardRow row, CombatConfigSO combat, ResourceConfigSO resource, TeleportConfigSO teleport, DeploymentPenaltyConfigSO deploymentPenalty, Card prefab, string sourceWorkbook, string sourceSheet, MarkOnEnterConfigSO markOnEnter = null, DeathGrowthConfigSO deathGrowth = null, InstantEffectConfigSO instant = null,
+        public void EditorApply(CardRow row, CombatConfigSO combat, ResourceConfigSO resource, TeleportConfigSO teleport, DeploymentPenaltyConfigSO deploymentPenalty, Card prefab, MarkOnEnterConfigSO markOnEnter = null, DeathGrowthConfigSO deathGrowth = null, InstantEffectConfigSO instant = null,
             SpawnConfigSO spawn = null, AdjacentClearanceConfigSO adjacentClearance = null, KillActionConfigSO killAction = null, DamageMarkConfigSO damageMark = null,
             Sprite art = null, string artPath = null)
         {
@@ -238,8 +235,6 @@ namespace Spotlight
             // 没有显式给 artPath 时回退用行里的 cardArt，保证任何调用路径都不会丢来源文本。
             _art = art;
             _artPath = !string.IsNullOrEmpty(artPath) ? artPath : (row.cardArt ?? string.Empty);
-            _sourceWorkbook = sourceWorkbook;
-            _sourceSheet = sourceSheet;
         }
     }
 }

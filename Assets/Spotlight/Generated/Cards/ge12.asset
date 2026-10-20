@@ -71,5 +71,3 @@ MonoBehaviour:
   _prefab: {fileID: 106765732709184298, guid: 4acb1ae8c43cbb8498719859649ed282, type: 3}
   _art: {fileID: 21300000, guid: ea32bc66a81a25c4496175428f5db0f5, type: 3}
   _artPath: Assets/Imported/SpotlightArt/CardArt/ge12.png
-  _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceSheet: Cards

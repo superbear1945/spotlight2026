@@ -53,8 +53,6 @@ MonoBehaviour:
   _prefab: {fileID: 3698632159234763296, guid: 4897161fb0b5b214096a2351e7792422, type: 3}
   _art: {fileID: 21300000, guid: 3224a741e8e0e3c44b8a75fc2e6bc1d9, type: 3}
   _artPath: Assets/Imported/SpotlightArt/CardArt/houyi1.png
-  _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceSheet: Cards
 --- !u!114 &2819994424838469593
 MonoBehaviour:
   m_ObjectHideFlags: 1

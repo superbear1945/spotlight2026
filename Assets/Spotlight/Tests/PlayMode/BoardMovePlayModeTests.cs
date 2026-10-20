@@ -285,7 +285,9 @@ namespace Spotlight.Tests
             Assert.That(gear.resolvedStyle.backgroundImage.texture != null || gear.resolvedStyle.backgroundImage.sprite != null,
                 "齿轮按钮没有读到背景图标（gear.png），菜单入口会变成一个空方块");
             var debugButton = root.Q<VisualElement>("debug-button");
-            Assert.That(debugButton, Is.Not.Null, "UXML 缺少 debug-button");
+            // 调试入口已从皮肤 UXML 里拆出：HudView 只在调试构建（编辑器 / Development Build）用代码插入，
+            // 正式包连这个按钮都不存在。这里验证编辑器里它确实挂在齿轮菜单内，避免“开发时也找不到入口”。
+            Assert.That(debugButton, Is.Not.Null, "编辑器里应由 HudView 插入 debug-button");
             Assert.That(menuOverlay.Contains(debugButton), Is.True, "“配置/调试”入口应当位于齿轮菜单里");
 
             Assert.That(detailLeft.style.display.value, Is.EqualTo(DisplayStyle.Flex), "默认应显示战斗界面的左右详情区");

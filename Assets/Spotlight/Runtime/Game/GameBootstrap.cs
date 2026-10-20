@@ -36,8 +36,15 @@ namespace Spotlight
         [SerializeField] HudView _hudView;
         /// <summary>动效播放器。</summary>
         [SerializeField] CardFeedback _feedback;
-        /// <summary>配置调试面板。</summary>
-        [SerializeField] ConfigDebugPanel _debugPanel;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        /// <summary>
+        /// 配置调试面板（运行时创建，不挂在场景上）。
+        /// 为什么不用序列化字段：场景里只要挂了这个组件，构建时 globalgamemanagers 就会留下
+        /// “ConfigDebugPanel”的 MonoScript 名字（组件本身在正式包里是 missing script），
+        /// 拆包依旧能看出“这游戏有一套配置编辑器”。
+        /// </summary>
+        ConfigDebugPanel _debugPanel;
+#endif
 
         /// <summary>当前对局实例；唯一状态所有者。</summary>
         GameSession _session;
@@ -210,11 +217,28 @@ namespace Spotlight
                 _hudView.ExitRequested += OnExitRequested;
                 _hudView.QuitRequested -= OnQuitRequested;
                 _hudView.QuitRequested += OnQuitRequested;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                 _hudView.DebugRequested -= OnDebugRequested;
                 _hudView.DebugRequested += OnDebugRequested;
+#endif
             }
-            _debugPanel?.Bind(this);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            EnsureDebugPanel();
+#endif
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        /// <summary>
+        /// 确保调试构建里有配置面板组件，并把它绑定到当前引导器。
+        /// 输入：无（使用本 GameObject 上的 UIDocument 作为界面根节点）；输出：无。
+        /// 为什么运行时创建：场景里挂组件会让类名进到 globalgamemanagers（见 _debugPanel 字段注释）。
+        /// </summary>
+        void EnsureDebugPanel()
+        {
+            if (_debugPanel == null) _debugPanel = gameObject.AddComponent<ConfigDebugPanel>();
+            _debugPanel.Bind(this);
+        }
+#endif
 
         /// <summary>
         /// 用指定配置开始一局。
@@ -716,7 +740,12 @@ namespace Spotlight
                 Time.timeScale = _timeScaleBeforePause;
             }
             _pauseOpen = paused;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             SetModalOpen(_debugPanel != null && _debugPanel.IsOpen);
+#else
+            // 正式包没有配置面板，暂停开关不影响其它模态状态。
+            SetModalOpen(false);
+#endif
         }
 
         /// <summary>
@@ -733,8 +762,13 @@ namespace Spotlight
             Application.Quit();
         }
 
-        /// <summary>HUD 请求打开配置面板。输入：无；输出：无。</summary>
-        void OnDebugRequested() => _debugPanel?.Open();
+        /// <summary>HUD 请求打开配置面板。输入：无；输出：无（正式包没有调试面板，方法体为空）。</summary>
+        void OnDebugRequested()
+        {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            _debugPanel?.Open();
+#endif
+        }
 
         /// <summary>
         /// 进入齿轮菜单。

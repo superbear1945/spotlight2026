@@ -56,3 +56,13 @@ jobs:
 
       - name: 校验 CI 配置守卫脚本自身
         run: bash scripts/check-ci-config.sh --self-test
+
+      # 发布包体去调试化：检查 Build/ 里有没有开发期信息（调试面板文案/类型名、Excel 路径与摘要、
+      # Burst 调试目录）。Build/ 不进 git，CI 上通常没有产物，真实检查会直接跳过；
+      # 自检那一步保证“泄露必须被拦住”的判断逻辑一直有效（否则脚本可能静默失效）。
+      # 本地打完包后执行：bash scripts/check-build-hygiene.sh
+      - name: 校验发布包体卫生脚本自身
+        run: bash scripts/check-build-hygiene.sh --self-test
+
+      - name: 发布包体卫生检查（无 Build/ 产物时自动跳过）
+        run: bash scripts/check-build-hygiene.sh

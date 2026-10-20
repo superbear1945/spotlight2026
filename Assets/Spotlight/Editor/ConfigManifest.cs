@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Spotlight
+namespace Spotlight.EditorTools
 {
     /// <summary>
     /// 配置编译清单。

@@ -65,8 +65,6 @@ MonoBehaviour:
   _prefab: {fileID: 7948728517137559690, guid: 2637315be146df1418acdb317444b172, type: 3}
   _art: {fileID: 21300000, guid: a8967dd9d2383ef4e921370769a78e90, type: 3}
   _artPath: Assets/Imported/SpotlightArt/CardArt/viking2056.png
-  _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceSheet: Cards
 --- !u!114 &7206648867698222465
 MonoBehaviour:
   m_ObjectHideFlags: 1

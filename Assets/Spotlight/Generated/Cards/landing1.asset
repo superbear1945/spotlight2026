@@ -39,8 +39,6 @@ MonoBehaviour:
   _prefab: {fileID: 2565445023189859194, guid: 1e5116b37aad56a418a3dcac39ced51d, type: 3}
   _art: {fileID: 21300000, guid: 5343dc09f13082e47a762ecd9a941bc0, type: 3}
   _artPath: Assets/Imported/SpotlightArt/CardArt/landing1.png
-  _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceSheet: Cards
 --- !u!114 &2618029826985662504
 MonoBehaviour:
   m_ObjectHideFlags: 1

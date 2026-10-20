@@ -1,3 +1,8 @@
+// 【仅调试构建编译】整个文件被 UNITY_EDITOR || DEVELOPMENT_BUILD 包住。
+// 为什么：正式包（BuildOptions.None）里这些类型必须完全不存在，否则拆包能看到
+// “这游戏有一套可改棋盘/卡表/Boss 参数的配置编辑器”，等于把半张设计稿交给玩家。
+// 约束：本文件不得被运行层无条件引用；GameBootstrap / HudView 里对它的使用同样包着条件编译。
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
 // 对局配置面板（表单式）：按分区逐项编辑棋盘、家、卡组、逐卡种属性、Boss 卡、回合规则与开关。
 // 设计依据是既有的网页版配置界面：字段分组与文案保持一致，但已确认删除的“反击”“斜移”开关不再出现。
 // 编辑直接写回内存草稿；“应用并重开”会先校验并创建候选对局，失败时保留原对局与草稿。
@@ -11,14 +16,14 @@ namespace Spotlight
 {
     /// <summary>
     /// 配置面板控制器。
-    /// 输入：UXML 中的面板骨架（由 UIDocument 提供）与 GameBootstrap；
+    /// 输入：HUD 根元素（来自 UIDocument）与 GameBootstrap；
     /// 输出：写回草稿的字段编辑、实时校验结果，以及在成功“应用并重开”时请求替换对局。
     /// 为什么用表单而不是 JSON 文本框：策划需要快速调整数值，
     /// JSON 只能作为“导入导出通道”保留；面板打开期间由规则层输入闸门屏蔽棋盘操作。
     /// </summary>
     public sealed class ConfigDebugPanel : MonoBehaviour
     {
-        /// <summary>界面文档，提供面板骨架。</summary>
+        /// <summary>界面文档，提供 HUD 根节点（面板骨架挂在它下面）。</summary>
         [SerializeField] UIDocument _document;
         /// <summary>对局引导器，用于取当前配置资产与请求重开。</summary>
         [SerializeField] GameBootstrap _bootstrap;
@@ -72,16 +77,102 @@ namespace Spotlight
         }
 
         /// <summary>
+        /// 在 HUD 根节点下创建面板骨架（已存在时直接返回）。
+        /// 输入：HUD 根元素；输出：无。
+        /// 为什么用代码搭骨架而不是 UXML 资产：只要骨架是个资产，就可能被某个序列化引用拉进
+        /// 正式包（实测场景里挂着的调试面板组件就会把 UXML 一起打进去，拆包能读到整张表单）。
+        /// 本方法连同整个文件都处于 UNITY_EDITOR || DEVELOPMENT_BUILD 守卫内，
+        /// 因此正式包里既没有资产也没有这些节点与文案。
+        /// 幂等：GameBootstrap 重开局时可能再次调用 Bind，不能叠出两套面板。
+        /// </summary>
+        void EnsurePanelSkeleton(VisualElement root)
+        {
+            if (root.Q<VisualElement>("debug-panel") != null) return;
+
+            var panel = new VisualElement { name = "debug-panel" };
+            panel.AddToClassList("cfg-mask");
+            // USS 的 .cfg-mask 已经是 display:none，这里再显式设一次，避免样式表未加载时面板一开局就盖住棋盘。
+            panel.style.display = DisplayStyle.None;
+
+            var card = new VisualElement();
+            card.AddToClassList("cfg-panel");
+            panel.Add(card);
+
+            var head = new VisualElement();
+            head.AddToClassList("cfg-head");
+            card.Add(head);
+            var headTop = new VisualElement();
+            headTop.AddToClassList("cfg-head-top");
+            head.Add(headTop);
+            var title = new Label("⚙ 对局配置");
+            title.AddToClassList("cfg-title");
+            headTop.Add(title);
+            var headActions = new VisualElement();
+            headActions.AddToClassList("cfg-head-actions");
+            headTop.Add(headActions);
+            headActions.Add(new Button { name = "debug-reset-button", text = "恢复默认" });
+            headActions.Add(new Button { name = "debug-close-button", text = "关闭" });
+            var apply = new Button { name = "debug-apply-button", text = "应用并重开" };
+            apply.AddToClassList("primary");
+            headActions.Add(apply);
+            var error = new Label { name = "debug-error" };
+            error.AddToClassList("cfg-error");
+            head.Add(error);
+
+            var body = new VisualElement();
+            body.AddToClassList("cfg-body");
+            card.Add(body);
+            var scroll = new ScrollView(ScrollViewMode.Vertical) { name = "debug-scroll" };
+            scroll.AddToClassList("cfg-scroll");
+            body.Add(scroll);
+
+            scroll.Add(MakeNote("修改仅在“应用并重开”后生效。关闭后保留草稿，重新打开可继续编辑。"));
+            // 七个分区容器由 Rebuild 按草稿结构填充；名字必须与 Unbind/Rebuild 里的查询一致。
+            foreach (var containerName in new[] { "debug-board", "debug-home", "debug-deck", "debug-cards", "debug-boss", "debug-turn", "debug-toggles" })
+                scroll.Add(new VisualElement { name = containerName });
+
+            var jsonSection = new VisualElement();
+            jsonSection.AddToClassList("cfg-section");
+            var jsonTitle = new Label("JSON 导入 / 导出");
+            jsonTitle.AddToClassList("cfg-section-title");
+            jsonSection.Add(jsonTitle);
+            jsonSection.Add(MakeNote("复制完整配置 JSON 后可粘贴到文本文件保存。导入前请先复制文件中的全部 JSON；导入只修改草稿，应用并重开后生效。"));
+            var jsonActions = new VisualElement();
+            jsonActions.AddToClassList("cfg-json-actions");
+            jsonActions.Add(new Button { name = "debug-export-button", text = "复制 JSON" });
+            jsonActions.Add(new Button { name = "debug-import-button", text = "从剪贴板导入" });
+            jsonSection.Add(jsonActions);
+            var jsonStatus = new Label { name = "debug-json-status" };
+            jsonStatus.AddToClassList("cfg-note");
+            jsonSection.Add(jsonStatus);
+            scroll.Add(jsonSection);
+
+            root.Add(panel);
+        }
+
+        /// <summary>
+        /// 生成一条说明文本（沿用 UXML 时代的 .cfg-note 样式）。
+        /// 输入：说明文案；输出：可直接加入容器的 Label。
+        /// </summary>
+        static Label MakeNote(string text)
+        {
+            var note = new Label(text);
+            note.AddToClassList("cfg-note");
+            return note;
+        }
+
+        /// <summary>
         /// 按给定根元素装配面板。
-        /// 输入：界面根元素（来自 UIDocument 或 UXML 实例）与 Bootstrap；
+        /// 输入：界面根元素（来自 UIDocument 或测试构造的容器）与 Bootstrap；
         /// 输出：无。
-        /// 为什么单独暴露：EditMode 测试可以直接实例化 UXML 验证表单生成，
+        /// 为什么单独暴露：EditMode 测试可以在只有 UIDocument 根节点的环境下验证表单生成，
         /// 不需要创建场景、PanelSettings 或进入 Play 模式。
         /// </summary>
         internal void BindTo(VisualElement root, GameBootstrap bootstrap)
         {
             if (bootstrap != null) _bootstrap = bootstrap;
             if (root == null) { Debug.LogWarning("ConfigDebugPanel：界面根元素为空"); return; }
+            EnsurePanelSkeleton(root);
             _panel = root.Q<VisualElement>("debug-panel");
             if (_panel == null) { Debug.LogWarning("ConfigDebugPanel：界面缺少 debug-panel"); return; }
             // 双重保险：USS 已默认 display:none，这里再显式设一次。
@@ -760,3 +851,5 @@ namespace Spotlight
         }
     }
 }
+
+#endif // UNITY_EDITOR || DEVELOPMENT_BUILD

@@ -1,3 +1,8 @@
+// 【仅调试构建编译】整个文件被 UNITY_EDITOR || DEVELOPMENT_BUILD 包住。
+// 为什么：正式包（BuildOptions.None）里这些类型必须完全不存在，否则拆包能看到
+// “这游戏有一套可改棋盘/卡表/Boss 参数的配置编辑器”，等于把半张设计稿交给玩家。
+// 约束：本文件不得被运行层无条件引用；GameBootstrap / HudView 里对它的使用同样包着条件编译。
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
 // 配置面板的字段构建工具：按“标签在上、控件在下”的网页表单样式生成 UI Toolkit 控件。
 // 为什么需要：配置面板有上百个逐卡种字段，如果每个字段都手写一遍 Label + 控件的查询与绑定，
 // 既容易漏绑定，也无法保证“值直接写回草稿对象”的一致性；这里统一成声明式的绑定入口。
@@ -196,3 +201,5 @@ namespace Spotlight
         static int Clamp(int value, int min, int max) => value < min ? min : value > max ? max : value;
     }
 }
+
+#endif // UNITY_EDITOR || DEVELOPMENT_BUILD

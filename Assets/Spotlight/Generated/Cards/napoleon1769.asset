@@ -57,8 +57,6 @@ MonoBehaviour:
   _prefab: {fileID: 2752946033171775599, guid: 5f5192baf45612b4996adbb02e83e92f, type: 3}
   _art: {fileID: 21300000, guid: 9d27b82ae058c2a4baa85ce977c1a022, type: 3}
   _artPath: Assets/Imported/SpotlightArt/CardArt/napoleon1769.png
-  _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceSheet: Cards
 --- !u!114 &8716627894315269224
 MonoBehaviour:
   m_ObjectHideFlags: 1
