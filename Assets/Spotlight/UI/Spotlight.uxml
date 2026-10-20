@@ -158,13 +158,6 @@
         <ui:VisualElement name="log-content" picking-mode="Ignore" class="log-content" />
       </ui:ScrollView>
     </ui:VisualElement>
-    <ui:VisualElement name="side-panel" picking-mode="Ignore" class="panel side-panel" style="display: none;">
-      <ui:Label text="Boss 状态" picking-mode="Ignore" class="section-label" />
-      <ui:Label name="boss-info-label" picking-mode="Ignore" class="info-label" />
-      <ui:Label name="phase-label" picking-mode="Ignore" class="warn-label" />
-      <ui:Label text="选中详情" picking-mode="Ignore" class="section-label" />
-      <ui:Label name="unit-detail" text="点击手牌、己方单位或己方家进行操作" picking-mode="Ignore" class="detail-label" />
-    </ui:VisualElement>
     <ui:VisualElement name="detail-left" picking-mode="Ignore" class="detail-card-info detail-card-info-left" style="display: none;">
       <ui:VisualElement picking-mode="Ignore" class="detail-backdrop-blur" />
       <ui:VisualElement picking-mode="Ignore" class="detail-edge-accent" />
