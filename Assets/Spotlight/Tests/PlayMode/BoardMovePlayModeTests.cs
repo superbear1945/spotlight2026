@@ -14,6 +14,11 @@ using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 using UnityEngine.UIElements;
+// 本文件同时引用 UGUI（棋盘射线、GraphicRaycaster）与 UI Toolkit（HUD 查询），
+// 两个命名空间都有 Button，不固定别名会让 Q<Button> 编译成 CS0104 歧义（PR #40 CI 实测）。
+// 约定与 BossPhasePlayModeTests / BossSpawnerPlayModeTests 一致：Button 指 UI Toolkit 的入口按钮，
+// 需要 UGUI 按钮时显式写 UnityEngine.UI.Button。
+using Button = UnityEngine.UIElements.Button;
 
 namespace Spotlight.Tests
 {
