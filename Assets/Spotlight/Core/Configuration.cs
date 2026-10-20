@@ -435,6 +435,12 @@ namespace Spotlight
     [Serializable]
     public sealed class PresentationRow
     {
+        /// <summary>音乐自然结束后的静音秒数；旧工作簿缺列时沿用 10 秒。</summary>
+        public float musicLoopGapSeconds = 10f;
+        /// <summary>阶段切换或结算的淡出秒数；旧配置默认 5 秒。</summary>
+        public float musicFadeOutSeconds = 5f;
+        /// <summary>阶段切换淡出完成后的静音秒数；旧配置默认 5 秒。</summary>
+        public float musicPhaseGapSeconds = 5f;
         /// <summary>UI 参考分辨率宽。</summary>
         public int referenceWidth;
         /// <summary>UI 参考分辨率高。</summary>
@@ -888,6 +894,12 @@ namespace Spotlight
     /// </summary>
     public sealed class PresentationConfig
     {
+        /// <summary>自然播放结束后等待的秒数。</summary>
+        public float MusicLoopGapSeconds { get; }
+        /// <summary>切阶段和结算的淡出秒数。</summary>
+        public float MusicFadeOutSeconds { get; }
+        /// <summary>阶段切换静音等待的秒数。</summary>
+        public float MusicPhaseGapSeconds { get; }
         /// <summary>UI 参考分辨率宽。</summary>
         public int ReferenceWidth { get; }
         /// <summary>UI 参考分辨率高。</summary>
@@ -927,6 +939,9 @@ namespace Spotlight
         /// </summary>
         public PresentationConfig(PresentationRow p)
         {
+            MusicLoopGapSeconds = p.musicLoopGapSeconds;
+            MusicFadeOutSeconds = p.musicFadeOutSeconds;
+            MusicPhaseGapSeconds = p.musicPhaseGapSeconds;
             ReferenceWidth = p.referenceWidth;
             ReferenceHeight = p.referenceHeight;
             FontSize = p.fontSize;
@@ -1261,10 +1276,19 @@ namespace Spotlight
             if (d.bossSlots.Select(s => s.id).Distinct().Count() != d.bossSlots.Length || d.bossSlots.Any(s => string.IsNullOrWhiteSpace(s.id) || double.IsNaN(s.rowFraction) || s.rowFraction < 0 || s.rowFraction > 1 || s.edgeOffset < 0 || s.edgeOffset >= r.homeRegionWidth)) errors.Add("BossSlots：ID、行比例或边缘偏移非法");
 
             var pz = d.presentation[0];
+            ValidateMusicTiming(pz.musicLoopGapSeconds, "musicLoopGapSeconds", errors);
+            ValidateMusicTiming(pz.musicFadeOutSeconds, "musicFadeOutSeconds", errors);
+            ValidateMusicTiming(pz.musicPhaseGapSeconds, "musicPhaseGapSeconds", errors);
             if (pz.referenceWidth < 1 || pz.referenceHeight < 1 || pz.fontSize < 1 || pz.logLimit < 1 || !Finite(pz.moveSeconds) || !Finite(pz.feedbackSeconds) || !Finite(pz.selectedScale) || pz.moveSeconds < 0 || pz.feedbackSeconds < 0 || pz.selectedScale <= 0) errors.Add("Presentation：尺寸/字号/日志数/动画参数非法");
             foreach (var f in typeof(PresentationRow).GetFields().Where(f => f.FieldType == typeof(string)))
                 if (!System.Text.RegularExpressions.Regex.IsMatch((string)f.GetValue(pz) ?? "", "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$")) errors.Add("Presentation " + f.Name + "：需要 #RRGGBB 或 #RRGGBBAA");
             return errors;
+        }
+
+        /// <summary>验证音乐计时；输入为秒数和字段名，输出追加到统一错误列表，拒绝负数及非有限值。</summary>
+        static void ValidateMusicTiming(float seconds, string field, List<string> errors)
+        {
+            if (!Finite(seconds) || seconds < 0) errors.Add("Presentation " + field + "：必须为非负有限秒数");
         }
 
         /// <summary>

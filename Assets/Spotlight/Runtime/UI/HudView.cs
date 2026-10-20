@@ -19,12 +19,6 @@ namespace Spotlight
     /// </summary>
     public sealed class HudView : MonoBehaviour
     {
-        /// <summary>主音量在 PlayerPrefs 中的持久化键；值域为 0 到 1。</summary>
-        const string _masterVolumePreferenceKey = "Spotlight.MasterVolume";
-        /// <summary>音乐音量在 PlayerPrefs 中的持久化键；为后续音乐总线保留独立值域。</summary>
-        const string _musicVolumePreferenceKey = "Spotlight.MusicVolume";
-        /// <summary>音效音量在 PlayerPrefs 中的持久化键；为后续音效总线保留独立值域。</summary>
-        const string _soundVolumePreferenceKey = "Spotlight.SoundVolume";
         /// <summary>全屏开关在 PlayerPrefs 中的持久化键；1 表示全屏，0 表示窗口。</summary>
         const string _fullscreenPreferenceKey = "Spotlight.Fullscreen";
 
@@ -498,11 +492,11 @@ namespace Spotlight
         {
             if (_settingsOverlay == null) return;
             if (_masterVolumeSlider != null)
-                _masterVolumeSlider.value = PlayerPrefs.GetFloat(_masterVolumePreferenceKey, 0.8f) * 100f;
+                _masterVolumeSlider.SetValueWithoutNotify(GameAudioSettings.Master * 100f);
             if (_musicVolumeSlider != null)
-                _musicVolumeSlider.value = PlayerPrefs.GetFloat(_musicVolumePreferenceKey, 0.6f) * 100f;
+                _musicVolumeSlider.SetValueWithoutNotify(GameAudioSettings.Music * 100f);
             if (_soundVolumeSlider != null)
-                _soundVolumeSlider.value = PlayerPrefs.GetFloat(_soundVolumePreferenceKey, 0.8f) * 100f;
+                _soundVolumeSlider.SetValueWithoutNotify(GameAudioSettings.Sound * 100f);
             if (_fullscreenToggle != null)
                 _fullscreenToggle.value = PlayerPrefs.GetInt(_fullscreenPreferenceKey, Screen.fullScreen ? 1 : 0) != 0;
             RefreshVolumePreview(_masterVolumeSlider, _masterVolumeValue, _masterVolumeFill);
@@ -515,26 +509,24 @@ namespace Spotlight
         /// <summary>
         /// 保存玩家设置并关闭设置面板。
         /// 输入：设置面板中的主音量百分比与全屏开关；输出：立即更新 Unity 设备状态并写入 PlayerPrefs。
-        /// 为什么在关闭时统一应用：避免拖动滑块或试切全屏时反复写盘和切换窗口模式。
+        /// 音量拖动时已实时生效；关闭时统一写盘，全屏仍只在关闭时切换。
         /// </summary>
         void ApplyAndCloseSettingsPanel()
         {
             if (_masterVolumeSlider != null)
             {
-                var volume = Mathf.Clamp01(_masterVolumeSlider.value / 100f);
-                AudioListener.volume = volume;
-                PlayerPrefs.SetFloat(_masterVolumePreferenceKey, volume);
+                GameAudioSettings.SetMaster(_masterVolumeSlider.value / 100f);
             }
             if (_musicVolumeSlider != null)
-                PlayerPrefs.SetFloat(_musicVolumePreferenceKey, Mathf.Clamp01(_musicVolumeSlider.value / 100f));
+                GameAudioSettings.SetMusic(_musicVolumeSlider.value / 100f);
             if (_soundVolumeSlider != null)
-                PlayerPrefs.SetFloat(_soundVolumePreferenceKey, Mathf.Clamp01(_soundVolumeSlider.value / 100f));
+                GameAudioSettings.SetSound(_soundVolumeSlider.value / 100f);
             if (_fullscreenToggle != null)
             {
                 Screen.fullScreen = _fullscreenToggle.value;
                 PlayerPrefs.SetInt(_fullscreenPreferenceKey, _fullscreenToggle.value ? 1 : 0);
             }
-            PlayerPrefs.Save();
+            GameAudioSettings.Save();
             CloseSettingsPanel();
         }
 
@@ -545,6 +537,7 @@ namespace Spotlight
         /// </summary>
         void ResetPlayerSettings()
         {
+            GameAudioSettings.ResetVolumes();
             if (_masterVolumeSlider != null) _masterVolumeSlider.value = 100f;
             if (_musicVolumeSlider != null) _musicVolumeSlider.value = 100f;
             if (_soundVolumeSlider != null) _soundVolumeSlider.value = 100f;
@@ -553,24 +546,33 @@ namespace Spotlight
 
         /// <summary>
         /// 响应主音量滑条变化并同步百分比与橙色填充长度。
-        /// 输入：UI Toolkit 的浮点变更事件；输出：只更新设置面板预览，不在拖动过程中写磁盘。
+        /// 输入：UI Toolkit 的浮点变更事件；输出：实时应用音量并更新预览，不在拖动过程中写磁盘。
         /// </summary>
-        void OnMasterVolumeChanged(ChangeEvent<float> changeEvent) =>
+        void OnMasterVolumeChanged(ChangeEvent<float> changeEvent)
+        {
+            GameAudioSettings.SetMaster(changeEvent.newValue / 100f);
             RefreshVolumePreview(_masterVolumeSlider, _masterVolumeValue, _masterVolumeFill);
+        }
 
         /// <summary>
         /// 响应音乐音量滑条变化并同步百分比与橙色填充长度。
-        /// 输入：UI Toolkit 的浮点变更事件；输出：只更新设置面板预览，最终值在返回时保存。
+        /// 输入：UI Toolkit 的浮点变更事件；输出：实时应用音乐音量并更新预览，最终值在返回时保存。
         /// </summary>
-        void OnMusicVolumeChanged(ChangeEvent<float> changeEvent) =>
+        void OnMusicVolumeChanged(ChangeEvent<float> changeEvent)
+        {
+            GameAudioSettings.SetMusic(changeEvent.newValue / 100f);
             RefreshVolumePreview(_musicVolumeSlider, _musicVolumeValue, _musicVolumeFill);
+        }
 
         /// <summary>
         /// 响应音效音量滑条变化并同步百分比与橙色填充长度。
-        /// 输入：UI Toolkit 的浮点变更事件；输出：只更新设置面板预览，最终值在返回时保存。
+        /// 输入：UI Toolkit 的浮点变更事件；输出：实时应用音效音量并更新预览，最终值在返回时保存。
         /// </summary>
-        void OnSoundVolumeChanged(ChangeEvent<float> changeEvent) =>
+        void OnSoundVolumeChanged(ChangeEvent<float> changeEvent)
+        {
+            GameAudioSettings.SetSound(changeEvent.newValue / 100f);
             RefreshVolumePreview(_soundVolumeSlider, _soundVolumeValue, _soundVolumeFill);
+        }
 
         /// <summary>
         /// 把一个音量滑条的数值同步到独立百分比文本和美术填充条。

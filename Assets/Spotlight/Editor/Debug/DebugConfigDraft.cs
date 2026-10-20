@@ -80,6 +80,7 @@ namespace Spotlight.EditorTools
             try
             {
                 var cleaned = LegacyJsonMigration.Strip(json, noticeList);
+                cleaned = LegacyJsonMigration.AddMusicDefaults(cleaned, noticeList);
                 // JsonUtility 对类型不匹配极为宽松（会把 "yes" 静默当成 false），
                 // 因此必须在反序列化之前自行检查数值/布尔字段的形状。
                 if (!JsonShapeValidator.TryValidate(cleaned, out error)) return false;
@@ -307,6 +308,30 @@ namespace Spotlight.EditorTools
     /// </summary>
     public static class LegacyJsonMigration
     {
+        /// <summary>
+        /// 为旧 JSON 的 Presentation 平面行补齐音乐计时；显式零值保留，非法值交给统一校验。
+        /// 在反序列化前迁移，避免 JsonUtility 对缺失字段不调用构造器而得到三个零。
+        /// </summary>
+        public static string AddMusicDefaults(string json, List<string> notices)
+        {
+            const string token = "\"(?:\\\\.|[^\"\\\\])*\"";
+            var defaults = new[] { ("musicLoopGapSeconds", "10"), ("musicFadeOutSeconds", "5"), ("musicPhaseGapSeconds", "5") };
+            return Regex.Replace(json, "\"presentation\"\\s*:\\s*\\[((?:" + token + "|[^\\]\"])*)\\]", array =>
+                Regex.Replace(array.Value, "\\{(?:" + token + "|[^{}\"])*\\}", row =>
+                {
+                    var additions = new List<string>();
+                    foreach (var entry in defaults)
+                    {
+                        if (Regex.IsMatch(row.Value, "\"" + entry.Item1 + "\"\\s*:")) continue;
+                        additions.Add("\"" + entry.Item1 + "\":" + entry.Item2);
+                        notices?.Add("Presentation 已补齐 " + entry.Item1 + " = " + entry.Item2 + " 秒");
+                    }
+                    if (additions.Count == 0) return row.Value;
+                    var contents = row.Value.Substring(1, row.Value.Length - 2).Trim();
+                    return "{" + contents + (contents.Length == 0 ? "" : ",") + string.Join(",", additions) + "}";
+                }, RegexOptions.Singleline), RegexOptions.Singleline);
+        }
+
         /// <summary>已确认删除的字段名。键为字段名，值为面向策划的提示文本。</summary>
         static readonly (string Pattern, string Notice)[] _deprecated =
         {
