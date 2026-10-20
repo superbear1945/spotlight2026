@@ -1,0 +1,254 @@
+# 手动打包发版：在 Actions 页面点 “Run workflow”，把 Windows 包与 Android APK 打成 Release。
+#
+# 【触发】只允许手动（workflow_dispatch）。为什么不在 PR / push 上跑：
+#   · 一次打包 = 两轮 Unity（Windows + Android IL2CPP），耗时以十分钟计，PR 阶段没有信息量；
+#   · 它占用账号级 Unity 个人版授权“席位”（与 unity-tests.yml 抢同一个席位）；
+#   · 它会创建 tag / Release / 上传资产，是**不可回滚的发布动作**，绝不能由一次提交自动触发。
+#   scripts/check-ci-config.sh 对 release-*.yml 有专门守卫：只允许 workflow_dispatch、
+#   禁止 pull_request / push、必须声明 contents: write、必须走 scripts/next-release-version.sh。
+#
+# 【版本规则】以上一个 Release 的版本为基础 +0.0.1（= patch + 1），由
+#   scripts/next-release-version.sh 统一计算（仓库里只允许这一处版本运算），
+#   同一组数字同时用于：Release tag（vX.Y.Z）、包体 PlayerSettings.bundleVersion、
+#   Android versionCode（X*10000 + Y*100 + Z）。因此“Release 上写的版本”与“包里跑的版本”永远一致。
+#
+# 【为什么不直接用 builder 的内置构建脚本】
+#   本工程的构建入口是 Spotlight.EditorTools.BuildEntry：它负责按平台分目录（Build/windows、
+#   Build/android）、Android 强制 APK + ARMv7&ARM64 + 仅横屏并在构建后还原、以及读出
+#   -buildVersion / -androidVersionCode 写回包体版本。用 buildMethod 指向它，才能保证
+#   “CI 出的包”与“本地菜单出的包”走的是同一条代码路径（AGENTS.md 第 6 节）。
+#   代价是产物落在工程内的 Build/<平台>/ 下，而不是 builder 的默认输出目录，故下面自行归档。
+#
+# 【授权】与 unity-tests.yml 一致：只给 UNITY_EMAIL / UNITY_PASSWORD（个人版席位认领），
+#   不给 UNITY_LICENSE(.ulf) —— .ulf 对 Personal 是机器绑定的，hosted runner 每次换机器必然失败。
+#   game-ci/unity-builder v6 起是 game-ci/cli 的薄封装，cliVersion 必须固定，理由同测试流水线。
+name: 手动打包发版（Windows + Android）
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: '版本递增方式（patch = 上一个 Release +0.0.1，默认）'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+      dry_run:
+        description: '只打包不发布（勾上仍会出包并留可下载的产物，但不创建 tag / Release）'
+        type: boolean
+        default: false
+
+# gh release create 要新建 tag、创建 Release 并上传资产，必须有写权限。
+# 仓库默认的 Workflow permissions 是只读，不显式声明会在最后一步 403。
+permissions:
+  contents: write
+
+# 与 unity-tests.yml 共用同一个仓库级组名：Unity 个人版授权是账号级“席位”，
+# 同一时刻只能有一个 Unity 进程。发版与测试必须排队，不能并行抢席位。
+# 刻意不设 cancel-in-progress：中途杀掉正在构建的 Unity 会泄漏席位，
+# 一次发版被杀掉还会留下“tag 建了但资产没传完”的半成品 Release。
+concurrency:
+  group: unity-seat
+
+jobs:
+  build-and-release:
+    # 本 job 名不是必需检查，不进分支规则集，可自由改名。
+    name: 打包并发布 Release（Windows + Android）
+    runs-on: ubuntu-latest
+    env:
+      # 两个构建步骤各有一次 Unity 授权，统一在这里给，避免一处漏写变成“第二个平台静默失败”。
+      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+      UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+      # unity-builder v6 解析 cliVersion=latest 时会请求 GitHub Releases API，
+      # 匿名请求受共享 runner IP 的匿名限额约束（会 403）；这里同时固定了 cliVersion，
+      # 注入 token 只是双保险（与 unity-tests.yml 的写法保持一致）。
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          # 需要 LFS 实体（字体/卡图等资产参与打包）；完整历史用于校验 tag 是否已存在。
+          lfs: true
+          fetch-depth: 0
+
+      - name: 计算本次发版版本号
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUMP: ${{ inputs.bump }}
+        run: |
+          set -uo pipefail
+          # 上一个 Release 按“版本号”取最大，而不是按创建时间：
+          # 补发一个旧版本号的 Release 不应该把版本号倒回去。
+          ALL_TAGS=$(gh release list --limit 100 --json tagName,isDraft \
+            --jq '.[] | select(.isDraft | not) | .tagName' || true)
+          LATEST=$(printf '%s\n' "$ALL_TAGS" \
+            | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V | tail -n 1 || true)
+          echo "上一个 Release：${LATEST:-（无，本次从 v0.0.1 开始）}"
+
+          # 版本运算的唯一入口（含 patch+1 = “+0.0.1” 与 Android versionCode 推导）。
+          bash scripts/next-release-version.sh --latest "$LATEST" --bump "$BUMP" \
+            | tee -a "$GITHUB_OUTPUT"
+
+          TAG=$(grep '^tag=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2)
+          # tag 已存在说明上一次发版已建好 tag（例如只传到一半失败）：
+          # 继续下去会在 gh release create 处失败，不如在这里直接说清楚怎么收拾。
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "::error::标签 $TAG 已存在，拒绝覆盖。若要重发该版本，请先执行 gh release delete $TAG --cleanup-tag --yes，再重跑本 workflow。"
+            exit 1
+          fi
+          echo "本次发版：$TAG"
+
+      - name: 缓存 Library
+        # 与 unity-tests.yml 共用同一份缓存键：首次发版能直接吃测试 job 留下的导入结果，
+        # 之后的发版也会把这份缓存往前带（两边都是 2022.3.62f3，不跨版本复用）。
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-2022.3.62f3-${{ hashFiles('Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: |
+            Library-2022.3.62f3-
+
+      - name: 打包 Windows
+        uses: game-ci/unity-builder@v6.0.0
+        with:
+          targetPlatform: StandaloneWindows64
+          # 固定 CLI 版本（不跟随 latest）：latest 要先解析 tag，共享 runner IP 会被限流成 403，
+          # 表现为“25 秒内失败、Unity 都没启动”。与 unity-tests.yml 用同一个版本，行为可复现。
+          cliVersion: v0.1.72
+          # 走本工程唯一的构建入口，产物落在 Build/windows（命令行/菜单/CI 同一条代码路径）。
+          buildMethod: Spotlight.EditorTools.BuildEntry.BuildWindows
+          # versioning=Custom + version 会变成 Unity 命令行的 -buildVersion <x.y.z>，
+          # BuildEntry 读它写进 PlayerSettings.bundleVersion（exe 文件版本也随之更新）。
+          versioning: Custom
+          version: ${{ steps.version.outputs.version }}
+          # 上一步刚写过工程内的 Build/ 与可能的 ProjectSettings 序列化差异，
+          # 不能让“分支不干净”把第二个平台的构建挡下来（dirty 检查只看 git，与产物无关）。
+          allowDirtyBuild: true
+
+      - name: 打包 Android（APK）
+        uses: game-ci/unity-builder@v6.0.0
+        with:
+          targetPlatform: Android
+          cliVersion: v0.1.72
+          buildMethod: Spotlight.EditorTools.BuildEntry.BuildAndroid
+          # 只出 APK（AAB 不能直接 adb install）；ARMv7+ARM64、仅横屏、IL2CPP 由 BuildEntry 在
+          # 构建期临时覆盖并还原，这里不重复声明，避免两处口径打架。
+          androidExportType: androidPackage
+          versioning: Custom
+          version: ${{ steps.version.outputs.version }}
+          # versionCode = X*10000 + Y*100 + Z，由 next-release-version.sh 统一算出。
+          androidVersionCode: ${{ steps.version.outputs.versionCode }}
+          allowDirtyBuild: true
+
+      - name: 校验产物并去掉开发期信息
+        run: |
+          set -uo pipefail
+          WIN_EXE=$(find Build/windows -maxdepth 1 -name '*.exe' -print -quit || true)
+          APK=$(find Build/android -maxdepth 1 -name '*.apk' -print -quit || true)
+          if [ -z "$WIN_EXE" ]; then
+            echo "::error::Build/windows 下没有 exe 产物（构建步骤可能静默失败，见上方 Unity 日志）"
+            exit 1
+          fi
+          if [ -z "$APK" ]; then
+            echo "::error::Build/android 下没有 apk 产物（构建步骤可能静默失败，见上方 Unity 日志）"
+            exit 1
+          fi
+          echo "Windows 产物：$WIN_EXE"
+          echo "Android 产物：$APK"
+
+          # Burst 调试目录里是构建机绝对路径（Temp/Burst、Library/Burst、编辑器安装位置），
+          # Unity 自己在目录名里写了 DoNotShip；BuildArtifactCleanup 已删过一遍，这里再兜一次底，
+          # 保证“压缩整个目录”时不会把它带上（scripts/check-ci-config.sh 会检查这一行是否存在）。
+          find Build -maxdepth 3 -name '*_BurstDebugInformation_DoNotShip' -type d -prune -exec rm -rf {} +
+          find Build -maxdepth 3 -name 'lib_burst_generated.pdb' -delete
+
+          # 发布包体去调试化门禁：调试面板文案/类型名、Excel 路径与摘要、Burst 符号都不许进包。
+          # 这一步失败意味着代码或生成资产把开发期信息带进了正式包，必须先修再发版。
+          bash scripts/check-build-hygiene.sh
+
+      - name: 归档为可交付产物
+        id: package
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -uo pipefail
+          mkdir -p dist
+          ZIP="dist/spotlight-${VERSION}-windows.zip"
+          APK_OUT="dist/spotlight-${VERSION}-android.apk"
+          # Windows 是目录包（exe + *_Data/ + UnityPlayer.dll + MonoBleedingEdge/），
+          # 必须整目录压缩：只发 exe 的那一份解压后跑不起来。
+          ( cd Build/windows && zip -r -q "$GITHUB_WORKSPACE/$ZIP" . )
+          cp "$(find Build/android -maxdepth 1 -name '*.apk' -print -quit)" "$APK_OUT"
+          # 校验和让人拿到包后能确认没被中间环节改过。
+          ( cd dist && sha256sum ./* > SHA256SUMS.txt )
+          ls -lh dist
+          echo "zip=$ZIP" >>"$GITHUB_OUTPUT"
+          echo "apk=$APK_OUT" >>"$GITHUB_OUTPUT"
+
+      - name: 上传运行页产物（保留 14 天）
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotlight-${{ steps.version.outputs.version }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: 发布 Release
+        # dry_run 勾上时不发布：用于“先确认这套配置真能出包”的首轮验证。
+        # 两个写法都判一次，避免 inputs 在不同上下文里被当成字符串或布尔值时误判。
+        if: ${{ inputs.dry_run != true && inputs.dry_run != 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          PREVIOUS: ${{ steps.version.outputs.previous }}
+          VERSION_CODE: ${{ steps.version.outputs.versionCode }}
+        run: |
+          set -uo pipefail
+          {
+            echo "本次发版 \`$TAG\`（上一个版本：${PREVIOUS:-无}），由手动触发的打包流程生成。"
+            echo
+            echo "| 资产 | 说明 |"
+            echo "|---|---|"
+            echo "| \`spotlight-$VERSION-windows.zip\` | Windows 64 位桌面版，解压后双击 exe（exe 与数据目录必须同目录） |"
+            echo "| \`spotlight-$VERSION-android.apk\` | Android 安装包（Unity 调试签名，可侧载，不可上架应用商店） |"
+            echo "| \`SHA256SUMS.txt\` | 上面两个文件的校验和 |"
+            echo
+            echo "- 包内版本：Unity \`bundleVersion\` = \`$VERSION\`，Android \`versionCode\` = \`$VERSION_CODE\`"
+            echo "- 构建提交：\`$GITHUB_SHA\`"
+            echo "- 构建运行：$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "- 已通过 \`scripts/check-build-hygiene.sh\`（调试面板文案/类型名、Excel 路径与摘要、Burst 调试目录均不在包内）"
+          } > notes.md
+          gh release create "$TAG" dist/* \
+            --title "$TAG" \
+            --target "$GITHUB_SHA" \
+            --notes-file notes.md
+
+      - name: 写入运行摘要
+        if: always()
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          {
+            echo "## 发版结果"
+            echo
+            echo "| 项 | 值 |"
+            echo "|---|---|"
+            echo "| 版本 | ${TAG:-（未计算成功）} |"
+            echo "| 包内 bundleVersion | ${VERSION:-（未计算成功）} |"
+            echo "| 是否发布 Release | ${DRY_RUN:-false} = dry run 则否 |"
+            echo
+            if [ -d dist ]; then
+              echo "### 产物"
+              echo '```'
+              ls -lh dist
+              echo '```'
+            fi
+          } >>"$GITHUB_STEP_SUMMARY"

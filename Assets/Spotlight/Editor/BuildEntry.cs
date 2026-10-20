@@ -15,7 +15,8 @@ namespace Spotlight.EditorTools
 {
     /// <summary>
     /// Windows / Android 双平台的命令行与菜单构建入口。
-    /// 输入：Build Settings 中启用的场景（无参数）；
+    /// 输入：Build Settings 中启用的场景；可选命令行参数 <c>-buildVersion &lt;x.y.z&gt;</c> 与
+    /// <c>-androidVersionCode &lt;正整数&gt;</c>（CI 发版用，由 <see cref="BuildVersionOverride"/> 读入并在构建后还原）。
     /// 输出：&lt;工程根&gt;/Build/windows/（exe + 数据目录）与 &lt;工程根&gt;/Build/android/*.apk。
     /// 失败时：批处理模式以退出码 1 结束（CI/脚本能直接判定），编辑器内只打印错误不关闭编辑器。
     /// 为什么按平台分子目录：两种产物一个是目录包、一个是单文件，混在同一层里既无法整体压缩交付，
@@ -277,12 +278,27 @@ namespace Spotlight.EditorTools
                 Directory.CreateDirectory(outputDirectory);
                 var executablePath = Path.Combine(outputDirectory, GetExecutableFileName(platform));
 
+                // 发版版本覆盖：CI 通过 -buildVersion / -androidVersionCode 传入本次发版版本，
+                // 与 Release 标签同源（scripts/next-release-version.sh 是唯一版本来源）。
+                // 本地菜单打包不传这两个参数，结果是 null，PlayerSettings 完全不动。
+                string versionError;
+                var versionOverride = BuildVersionOverride.FromCommandLine(out versionError);
+                if (!string.IsNullOrEmpty(versionError))
+                {
+                    // 版本参数非法时宁可让打包失败：带着错误的版本号发布的包无法回收。
+                    Debug.LogError("命令行版本参数非法：" + versionError);
+                    return false;
+                }
+
                 // BuildOptions.None = 非 Development 包。
                 // 调试面板不是“只在界面隐藏”：Runtime/Debug 下的三个文件、GameBootstrap 的
                 // _debugPanel 字段与两个调试按钮都由 UNITY_EDITOR || DEVELOPMENT_BUILD 挡在编译期之外，
                 // 因此正式包里连类型名与按钮文案都不存在（见 docs/使用说明.md 第 5 节）。
                 // 配置门禁（ConfigBuildProcessor）会在此步之前自动执行，不通过时抛出 BuildFailedException。
                 BuildReport report;
+                // 两层作用域：外层临时改写包体版本（构建后还原），内层临时改写平台专属设置。
+                // 顺序无关但必须都包含 BuildPlayer：任何一层漏掉都会让“打完包后工程设置被改掉”。
+                using (versionOverride != null ? versionOverride.Apply() : new NoopScope())
                 using (ApplyPlatformOverrides(platform))
                 {
                     report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
