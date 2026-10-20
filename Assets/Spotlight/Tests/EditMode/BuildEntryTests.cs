@@ -177,7 +177,7 @@ namespace Spotlight.Tests
         [Test]
         public void BuildVersionOverride_RejectsMalformedVersion()
         {
-            foreach (var bad in new[] { "0.2", "v0.2.1", "0.2.1-rc1", "0.2.1.4", "" })
+            foreach (var bad in new[] { "0.2", "v0.2.1", "0.2.1-rc1", "0.2.1.4", "1.2.x" })
             {
                 string error;
                 BuildVersionOverride parsed;
@@ -187,6 +187,29 @@ namespace Spotlight.Tests
                 Assert.That(error, Is.Not.Null.And.Not.Empty);
                 Assert.That(parsed, Is.Null);
             }
+        }
+
+        /// <summary>
+        /// 参数在、但取值为空时按“没有请求覆盖”处理，不得报错。
+        /// 为什么：game-ci 的构建脚本会把它认识的所有参数都拼进命令行，未使用的项以空字符串占位
+        /// （例如 Windows 构建里的 <c>-androidVersionCode ""</c>）；把空值当非法会让正常打包直接失败。
+        /// 代价：空值无法区分“没传”与“传了空”，所以 CI 侧必须保证版本号一定能算出来（否则以工程默认版本出包，不会报错）。
+        /// </summary>
+        [Test]
+        public void BuildVersionOverride_TreatsEmptyValuesAsAbsent()
+        {
+            var args = new[]
+            {
+                "-batchmode",
+                BuildVersionOverride.BundleVersionArgument, "",
+                BuildVersionOverride.AndroidVersionCodeArgument, "",
+            };
+
+            string error;
+            BuildVersionOverride parsed;
+            Assert.That(BuildVersionOverride.TryParse(args, out parsed, out error), Is.True, error);
+            Assert.That(parsed, Is.Null, "空取值应视为未请求覆盖");
+            Assert.That(error, Is.Null.Or.Empty);
         }
 
         /// <summary>
