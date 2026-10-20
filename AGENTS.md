@@ -137,8 +137,8 @@ Assets/Spotlight/
 ### 4.3 编辑器工具（`Spotlight.EditorTools`）
 
 - Excel 管线：`WorkbookReader` / `XlsxInspector`（读取与原始标记扫描）、`TableSchema` / `TableMapper`（表结构与行映射）、`ConfigIssue` / `CompileReport`（问题与报告）、`ConfigCompiler`（校验 + 编译）、`ConfigAssetPublisher`（发布 + 回滚）、`DefaultWorkbookWriter`（默认工作簿）。
-- 资产与模板：`ViewTemplateBuilder`（外观模板与 Prefab）、`CjkFontSetup`（中文字体资产）。
-- 入口与门禁：`SpotlightMenu`（`Tools/Spotlight/*` 菜单）、`ConfigManifest`（编译清单 SO，记录源工作簿路径/摘要/编译时间与产出清单，只供编辑器侧的 `ConfigBuildGate` 与测试使用）、`ConfigBuildGate` + `ConfigBuildProcessor`（`IPreprocessBuildWithReport` + Play 前检查）。
+- 资产与模板：`ViewTemplateBuilder`（外观模板与 Prefab）、`CjkFontSetup`（中文字体资产）、`BrandingIconSetup`（把 `Assets/Imported/SpotlightArt/Branding/游戏图标2.png` 写进 `PlayerSettings` 的 Standalone / Android 图标槽；槽位数量取自 `GetIconSizesForTargetGroup`，逐槽填同一张图，幂等）。
+- 入口与门禁：`SpotlightMenu`（`Tools/Spotlight/*` 菜单，含 `应用游戏图标`）、`ConfigManifest`（编译清单 SO，记录源工作簿路径/摘要/编译时间与产出清单，只供编辑器侧的 `ConfigBuildGate` 与测试使用）、`ConfigBuildGate` + `ConfigBuildProcessor`（`IPreprocessBuildWithReport` + Play 前检查；构建前先调 `BrandingIconSetup.ApplyIfNeeded()` 补齐图标，再跑配置门禁）。
 - 构建产物：`BuildArtifactCleanup`（`IPostprocessBuildWithReport`）删除输出目录下的 `*_BurstDebugInformation_DoNotShip` 与残留的 `lib_burst_generated.pdb`；必须挂接口而不能只改 `BuildEntry`，否则 CI 的构建脚本不会执行清理。打完包用 `scripts/check-build-hygiene.sh` 复核（详见第 7 节）。
 - 打包入口：`BuildEntry` 一个类同时负责 Windows 与 Android（`BuildWindows` / `BuildAndroid` / `BuildAll`，菜单与命令行共用）。产物按平台分子目录：`Build/windows/`（exe + 数据目录）与 `Build/android/*.apk`；每次打包只清空**自己平台**的子目录。Android 在构建期临时覆盖三项设置并在构建后还原：出 **APK**（非 AAB）、**ARMv7 + ARM64** 双 ABI、**仅横屏**（棋盘 10 列宽、CanvasScaler 按 1920×1080 设计，竖屏装不下）。`ProjectSettings` 里 Android 脚本后端**固定 IL2CPP**：Mono 不支持 ARM64，改回 Mono 会让纯 64 位机型装不上，且会被静默降级成纯 armeabi-v7a。
 - 版本覆盖：CI 发版通过 `-buildVersion <x.y.z>` / `-androidVersionCode <正整数>` 把本次版本写进包体，由 `BuildVersionOverride` 解析并临时改写 `PlayerSettings`（构建后还原，工程设置不留 diff）；版本号本身只能来自 `scripts/next-release-version.sh`。参数缺失（本地菜单打包）时完全不动 `PlayerSettings`，参数非法则打包直接失败。

@@ -136,11 +136,15 @@ namespace Spotlight.EditorTools
         public int callbackOrder => 0;
 
         /// <summary>
-        /// 构建前校验配置。
+        /// 构建前校验配置，并把品牌图标兜底写入 PlayerSettings。
         /// 输入：构建报告；输出：无。
+        /// 为什么图标放在这里：图标槽空着时 Unity 会静默打出自带 logo 的包（Android 启动器图标、Windows exe 图标），
+        /// 这是外观问题而不是配置错误，因此在门禁之前先补齐；任何构建入口（BuildEntry、File 菜单、CI）都会经过本回调。
         /// </summary>
         public void OnPreprocessBuild(BuildReport report)
         {
+            BrandingIconSetup.ApplyIfNeeded();
+
             var problems = ConfigBuildGate.Evaluate(ConfigBuildGate.ProjectRoot);
             if (problems.Count == 0) return;
             throw new BuildFailedException("配置门禁阻止构建：\n" + string.Join("\n", problems));

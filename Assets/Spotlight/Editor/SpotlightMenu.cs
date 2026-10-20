@@ -120,6 +120,20 @@ namespace Spotlight.EditorTools
                 : "外观模板仍缺少卡图节点，请先执行“重建外观模板”后重试。");
         }
 
+        /// <summary>
+        /// 把品牌图标写入 PlayerSettings 的 Standalone / Android 图标槽。
+        /// 输入：无；输出：无（结论打印到 Console）。
+        /// 为什么需要菜单入口：打包前会由 ConfigBuildProcessor 兜底应用一次，
+        /// 但 ProjectSettings 被重置或换了图标源图时，需要能手动刷一次并在 Console 看到结果。
+        /// </summary>
+        [MenuItem("Tools/Spotlight/应用游戏图标", priority = 18)]
+        public static void ApplyBrandingIcon()
+        {
+            string message;
+            BrandingIconSetup.Apply(out message);
+            Debug.Log(message);
+        }
+
         /// <summary>生成中文 TMP 字体资产与 UI Toolkit 文本设置。输入：无；输出：无。</summary>
         [MenuItem("Tools/Spotlight/生成中文字体资产", priority = 23)]
         public static void GenerateCjkFont()
