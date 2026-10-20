@@ -1,8 +1,26 @@
-# PR 测试流水线：在 GitHub Action 中运行 Unity EditMode 与 PlayMode 测试。
-# 为什么需要：AGENTS.md 要求每个功能都留下可在 PR 上自动执行的测试；
-# 规则内核与配置编译器不依赖场景，用 EditMode 即可覆盖；
-# 而棋盘渲染、点击落点与 DOTween 动效只有在真实帧循环（PlayMode）里才能验证，
-# 因此两种模式都要在流水线上跑，避免“日志说移动了、界面却没动”这类问题再次漏过。
+# PR 测试流水线：在 GitHub Action 中按“这次改了什么”决定跑哪套 Unity 测试。
+#
+# 为什么需要分层：每个 PR 都恒定跑 EditMode + PlayMode 要 8 分钟 + 两轮 Unity 个人版授权席位，
+# 而“只改了一份文档”的 PR 跑这两套没有任何信息量。分层后：
+#   文档层（docs/**、*.md、AGENTS.md…）      → 两套都跳过，只留大文件/LFS 检查（约 1 分钟）
+#   表现层（Runtime/UI|View|Feedback、uxml/uss、场景…） → 只跑 PlayMode
+#   规则层 / 交叉层（Core、Generated、Config、Editor、卡片视图、.meta、工程设置…） → 两套都跑
+# 判定由 scripts/classify-change-set.sh 负责（带 --self-test，repo-hygiene.yml 每次 PR 都会跑它）。
+# 分层口径与理由见 docs/tasks/completed/CI测试分层计划.md。
+#
+# ⚠️ 为什么不用 workflow 级 `paths:` 过滤（看起来更简单）：
+#   三条必需检查是分支规则集「main」按字符串精确匹配的。workflow 因 paths 过滤没触发时，
+#   对应检查会永久停在 Pending，PR 直接锁死（官方文档 "Skipping workflow runs" 明写了这一点）。
+#   所以本文件绝不能出现 `on.pull_request.paths`：那不是优化，是把自己锁死。
+#   “这次不跑”只能表现为 job 级跳过——官方文档（Status checks）：
+#   "A job that is skipped will report its status as 'Success'. It will not prevent a pull
+#   request from merging, even if it is a required check."，PR 上显示为灰色 Skipped。
+#
+# ⚠️ 为什么两个测试 job 是两个字面名 job 而不是原来的 matrix：
+#   job 级 `if` 读不到 matrix 上下文（只支持 github/needs/vars/inputs），
+#   要“真跳过”（Skipped，而不是 job 跑起来再把步骤跳掉）就必须把矩阵拆开。
+#   job 名被 ruleset 按字符串精确引用，改名必须同步改规则集，否则所有 PR 永久 pending。
+#
 name: Unity Tests
 
 # 只在 PR 上跑，不在 main 的 push 上重复跑。
@@ -10,9 +28,9 @@ name: Unity Tests
 # pull_request（必须走 PR）、non_fast_forward（禁 force push）、deletion（禁删分支），
 # 且 bypass_actors 为空、current_user_can_bypass=never —— main 上不可能出现绕过 PR 的内容。
 # 而 strict 模式要求 PR 分支必须先与 main 同步，于是 PR 阶段被测的 merge 结果
-# 就是合并后落到 main 的那个 commit（实测两者为同一 SHA），push 再跑一遍是 100% 冗余：
-# 白花 4 分钟，还会多占一个 Unity 授权席位（席位不足会误报 no available seats）。
-# 需要临时在 main 上验证时，用 workflow_dispatch 手动触发。
+# 就是合并后落到 main 的那个 commit（实测两者为同一 SHA），push 再跑一遍是 100% 冗余。
+# 需要临时验证或强制跑两套全量时，用 workflow_dispatch 手动触发：
+# 它没有 PR 的 base/head，分类器会按 fail-safe 规则两套都跑。
 on:
   pull_request:
   workflow_dispatch:
@@ -34,6 +52,7 @@ concurrency:
 # 而 unity-test-runner 会用 githubToken 创建 check run 来汇报测试结果（对应下面的 checkName），
 # 权限不足时会直接以 ##[error]Resource not accessible by integration 让整个 job 失败，
 # 表现为“测试全部通过、job 却是红的”这种假失败（PlayMode 4/4 Passed 仍失败即此原因）。
+# pull-requests: write 是给 classify job 发/更新“本次跑了什么”的分类评论用的。
 # 只声明所需的最小集合，避免把仓库全局默认改成读写。
 permissions:
   contents: read
@@ -41,29 +60,59 @@ permissions:
   pull-requests: write
 
 jobs:
-  unity-tests:
-    name: ${{ matrix.testMode }} 测试（Unity ${{ matrix.unityVersion }}）
+  # ===========================================================================
+  # 变更分类：永远运行，唯一负责“这次该跑哪套”的判定与说明
+  # 为什么单独一个 job：被跳过的 job 没有步骤可执行，写不了任何说明；
+  # 而“为什么这套没跑”必须留在某个永远运行的地方（运行摘要 + PR 评论）。
+  # ===========================================================================
+  classify:
+    # 本 job 名不是必需检查，可以自由改名。
+    name: 变更分类（决定跑哪些测试）
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      # 为什么两个矩阵 job 必须串行（max-parallel: 1）：个人版授权是账号级的“席位”，
-      # EditMode 与 PlayMode 同时跑会在同一秒各自执行 --activate-all 认领席位。实测 2026-10-11 09:26:39
-      # 两个 job 相隔 0.06 秒完成激活，输的那个 job 在 Editor 启动时拿到
-      # “Found 0 entitlement groups and 0 free entitlements matching requested entitlement ids”
-      # → “No valid Unity Editor license found”，测试一条都没跑就红（代码没问题；08:52 那次相隔 2.7 秒激活，两个都绿）。
-      # 串行后任一时刻只有一个 job 占席位，代价是总时长约翻倍（约 8 分钟）；
-      # 想恢复并行必须给账号配浮动授权（action 的 unityLicensingServer 输入），否则会继续偶发这种假失败。
-      # 顺带也消除了两个 job 同时往 actions/cache 写同一个 key 的竞争。
-      max-parallel: 1
-      matrix:
-        # 使用 Unity 国际版，与 ProjectSettings/ProjectVersion.txt 保持一致。
-        # 2022.3.62f3 是 2022.3 LTS 的最后一个版本，game-ci 官方镜像已发布对应标签
-        # （unityci/editor:ubuntu-2022.3.62f3-linux-il2cpp-3），无需自建镜像。
-        # 为什么必须写真实版本：Unity 遇到项目版本与编辑器版本不一致时会判定“项目由另一版本
-        # 创建过”并整库重导入，写成别的版本号等于在另一个编辑器上跑绿（CI 绿、本地炸）。
-        # 项目切到国际版编辑器后 ProjectVersion.txt 会变成 2022.3.62f3，与此处一致。
-        unityVersion: [ '2022.3.62f3' ]
-        testMode: [ EditMode, PlayMode ]
+    # BASE/HEAD 放在 job 级：分类、摘要、评论三步都要用同一份 diff（不同步就会各算一份）。
+    env:
+      BASE: ${{ github.event.pull_request.base.sha }}
+      HEAD: ${{ github.event.pull_request.head.sha }}
+    outputs:
+      edit: ${{ steps.classify.outputs.edit }}
+      play: ${{ steps.classify.outputs.play }}
+      reason: ${{ steps.classify.outputs.reason }}
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          # 需要 base...head 的完整历史才能算 diff；分类不读任何资产，故不拉 LFS 实体。
+          fetch-depth: 0
+          lfs: false
+
+      - name: 判定本次变更属于哪一层
+        id: classify
+        # PR 事件才有 BASE/HEAD；workflow_dispatch 为空 → 分类器按 fail-safe 两套都跑。
+        run: bash scripts/classify-change-set.sh >> "$GITHUB_OUTPUT"
+
+      - name: 写入运行摘要
+        if: always()
+        run: bash scripts/classify-change-set.sh --summary >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 在 PR 对话里更新分类结论
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # 评论只是辅助信息：fork PR 的 GITHUB_TOKEN 是只读的、发帖会失败，
+        # 不能让“发不出评论”把整个流水线弄红（结论同时在运行摘要与 Skipped 状态里）。
+        run: bash scripts/classify-change-set.sh --comment || true
+
+  # ===========================================================================
+  # EditMode：规则内核、配置编译器与视图契约
+  # ===========================================================================
+  editmode-tests:
+    # ⚠️ 本 job 名被分支规则集「main」的必需检查（required_status_checks）按字符串精确引用，
+    # 改名必须同步修改 ruleset，否则所有 PR 会永久停在 pending 且没有任何报错提示。
+    name: EditMode 测试（Unity 2022.3.62f3）
+    needs: classify
+    # 分类 job 失败/无输出时也照跑（宁可多花 4 分钟，也不能“分类器坏了还显示通过”）。
+    if: always() && (needs.classify.result != 'success' || needs.classify.outputs.edit == 'true')
+    runs-on: ubuntu-latest
     steps:
       - name: 检出仓库
         uses: actions/checkout@v4
@@ -81,9 +130,9 @@ jobs:
           path: Library
           # Library 与编辑器版本强绑定，缓存键必须带版本号：跨版本复用会出现
           # 无法解释的重导入与偶发失败。
-          key: Library-${{ matrix.unityVersion }}-${{ hashFiles('Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
+          key: Library-2022.3.62f3-${{ hashFiles('Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
           restore-keys: |
-            Library-${{ matrix.unityVersion }}-
+            Library-2022.3.62f3-
 
       - name: 运行测试
         # 为什么固定到 v4.4.0：@v4 会跟随上游发布，而 v4.4.0 起该 action 已改成
@@ -109,13 +158,13 @@ jobs:
           # 注入后限额升到 5000 次/小时；配合下面固定 cliVersion，这一层只是双保险。
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          unityVersion: ${{ matrix.unityVersion }}
+          unityVersion: '2022.3.62f3'
           # 为什么固定 CLI 版本而不是用默认的 latest：latest 要先调 GitHub Releases API 把版本解析成 tag，
           # 那次匿名调用被限流就会 403，整个 job 在 25 秒内直接失败（Unity 都没启动、没有 artifacts，
           # 看起来像测试挂了，其实一步都没跑）。固定成具体 tag 后既不请求该 API，也让每次运行用的 CLI 可复现。
           # 升级前先在本 PR 上验证授权与测试都跑通（当前 game-ci/cli 最新为 v0.1.72，2026-10-03 发布）。
           cliVersion: v0.1.72
-          testMode: ${{ matrix.testMode }}
+          testMode: EditMode
           # 为什么只跑本项目自己的测试（命名空间 Spotlight.Tests）：
           # Packages/manifest.json 里以 git 地址引入的第三方包 com.besty.unity-skills 自带 1600+ 个
           # Editor 测试，其中 PerceptionSkillsTests.SceneSummarize_CountsObjectsCorrectly 依赖
@@ -124,13 +173,60 @@ jobs:
           # 注意：unity-test-runner v4.4.0 已不再暴露 testFilter 输入，
           # 只能用 customParameters 追加 Unity CLI 原生的 -testFilter 参数。
           customParameters: -testFilter Spotlight.Tests
-          artifactsPath: test-results-${{ matrix.testMode }}
+          artifactsPath: test-results-EditMode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
-          checkName: ${{ matrix.testMode }} 测试结果
+          checkName: EditMode 测试结果
 
       - name: 上传测试结果
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ matrix.testMode }}
-          path: test-results-${{ matrix.testMode }}
+          name: test-results-EditMode
+          path: test-results-EditMode
+
+  # ===========================================================================
+  # PlayMode：真实帧循环下的表现与交互（以及主流程冒烟）
+  # ===========================================================================
+  playmode-tests:
+    # ⚠️ 同上：本 job 名被 ruleset 的必需检查按字符串精确引用，改名必须同步改 ruleset。
+    name: PlayMode 测试（Unity 2022.3.62f3）
+    # needs 链同时承担两件事：等待分类结论、保证两套 Unity 不会同时启动抢授权席位
+    # （矩阵拆开后不再有 max-parallel: 1，串行只能靠依赖关系表达；守卫会检查这条）。
+    needs: [classify, editmode-tests]
+    if: always() && (needs.classify.result != 'success' || needs.classify.outputs.play == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: 缓存 Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-2022.3.62f3-${{ hashFiles('Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: |
+            Library-2022.3.62f3-
+
+      - name: 运行测试
+        uses: game-ci/unity-test-runner@v4.4.0
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          unityVersion: '2022.3.62f3'
+          cliVersion: v0.1.72
+          testMode: PlayMode
+          customParameters: -testFilter Spotlight.Tests
+          artifactsPath: test-results-PlayMode
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          checkName: PlayMode 测试结果
+
+      - name: 上传测试结果
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-PlayMode
+          path: test-results-PlayMode
