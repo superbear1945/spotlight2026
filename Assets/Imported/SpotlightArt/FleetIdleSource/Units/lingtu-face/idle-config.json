@@ -1,0 +1,145 @@
+{
+  "id": "lingtu-face",
+  "source": "09-lingtu_face.png",
+  "kind": 2,
+  "canvas": [
+    1536,
+    1536
+  ],
+  "hover": 3,
+  "engines": [],
+  "sourceSize": [
+    1254,
+    1254
+  ],
+  "sourceOffset": [
+    141,
+    141
+  ],
+  "loopDuration": 6,
+  "rigLayers": [
+    {
+      "name": "body",
+      "motion": 0,
+      "sourceRect": [
+        180,
+        372,
+        1196,
+        785
+      ],
+      "atlasRect": [
+        4,
+        4,
+        1196,
+        785
+      ],
+      "motionA": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "motionB": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "left-barrel-sleeve",
+      "motion": 31,
+      "sourceRect": [
+        229,
+        806,
+        143,
+        149
+      ],
+      "atlasRect": [
+        1208,
+        4,
+        143,
+        149
+      ],
+      "motionA": [
+        -0.15,
+        0.989,
+        12,
+        0
+      ],
+      "motionB": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "right-barrel-sleeve",
+      "motion": 31,
+      "sourceRect": [
+        1164,
+        806,
+        143,
+        149
+      ],
+      "atlasRect": [
+        1359,
+        4,
+        143,
+        149
+      ],
+      "motionA": [
+        0.15,
+        0.989,
+        12,
+        0.8
+      ],
+      "motionB": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "atlasSize": [
+    2048,
+    2048
+  ],
+  "rigVersion": 3,
+  "nozzles": [],
+  "nozzleParts": [],
+  "nozzleColor": [
+    0.08,
+    0.52,
+    1,
+    1
+  ],
+  "glowColor": [
+    1,
+    0.13,
+    0.035,
+    1
+  ],
+  "nozzleData": [],
+  "engineData": []
+}

@@ -766,6 +766,12 @@
     font-size: 36px;
 }
 
+.hud-root .round-counter.opponent-turn .round-number-label {
+    color: rgb(184, 59, 34);
+    -unity-text-outline-width: 1px;
+    -unity-text-outline-color: rgba(255, 239, 199, 0.9);
+}
+
 .hud-root .boss-phase-label {
     position: absolute;
     left: 50%;
@@ -806,13 +812,102 @@
 }
 
 .hud-root .log-panel {
-    left: 18px;
-    bottom: 214px;
-    width: 300px;
-    height: 150px;
-    padding: 32px 26px 16px 26px;
-    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/06_panels_notices/dialog/dialog_static.png");
+    left: auto;
+    right: 18px;
+    top: 104px;
+    bottom: auto;
+    width: 360px;
+    height: 329px;
+    padding: 62px 46px 42px 46px;
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Loose/pause_panel.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.hud-root .log-panel .section-label {
+    height: 32px;
+    margin: 0 0 8px 0;
+    padding: 0;
+    border-width: 0;
+    font-size: 20px;
+    color: rgb(108, 201, 255);
+    -unity-text-align: middle-center;
+}
+
+.hud-root .log-panel .log-list {
+    margin: 0;
+    padding: 0 4px;
+}
+
+.hud-root .log-panel .log-list .unity-scroll-view__content-viewport {
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.hud-root .log-panel .log-list .unity-scroll-view__vertical-scroller {
+    width: 34px;
+    margin-left: 6px;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.hud-root .log-panel .log-list .unity-scroller__low-button,
+.hud-root .log-panel .log-list .unity-scroller__high-button {
+    display: none;
+}
+
+.hud-root .log-panel .log-list .unity-scroller__slider {
+    width: 34px;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/scroll_track/scroll_track_static.png");
     -unity-background-scale-mode: scale-and-crop;
+}
+
+.hud-root .log-panel .log-list .unity-base-slider__tracker {
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.hud-root .log-panel .log-list .unity-base-slider__dragger-border {
+    width: 0;
+    height: 0;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.hud-root .log-panel .log-list .unity-base-slider__dragger {
+    width: 34px;
+    min-height: 76px;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/scroll_handle/scroll_handle_normal.png");
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+.hud-root .log-panel .log-list .unity-base-slider__dragger:hover {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/scroll_handle/scroll_handle_hover.png");
+}
+
+.hud-root .log-panel .log-list .unity-base-slider__dragger:active {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/scroll_handle/scroll_handle_pressed.png");
+}
+
+.hud-root .log-panel .log-list .unity-base-slider__dragger:disabled {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/scroll_handle/scroll_handle_disabled.png");
+}
+
+.hud-root .log-panel .log-line {
+    margin-bottom: 5px;
+    font-size: 14px;
+    color: rgb(230, 236, 244);
+}
+
+.hud-root .side-panel {
+    right: 24px;
+    top: 500px;
+    width: 360px;
+    min-height: 220px;
+    max-height: 310px;
 }
 
 .hud-root .bottom-bar {
@@ -857,9 +952,12 @@
 
 .hud-root .error-label {
     top: 180px;
-    width: 620px;
-    min-height: 72px;
-    padding: 23px 72px;
+    width: 540px;
+    height: 98px;
+    min-height: 98px;
+    padding: 26px 70px;
+    font-size: 16px;
+    -unity-background-scale-mode: scale-and-crop;
 }
 
 .hud-root .history-button.log-hidden {
@@ -1506,7 +1604,7 @@
 .hud-root .help-scroll .unity-scroll-view__vertical-scroller {
     width: 44px;
     margin-left: 14px;
-    translate: -6px 0;
+    translate: -14px 0;
     background-color: rgba(0, 0, 0, 0);
 }
 
@@ -1556,6 +1654,49 @@
 
 .hud-root .help-scroll .unity-base-slider__dragger:disabled {
     background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/scroll_handle/scroll_handle_disabled.png");
+}
+
+/*
+ * ScrollView 的纵向滚动条内部仍会继承 Unity 默认主题的横向边距。
+ * 外框、轨道和滑块必须共享同一条左边界，避免两个自定义滚动条看起来左右错位。
+ */
+.hud-root .help-scroll .unity-scroll-view__vertical-scroller,
+.hud-root .log-panel .log-list .unity-scroll-view__vertical-scroller {
+    padding: 0;
+    align-items: center;
+}
+
+.hud-root .help-scroll .unity-scroller__slider,
+.hud-root .log-panel .log-list .unity-scroller__slider {
+    align-self: center;
+}
+
+.hud-root .help-scroll .unity-base-slider__input,
+.hud-root .log-panel .log-list .unity-base-slider__input,
+.hud-root .help-scroll .unity-base-slider__drag-container,
+.hud-root .log-panel .log-list .unity-base-slider__drag-container {
+    left: 0;
+    right: 0;
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.hud-root .help-scroll .unity-base-slider__tracker,
+.hud-root .log-panel .log-list .unity-base-slider__tracker {
+    left: 0;
+    right: 0;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.hud-root .help-scroll .unity-base-slider__dragger,
+.hud-root .log-panel .log-list .unity-base-slider__dragger {
+    left: 0;
+    margin-left: 0;
+    margin-right: 0;
+    translate: 0 0;
 }
 
 .hud-root .help-heading {
@@ -1782,15 +1923,15 @@
 
 /* ── 牌堆 / 墓地计数：同一张卡背底图 + 正中数字 + 上方标题 + 下方阶级小字 ──
    底图是 Assets/Imported/SpotlightArt/CardArt/backside.png（124×183，2:3 的卡背），
-   因此面板做成卡形（132×195，等比 1.06 倍），而不是圆形徽章。
+   因此面板做成卡形（165×244，等比约 1.33 倍），并允许上缘越出底部操作区。
    换图只改这一条 background-image；若新图不是 2:3，同步改 width/height。
    ⚠️ 换图后如果界面没变化，右键本文件 → Reimport：
    USS 会把图片路径解析成 GUID 缓存进导入产物，图片 GUID 变了必须重导本文件。 */
 .pile-panel {
     position: absolute;
-    bottom: 16px;
-    width: 132px;
-    height: 195px;
+    bottom: 42px;
+    width: 165px;
+    height: 244px;
     padding: 0;
     align-items: center;
     justify-content: center;
@@ -1799,11 +1940,11 @@
 }
 
 .pile-left {
-    left: 16px;
+    left: 80px;
 }
 
 .pile-right {
-    right: 16px;
+    right: 80px;
 }
 
 /* 标题贴数字上方：绝对定位，避免牌堆多一行阶级小字把数字顶偏。
@@ -1811,11 +1952,11 @@
    这样文字不依赖插画底色也能读清，同时卡面花纹仍然可见。 */
 .pile-title {
     position: absolute;
-    top: 22px;
-    left: 10px;
-    right: 10px;
+    top: 27px;
+    left: 12px;
+    right: 12px;
     padding: 2px 0;
-    font-size: 15px;
+    font-size: 18px;
     color: rgb(255, 255, 255);
     background-color: rgba(4, 12, 26, 0.75);
     border-radius: 4px;
@@ -1828,7 +1969,7 @@
 /* 数字始终居中于卡面正中：两块面板因此对齐。
    卡背是彩色插画，所以字号放大到 54px 并加 4px 深色描边，保证任何底色上都可读。 */
 .pile-value {
-    font-size: 54px;
+    font-size: 64px;
     color: rgb(255, 255, 255);
     -unity-font-style: bold;
     -unity-text-outline-width: 4px;
@@ -1838,11 +1979,11 @@
 /* 阶级小字贴底部，不参与垂直居中，所以不会影响数字位置。 */
 .pile-tiers {
     position: absolute;
-    bottom: 18px;
-    left: 10px;
-    right: 10px;
+    bottom: 22px;
+    left: 12px;
+    right: 12px;
     padding: 3px 0;
-    font-size: 12px;
+    font-size: 14px;
     color: rgb(255, 255, 255);
     background-color: rgba(4, 12, 26, 0.75);
     border-radius: 4px;

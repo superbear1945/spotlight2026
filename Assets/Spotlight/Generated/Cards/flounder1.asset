@@ -55,8 +55,8 @@ MonoBehaviour:
   _killAction: {fileID: 0}
   _damageMark: {fileID: 0}
   _prefab: {fileID: 6040349664891306591, guid: cc6999830a40b854ab0008018767b847, type: 3}
-  _art: {fileID: 21300000, guid: 5358e519ca9e0e344945fa2a0f224ea1, type: 3}
-  _artPath: Assets/Imported/SpotlightArt/CardArt/flounder1.png
+  _art: {fileID: 21300000, guid: 6cc8d28c81160084aa5e2d056fa3eb2b, type: 3}
+  _artPath: "Assets/Imported/SpotlightArt/Cards/front/\u6BD4\u76EE\u9C7C.png"
   _unitArt: {fileID: 21300000, guid: 5e8c134088a94964497df65fe9b0a525, type: 3}
   _unitArtPath: Assets/Imported/SpotlightArt/Units/flounder1.png
 --- !u!114 &5123715775633487336

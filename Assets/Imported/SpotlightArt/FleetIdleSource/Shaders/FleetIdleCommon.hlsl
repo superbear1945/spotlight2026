@@ -29,6 +29,8 @@ float3 EngineFlow(float2 p,float4 engine,float4 direction,float phase)
     float core=exp(-q*q*12.0)*taper*(1.0-smoothstep(.15,.73,s));
     float halo=exp(-q*q*.38)*taper*.14;
     float3 color=float3(.10,.41,1.0)*(shell*.85+halo)+float3(.62,.90,1.0)*core*.75;
+    if(_HasViewEffects>.5&&_UnitKind>3.5)
+        color=float3(1.0,.28,.04)*(shell*.85+halo)+float3(1.0,.82,.38)*core*.75;
     // A few dim grains make advection visible without turning idle into an attack.
     for(int i=0;i<4;i++)
     {
@@ -43,6 +45,24 @@ float3 EngineFlow(float2 p,float4 engine,float4 direction,float phase)
     return color;
 }
 
+// Rear nozzles face the camera: heat remains inside the aperture, with traveling arcs.
+// Coordinates follow the nacelle rig so the effect cannot drift off the moving nozzle.
+float3 NozzleHeat(float2 p,float4 n,float part,float phase,float offset)
+{
+    if(n.z<1.0)return float3(0,0,0);
+    float2 q=InverseViewMechanism(p,int(part),phase);
+    float2 d=(q-n.xy)/n.zw;
+    float radius=length(d);
+    if(radius>1.0)return float3(0,0,0);
+    float angle=atan2(d.y,d.x);
+    float pulse=.72+.18*sin(phase*3.0+offset)+.10*sin(phase*7.0+offset);
+    float annulus=exp(-pow((radius-.75)/.115,2.0));
+    float blades=.48+.52*pow(.5+.5*sin(angle*9.0-phase*4.0+offset),4.0);
+    float core=exp(-radius*radius*6.5)*(.56+.12*sin(phase*5.0+radius*17.0));
+    float inner=exp(-radius*radius*1.8)*.17;
+    return _NozzleColor.rgb*(annulus*(.30+.40*blades)+inner+core*.8)*pulse;
+}
+
 float4 IdlePixel(float2 uvTop,float seconds)
 {
     float phase=FLEET_TAU*frac(seconds/max(_LoopDuration,.001));
@@ -52,12 +72,14 @@ float4 IdlePixel(float2 uvTop,float seconds)
     ReadRig(p,phase,art,mask);
     float pulse=.56+.22*sin(phase*2.0-.7)+.08*sin(phase*3.0+.8);
     float3 glowColor=_UnitKind>1.5&&_UnitKind<2.5?float3(1.0,.13,.035):float3(.10,.63,1.0);
-    if(_UnitKind>2.5) glowColor=float3(1.0,.37,.045);
+    if(_UnitKind>2.5&&_UnitKind<3.5) glowColor=float3(1.0,.37,.045);
+
+    if(_HasViewEffects>.5)glowColor=_GlowColor.rgb;
 
     // Local window illumination. Painted orange stripes and white armor are excluded by mask.
     float flow=pow(.5+.5*sin(mask.a*88.0+phase*3.0),5.0);
     float illumination=mask.r*(.20+pulse*.58);
-    if(_UnitKind>2.5) illumination=mask.r*(.12+pulse*.34)+mask.g*flow*.67;
+    if(_UnitKind>2.5&&_UnitKind<3.5) illumination=mask.r*(.12+pulse*.34)+mask.g*flow*.67;
     art.rgb=1.0-(1.0-art.rgb)*exp(-glowColor*illumination*1.45);
 
     // Shield inlays carry a traveling sheen and a restrained fine lattice.
@@ -74,6 +96,14 @@ float4 IdlePixel(float2 uvTop,float seconds)
     {
         float sheen=pow(.5+.5*sin((mask.b+mask.a*.55)*9.0-phase),36.0);
         art.rgb=1.0-(1.0-art.rgb)*exp(-float3(.32,.65,.90)*mask.g*sheen*.08);
+    }
+
+    if(_HasViewEffects>.5)
+    {
+        float3 heat=NozzleHeat(p,_Nozzle0,_NozzleParts.x,phase,0.0)
+                  +NozzleHeat(p,_Nozzle1,_NozzleParts.y,phase,1.1)
+                  +NozzleHeat(p,_Nozzle2,_NozzleParts.z,phase,2.2);
+        art.rgb=1.0-(1.0-art.rgb)*exp(-heat*2.2);
     }
 
     // A soft halo around only the registered emissive windows.

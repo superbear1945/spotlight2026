@@ -1,0 +1,261 @@
+{
+  "id": "aodexiusi-back",
+  "source": "05-aodexiusi_back.png",
+  "kind": 0,
+  "canvas": [
+    1536,
+    1536
+  ],
+  "hover": 3,
+  "engines": [],
+  "sourceSize": [
+    1254,
+    1254
+  ],
+  "sourceOffset": [
+    141,
+    141
+  ],
+  "loopDuration": 6,
+  "rigLayers": [
+    {
+      "name": "body",
+      "motion": 0,
+      "sourceRect": [
+        217,
+        213,
+        1103,
+        1107
+      ],
+      "atlasRect": [
+        4,
+        4,
+        1103,
+        1107
+      ],
+      "motionA": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "motionB": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shield-upper-left",
+      "motion": 30,
+      "sourceRect": [
+        203,
+        208,
+        549,
+        541
+      ],
+      "atlasRect": [
+        1120,
+        1119,
+        549,
+        541
+      ],
+      "motionA": [
+        591,
+        591,
+        0.012,
+        0
+      ],
+      "motionB": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shield-upper-right",
+      "motion": 30,
+      "sourceRect": [
+        786,
+        204,
+        548,
+        545
+      ],
+      "atlasRect": [
+        4,
+        1119,
+        548,
+        545
+      ],
+      "motionA": [
+        945,
+        591,
+        -0.012,
+        0
+      ],
+      "motionB": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shield-lower-left",
+      "motion": 30,
+      "sourceRect": [
+        200,
+        789,
+        552,
+        543
+      ],
+      "atlasRect": [
+        560,
+        1119,
+        552,
+        543
+      ],
+      "motionA": [
+        591,
+        941,
+        -0.012,
+        0
+      ],
+      "motionB": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shield-lower-right",
+      "motion": 30,
+      "sourceRect": [
+        786,
+        789,
+        548,
+        547
+      ],
+      "atlasRect": [
+        1115,
+        4,
+        548,
+        547
+      ],
+      "motionA": [
+        945,
+        941,
+        0.012,
+        0
+      ],
+      "motionB": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "atlasSize": [
+    2048,
+    2048
+  ],
+  "rigVersion": 3,
+  "nozzles": [
+    [
+      769,
+      728,
+      40,
+      40
+    ],
+    [
+      661,
+      902,
+      39,
+      39
+    ],
+    [
+      880,
+      902,
+      39,
+      39
+    ]
+  ],
+  "nozzleParts": [
+    0,
+    0,
+    0
+  ],
+  "nozzleColor": [
+    0.08,
+    0.52,
+    1,
+    1
+  ],
+  "glowColor": [
+    0.1,
+    0.63,
+    1,
+    1
+  ],
+  "nozzleData": [
+    {
+      "shape": [
+        769,
+        728,
+        40,
+        40
+      ]
+    },
+    {
+      "shape": [
+        661,
+        902,
+        39,
+        39
+      ]
+    },
+    {
+      "shape": [
+        880,
+        902,
+        39,
+        39
+      ]
+    }
+  ],
+  "engineData": []
+}

@@ -56,6 +56,8 @@ namespace Spotlight
         Color _baseColor = Color.white;
         /// <summary>是否使用自定义文本（家没有 CardDefinitionSO，不能由 Refresh 覆盖）。</summary>
         bool _customText;
+        /// <summary>有完整正面图的手牌是否只显示图片；棋盘单位、家和无图回退卡仍显示原有底色与文字。</summary>
+        bool _handArtOnly;
         /// <summary>是否正在播放“回到格心”的移动动画；视图据此决定要不要重新校准格内位置。</summary>
         bool _moveAnimating;
 
@@ -119,7 +121,7 @@ namespace Spotlight
         /// <summary>
         /// 绑定为手牌实例。
         /// 输入：卡种定义与抽牌堆中的卡牌记录；输出：无。
-        /// 说明：手牌不绑定单位状态，因此生命等属性显示的是配置初值。
+        /// 说明：手牌不绑定单位状态；存在完整正面图时隐藏重复的底色与文字，无图时仍显示配置初值。
         /// </summary>
         public void BindHand(CardDefinitionSO definition, CardRecord record)
         {
@@ -127,6 +129,8 @@ namespace Spotlight
             _customText = false;
             _record = record;
             _unit = null;
+            _handArtOnly = _art != null && _art.enabled && _art.sprite != null;
+            ApplyOverlayPresentation();
             if (_combat != null) _combat.Bind(null);
             if (_resource != null) _resource.Bind(null);
             if (_deploymentPenalty != null) _deploymentPenalty.Bind(null);
@@ -147,6 +151,8 @@ namespace Spotlight
             ApplyArt(definition, true);
             _customText = false;
             _unit = unit;
+            _handArtOnly = false;
+            ApplyOverlayPresentation();
             // 棋盘单位只保存来源卡的值副本，不再持有卡牌记录；绑定棋盘身份时必须清空手牌记录，
             // 避免同一个 Card 组件从“手牌”复用到“棋盘”时留下过期的手牌身份。
             _record = null;
@@ -171,6 +177,8 @@ namespace Spotlight
             ApplyArt(null, false);
             _record = null;
             _unit = null;
+            _handArtOnly = false;
+            ApplyOverlayPresentation();
             if (_combat != null) _combat.Bind(null);
             if (_resource != null) _resource.Bind(null);
             if (_deploymentPenalty != null) _deploymentPenalty.Bind(null);
@@ -192,6 +200,8 @@ namespace Spotlight
             ApplyArt(null, false);
             _record = null;
             _unit = null;
+            _handArtOnly = false;
+            ApplyOverlayPresentation();
             if (_combat != null) _combat.Bind(null);
             if (_resource != null) _resource.Bind(null);
             if (_deploymentPenalty != null) _deploymentPenalty.Bind(null);
@@ -213,7 +223,7 @@ namespace Spotlight
                 if (_nameLabel != null) _nameLabel.text = _definition.Name;
                 // 棋盘单位显示当前攻击/射程/移动，手牌显示卡种基础配置；减攻后的 0 必须能直接看到。
                 if (_statLabel != null) _statLabel.text = _unit != null ? CardText.StatLine(_definition, _unit) : CardText.StatLine(_definition);
-                if (_body != null) _body.color = _highlightColor ?? _baseColor;
+                RefreshBodyColor();
             }
             if (_hpLabel != null)
             {
@@ -246,7 +256,7 @@ namespace Spotlight
                 _highlight.enabled = color.HasValue;
                 if (color.HasValue) _highlight.color = color.Value;
             }
-            if (_body != null) _body.color = color ?? _baseColor;
+            RefreshBodyColor();
         }
 
         /// <summary>
@@ -269,6 +279,30 @@ namespace Spotlight
         }
 
         /// <summary>
+        /// 同步手牌纯图片模式下的底色与文字可见性。
+        /// 输入：无（读取当前是否为有图手牌）；输出：更新三个文本节点与卡面底色。
+        /// 为什么只在手牌启用：正面图已经印有名称和数值，继续叠字会重影；棋盘单位仍需显示实时生命等状态。
+        /// </summary>
+        void ApplyOverlayPresentation()
+        {
+            var showOverlay = !_handArtOnly;
+            if (_nameLabel != null) _nameLabel.gameObject.SetActive(showOverlay);
+            if (_statLabel != null) _statLabel.gameObject.SetActive(showOverlay);
+            if (_hpLabel != null) _hpLabel.gameObject.SetActive(showOverlay);
+            RefreshBodyColor();
+        }
+
+        /// <summary>
+        /// 刷新卡面根 Image 的颜色。
+        /// 输入：无（读取手牌纯图片模式、当前高亮和基础色）；输出：透明或语义底色。
+        /// 为什么保留透明 Image：Button 仍以它作为点击目标，隐藏底块不能破坏手牌点击与拖动。
+        /// </summary>
+        void RefreshBodyColor()
+        {
+            if (_body != null) _body.color = _handArtOnly ? Color.clear : _highlightColor ?? _baseColor;
+        }
+
+        /// <summary>
         /// 设置无高亮时的底色。
         /// 输入：由视图依据 PresentationConfig（分类色 × 阵营色）算出的颜色；输出：无。
         /// 为什么由视图提供：语义颜色集中来自配置表，Card 不理解“资源卡应该是什么颜色”。
@@ -276,7 +310,7 @@ namespace Spotlight
         public void SetBaseColor(Color color)
         {
             _baseColor = color;
-            if (_body != null) _body.color = _highlightColor ?? _baseColor;
+            RefreshBodyColor();
         }
 
         /// <summary>当前是否选中。输入：无；输出：选中状态。用于视图的点击去重。</summary>

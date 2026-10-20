@@ -69,7 +69,7 @@ MonoBehaviour:
   _killAction: {fileID: 0}
   _damageMark: {fileID: 0}
   _prefab: {fileID: 6749875582034393383, guid: 9da3e0744635f8744b3e8535be6fa104, type: 3}
-  _art: {fileID: 21300000, guid: 43853ecfbbfbb114ca5ba7d7ea40f1b1, type: 3}
-  _artPath: Assets/Imported/SpotlightArt/CardArt/ge1.png
+  _art: {fileID: 21300000, guid: abb983e3df08f2d4cb74f001026fe6a4, type: 3}
+  _artPath: "Assets/Imported/SpotlightArt/Cards/front/GE-1\u5F00\u91C7\u673A.png"
   _unitArt: {fileID: 21300000, guid: 136edccf1ea557148a0fbd9d9f9a2d0f, type: 3}
   _unitArtPath: Assets/Imported/SpotlightArt/Units/ge1.png

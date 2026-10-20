@@ -55,8 +55,8 @@ MonoBehaviour:
   _killAction: {fileID: 0}
   _damageMark: {fileID: 0}
   _prefab: {fileID: 8090794716658305640, guid: 465bcbcdac60fdf439f278c2623288af, type: 3}
-  _art: {fileID: 21300000, guid: 5570170519d8e9b49af8254eabef400a, type: 3}
-  _artPath: Assets/Imported/SpotlightArt/CardArt/kepler2.png
+  _art: {fileID: 21300000, guid: ce074f6df42a4eb418b7e77cbedb2496, type: 3}
+  _artPath: "Assets/Imported/SpotlightArt/Cards/front/\u5F00\u666E\u52D2-II.png"
   _unitArt: {fileID: 21300000, guid: 2a429905ae60e2449abaeee1d389b9a8, type: 3}
   _unitArtPath: Assets/Imported/SpotlightArt/Units/kepler2.png
 --- !u!114 &5467767647384584808

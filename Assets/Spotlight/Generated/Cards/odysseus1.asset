@@ -55,8 +55,8 @@ MonoBehaviour:
   _killAction: {fileID: 0}
   _damageMark: {fileID: 0}
   _prefab: {fileID: 3712024423335596556, guid: 0edda512eb8b5274ab45664ff24c4a1a, type: 3}
-  _art: {fileID: 21300000, guid: 0f7b6220e9b9c2948b5d9122dfcaba49, type: 3}
-  _artPath: Assets/Imported/SpotlightArt/CardArt/odysseus1.png
+  _art: {fileID: 21300000, guid: e4a338dcdb061b34d92992bbcc717630, type: 3}
+  _artPath: "Assets/Imported/SpotlightArt/Cards/front/\u5965\u5FB7\u4FEE\u65AF-1.png"
   _unitArt: {fileID: 21300000, guid: d80bbfce0923cf44b9a34d9c78c259e7, type: 3}
   _unitArtPath: Assets/Imported/SpotlightArt/Units/odysseus1.png
 --- !u!114 &5492580657133909310

@@ -53,6 +53,42 @@ float2 InverseMechanism(float2 p,float motion,float phase)
     return p;
 }
 
+// View rigs use measured source-space pivots and independent motion parameters.
+float2 ViewLeverPoint(float2 p,float4 pivot)
+{
+    float2 q=p-pivot.xy;
+    q.y/=max(pivot.w,.01);
+    q=Rotate2(q,pivot.z);
+    q.y*=pivot.w;
+    return pivot.xy+q;
+}
+float2 InverseViewMechanism(float2 p,int index,float phase)
+{
+    float motion=_PartInfo[index].x;
+    float4 a=_PartMotionA[index],b=_PartMotionB[index],c=_PartMotionC[index];
+    if(motion<29.5)return InverseMechanism(p,motion,phase);
+    float cycle=(.5-.5*cos(phase+ a.w));
+    if(motion<30.5)
+    {
+        float angle=(.5-.5*cos(phase*max(b.z,1.0)+a.w))*a.z*_MechanicalAmount;
+        float2 q=p-a.xy;q.y/=max(b.y,.01);q.x-=b.x*q.y;
+        q=Rotate2(q,-angle);q.x+=b.x*q.y;q.y*=b.y;
+        return a.xy+q;
+    }
+    if(motion<31.5)
+        return p-normalize(a.xy)*a.z*(.5-.5*cos(phase*max(b.x,1.0)+a.w))*_MechanicalAmount;
+    // Cylinder barrel rotates at its body anchor; the exposed rod alone telescopes.
+    float angle=(.5-.5*cos(phase*max(c.w,1.0)))*b.z*_MechanicalAmount;
+    float4 pivot=float4(b.xy,angle,b.w);
+    float2 target=ViewLeverPoint(a.zw,pivot);
+    float2 oldDir=normalize(a.zw-a.xy),newDir=normalize(target-a.xy);
+    if(motion<32.5)return a.xy+Rotate2(p-a.xy,atan2(oldDir.y,oldDir.x)-atan2(newDir.y,newDir.x));
+    float2 oldExit=a.xy+oldDir*c.x,newExit=a.xy+newDir*c.x;
+    float oldLength=length(a.zw-a.xy)-c.x,newLength=max(8.0,length(target-a.xy)-c.x);
+    float2 q=p-newExit;
+    return oldExit+oldDir*(dot(q,newDir)*oldLength/newLength)+float2(-oldDir.y,oldDir.x)*dot(q,float2(-newDir.y,newDir.x));
+}
+
 // A true 3D conical screw: a tapered shaft plus a helicoidal cutting fin.
 // Rotation changes which side of each fin faces the camera, rather than rotating a flat picture.
 float DrillDistance(float3 p,float angle)
@@ -131,7 +167,7 @@ void ReadRig(float2 p,float phase,out float4 art,out float4 effectMask)
     for(int i=0;i<12;i++)
     {
         if(float(i)>=_PartCount)break;
-        float2 q=InverseMechanism(p,_PartInfo[i].x,phase);
+        float2 q=InverseViewMechanism(p,i,phase);
         float4 source=_PartSource[i],tile=_PartAtlas[i];
         float2 local=q-source.xy;
         if(local.x<-.5||local.y<-.5||local.x>source.z-.5||local.y>source.w-.5)continue;

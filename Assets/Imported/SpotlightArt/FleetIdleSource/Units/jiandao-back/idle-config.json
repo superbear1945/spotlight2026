@@ -1,0 +1,280 @@
+{
+  "id": "jiandao-back",
+  "source": "06-jiandao_back.png",
+  "kind": 1,
+  "canvas": [
+    2304,
+    1152
+  ],
+  "hover": 2,
+  "engines": [],
+  "sourceSize": [
+    1983,
+    793
+  ],
+  "sourceOffset": [
+    160,
+    179
+  ],
+  "loopDuration": 6,
+  "rigLayers": [
+    {
+      "name": "body",
+      "motion": 0,
+      "sourceRect": [
+        254,
+        187,
+        1842,
+        764
+      ],
+      "atlasRect": [
+        4,
+        4,
+        1842,
+        764
+      ],
+      "motionA": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "motionB": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "left-wing",
+      "motion": 30,
+      "sourceRect": [
+        178,
+        295,
+        578,
+        339
+      ],
+      "atlasRect": [
+        594,
+        776,
+        578,
+        339
+      ],
+      "motionA": [
+        770,
+        569,
+        -0.018,
+        0
+      ],
+      "motionB": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "right-wing",
+      "motion": 30,
+      "sourceRect": [
+        1548,
+        293,
+        582,
+        341
+      ],
+      "atlasRect": [
+        4,
+        776,
+        582,
+        341
+      ],
+      "motionA": [
+        1533,
+        569,
+        0.018,
+        0
+      ],
+      "motionB": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "left-blade",
+      "motion": 30,
+      "sourceRect": [
+        580,
+        641,
+        179,
+        72
+      ],
+      "atlasRect": [
+        940,
+        1125,
+        179,
+        72
+      ],
+      "motionA": [
+        1151,
+        716,
+        -0.075,
+        0
+      ],
+      "motionB": [
+        0,
+        0.65,
+        1,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "right-blade",
+      "motion": 30,
+      "sourceRect": [
+        1545,
+        641,
+        180,
+        72
+      ],
+      "atlasRect": [
+        1127,
+        1125,
+        180,
+        72
+      ],
+      "motionA": [
+        1151,
+        716,
+        0.075,
+        0
+      ],
+      "motionB": [
+        0,
+        0.65,
+        1,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "fixed-engine-occluders",
+      "motion": 0,
+      "sourceRect": [
+        688,
+        440,
+        928,
+        339
+      ],
+      "atlasRect": [
+        4,
+        1125,
+        928,
+        339
+      ],
+      "motionA": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "motionB": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "atlasSize": [
+    2048,
+    2048
+  ],
+  "rigVersion": 3,
+  "nozzles": [
+    [
+      860,
+      650,
+      61,
+      65
+    ],
+    [
+      1443,
+      650,
+      61,
+      65
+    ]
+  ],
+  "nozzleParts": [
+    0,
+    0
+  ],
+  "nozzleColor": [
+    0.08,
+    0.52,
+    1,
+    1
+  ],
+  "glowColor": [
+    0.1,
+    0.63,
+    1,
+    1
+  ],
+  "nozzleData": [
+    {
+      "shape": [
+        860,
+        650,
+        61,
+        65
+      ]
+    },
+    {
+      "shape": [
+        1443,
+        650,
+        61,
+        65
+      ]
+    }
+  ],
+  "engineData": []
+}

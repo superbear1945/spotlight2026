@@ -55,8 +55,8 @@ MonoBehaviour:
   _killAction: {fileID: 0}
   _damageMark: {fileID: 0}
   _prefab: {fileID: 8625650688822247178, guid: cb2f220942b572f4393440fd8b31e98c, type: 3}
-  _art: {fileID: 21300000, guid: 6c45f249177330d49b4691cc1f917a2d, type: 3}
-  _artPath: Assets/Imported/SpotlightArt/CardArt/kyoto_01.png
+  _art: {fileID: 21300000, guid: 05d57dc9d07fb564eb1f4831bc048519, type: 3}
+  _artPath: "Assets/Imported/SpotlightArt/Cards/front/\u4EAC\u90FD\u58F9\u53F7.png"
   _unitArt: {fileID: 21300000, guid: 93c247cbd5a57ef44bc1ae1e7a2a8eda, type: 3}
   _unitArtPath: Assets/Imported/SpotlightArt/Units/kyoto_01.png
 --- !u!114 &1862716182059364987

@@ -20,6 +20,13 @@ namespace Spotlight
         [SerializeField] RectTransform _root;
         /// <summary>卡种缺少生成 Prefab 时使用的回退模板。</summary>
         [SerializeField] Card _cardFallbackPrefab;
+        /// <summary>
+        /// 手牌在底部操作区中的固定显示尺寸。
+        /// 输入：Inspector 可覆盖的宽高；输出：新建手牌的 RectTransform 与 LayoutElement 尺寸。
+        /// 为什么独立于卡牌 Prefab：同一 Prefab 还用于棋盘单位，直接放大模板会同时破坏棋盘格内的卡牌尺寸。
+        /// 240 像素高度配合 HandRoot 底对齐，允许卡牌上缘越出 220 像素高的操作区，同时保持底边完整可见。
+        /// </summary>
+        [SerializeField] Vector2 _cardSize = new Vector2(180f, 240f);
 
         /// <summary>手牌被点击时触发；参数为被点击的卡牌视图。</summary>
         public event Action<Card> CardClicked;
@@ -107,10 +114,10 @@ namespace Spotlight
         /// 为什么必需：外观模板上没有 ILayoutElement，HorizontalLayoutGroup 会把子物体尺寸当作 0，
         /// 导致手牌虽然存在但完全不可见。
         /// </summary>
-        static void EnsureLayoutSize(Card card)
+        void EnsureLayoutSize(Card card)
         {
             var rect = card.transform as RectTransform;
-            var size = rect != null && rect.sizeDelta.x > 1f && rect.sizeDelta.y > 1f ? rect.sizeDelta : new Vector2(120f, 160f);
+            var size = _cardSize.x > 1f && _cardSize.y > 1f ? _cardSize : new Vector2(180f, 240f);
             if (rect != null) rect.sizeDelta = size;
             var element = card.GetComponent<UnityEngine.UI.LayoutElement>();
             if (element == null) element = card.gameObject.AddComponent<UnityEngine.UI.LayoutElement>();

@@ -64,10 +64,10 @@ MonoBehaviour:
   _killAction: {fileID: 0}
   _damageMark: {fileID: 0}
   _prefab: {fileID: 4187055158339705282, guid: d337fc68c2b3d564c9e5245a6ab14006, type: 3}
-  _art: {fileID: 21300000, guid: 4948bc2d1486fa848bee5f47d74c7e6e, type: 3}
-  _artPath: Assets/Imported/SpotlightArt/CardArt/houyi2.png
-  _unitArt: {fileID: 0}
-  _unitArtPath: 
+  _art: {fileID: 21300000, guid: 2730c01e48f8ef94fb0930b4d45c9c61, type: 3}
+  _artPath: "Assets/Imported/SpotlightArt/Cards/front/\u540E\u7FBF-II\u7EFC\u5408\u8230.png"
+  _unitArt: {fileID: 21300000, guid: 0d9546c5144e0ea4cb69da27831d97d7, type: 3}
+  _unitArtPath: "Assets/Imported/SpotlightArt/Units/\u540E\u7FBF-II\u7EFC\u5408\u8230.png"
 --- !u!114 &5654165893681111846
 MonoBehaviour:
   m_ObjectHideFlags: 1

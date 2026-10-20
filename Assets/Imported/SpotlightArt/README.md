@@ -1,22 +1,22 @@
 # Spotlight 美术素材导入说明
 
-本目录于 2026-10-19 从 `D:\Desktop\spotlight` 整理导入，并补充了 ChatGPT 项目“涌现”中本地素材库缺失的附件。
+本目录于 2026-10-19 从 `D:\Desktop\spotlight` 整理导入，并于 2026-10-20 同步该目录的后续更新；同时补充了 ChatGPT 项目“涌现”中本地素材库缺失的附件。
 
 ## 目录映射
 
 - `Branding/`：宣传图、游戏库背景、图标与 Logo。
 - `Backgrounds/`：棋盘与异星场景背景。
-- `Cards/`：卡牌属性图形素材。
-- `MotionReferences/`：单位动作参考图与 MP4 预览。
-- `Units/`：四个单位的透明 PNG 母图，以及 `Player/`、`Boss/` 中的正面、背面和敌舰视图。
+- `Cards/`：卡牌属性图形、类型图、卡背、成品卡面；`Illustrations/` 保存竖版立绘及其 `NEW/` 版本。
+- `MotionReferences/`：单位动作参考图与 MP4 预览；`FleetIdle/` 保存九视图动画预览与渲染信息。
+- `Units/`：单位透明 PNG 母图，以及 `Player/`、`Boss/` 中的正面、背面和敌舰视图。
 - `UI/Loose/`：早期回合 UI 素材，以及操作条、单位信息、暂停和设置界面图。
 - `UI/Components/`：完整外围 UI 套件、四态按钮、面板、装饰和配套清单。
-- `FleetIdleSource/`：FleetIdle 的单位贴图、配置与 Shader 源素材。
+- `FleetIdleSource/`：FleetIdle 九视图的单位贴图、配置与 Shader 源素材。
 
 ## 有意未导入的内容
 
-- `原油战线_UI全套_v1.zip`：与已解压的 `UI/Components/` 重复，避免 Unity 导入无用压缩包。
-- FleetIdle 的离线预览、Python 重建工具和重复源图：这些不是 Unity 运行资源。
+- `原油战线_UI全套_v1.zip` 与 `card.zip`：与已解压素材重复，避免 Unity 导入无用压缩包。
+- FleetIdle 的 Python 重建工具、重复旧包与重复源图：这些不是 Unity 运行资源。
 - `FleetIdlePlayer.cs` 与 `FleetIdleSetup.cs`：原包没有 asmdef，命名空间与字段风格也不符合 Spotlight 的程序集和编码约定。正式接入动画时，需要将运行代码放入 `Spotlight.Runtime`、编辑器代码放入 `Spotlight.Editor`，补充注释和测试后再启用。
 
 ## 使用约定

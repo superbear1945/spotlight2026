@@ -1,0 +1,158 @@
+[
+  {
+    "id": "aodexiusi",
+    "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "duration": 6,
+    "resolution": [
+      768,
+      768
+    ],
+    "fps": 30,
+    "loopMaxPixelError": 0,
+    "unityEditorTested": false
+  },
+  {
+    "id": "jiandao",
+    "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "duration": 6,
+    "resolution": [
+      960,
+      686
+    ],
+    "fps": 30,
+    "loopMaxPixelError": 0,
+    "unityEditorTested": false
+  },
+  {
+    "id": "lingtu",
+    "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "duration": 6,
+    "resolution": [
+      768,
+      768
+    ],
+    "fps": 30,
+    "loopMaxPixelError": 0,
+    "unityEditorTested": false
+  },
+  {
+    "id": "yuanyou",
+    "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "duration": 6,
+    "resolution": [
+      768,
+      768
+    ],
+    "fps": 30,
+    "loopMaxPixelError": 0,
+    "unityEditorTested": false
+  },
+  {
+    "id": "enemy",
+    "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "duration": 6,
+    "resolution": [
+      864,
+      864
+    ],
+    "fps": 30,
+    "loopMaxPixelError": 0,
+    "unityEditorTested": false
+  },
+  {
+    "id": "enemy-back",
+    "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "duration": 6,
+    "resolution": [
+      1200,
+      676
+    ],
+    "fps": 30,
+    "loopMaxPixelError": 0,
+    "unityEditorTested": false
+  },
+  {
+    "id": "enemy-face",
+    "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "duration": 6,
+    "resolution": [
+      1200,
+      676
+    ],
+    "fps": 30,
+    "loopMaxPixelError": 0,
+    "unityEditorTested": false
+  },
+  {
+    "id": "aodexiusi-face",
+    "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "duration": 6,
+    "resolution": [
+      864,
+      864
+    ],
+    "fps": 30,
+    "loopMaxPixelError": 0,
+    "unityEditorTested": false
+  },
+  {
+    "id": "aodexiusi-back",
+    "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "duration": 6,
+    "resolution": [
+      864,
+      864
+    ],
+    "fps": 30,
+    "loopMaxPixelError": 0,
+    "unityEditorTested": false
+  },
+  {
+    "id": "jiandao-back",
+    "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "duration": 6,
+    "resolution": [
+      1200,
+      600
+    ],
+    "fps": 30,
+    "loopMaxPixelError": 0,
+    "unityEditorTested": false
+  },
+  {
+    "id": "jiandao-face",
+    "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "duration": 6,
+    "resolution": [
+      1200,
+      600
+    ],
+    "fps": 30,
+    "loopMaxPixelError": 0,
+    "unityEditorTested": false
+  },
+  {
+    "id": "lingtu-back",
+    "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "duration": 6,
+    "resolution": [
+      1200,
+      676
+    ],
+    "fps": 30,
+    "loopMaxPixelError": 0,
+    "unityEditorTested": false
+  },
+  {
+    "id": "lingtu-face",
+    "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "duration": 6,
+    "resolution": [
+      864,
+      864
+    ],
+    "fps": 30,
+    "loopMaxPixelError": 0,
+    "unityEditorTested": false
+  }
+]

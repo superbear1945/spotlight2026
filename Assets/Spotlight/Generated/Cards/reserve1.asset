@@ -55,10 +55,10 @@ MonoBehaviour:
   _killAction: {fileID: 0}
   _damageMark: {fileID: 0}
   _prefab: {fileID: 5684163427948848223, guid: 874c0d12e2a7f7b4f834fcd63ed5a7cb, type: 3}
-  _art: {fileID: 21300000, guid: 476adb07101368b4f86e4b4ef690f0a1, type: 3}
-  _artPath: Assets/Imported/SpotlightArt/CardArt/reserve1.png
-  _unitArt: {fileID: 0}
-  _unitArtPath: 
+  _art: {fileID: 21300000, guid: 44f5660df3f11fc44831450c5fab45b0, type: 3}
+  _artPath: "Assets/Imported/SpotlightArt/Cards/front/\u6218\u65F6\u50A8\u5907.png"
+  _unitArt: {fileID: 21300000, guid: 12512d6f2250b2b4380a068ea55ec4ea, type: 3}
+  _unitArtPath: "Assets/Imported/SpotlightArt/Units/\u6218\u65F6\u50A8\u5907.png"
 --- !u!114 &7808815215696638980
 MonoBehaviour:
   m_ObjectHideFlags: 1
