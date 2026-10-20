@@ -61,6 +61,9 @@ namespace Spotlight.Tests
         /// <summary>
         /// 大配置在真实帧循环中完整往返，滚动至导入导出区也不绘制 JSON 全文。
         /// 输入：正式配置的副本与额外独立 Boss 卡种；输出：剪贴板、对局隔离、重开面板及渲染日志断言。
+        /// 说明：面板类型在 Spotlight.Editor 程序集里（PlayMode 测试程序集不引用它），
+        /// 因此这里完全通过界面入口（齿轮菜单里的“配置/调试”、面板里的“关闭”）驱动，
+        /// 反而顺带验证了“入口按钮 → 打开面板”这条真实接线。
         /// </summary>
         [UnityTest]
         public IEnumerator LargeConfigurationCanOpenImportExportAndReopenWithoutVertexErrors()
@@ -68,9 +71,9 @@ namespace Spotlight.Tests
             yield return SceneManager.LoadSceneAsync("Assets/Spotlight/Scenes/Spotlight.unity");
             yield return null;
             var bootstrap = Object.FindObjectOfType<GameBootstrap>();
-            var panel = Object.FindObjectOfType<ConfigDebugPanel>();
             var root = Object.FindObjectOfType<HudView>().Root;
-            Assert.That(panel, Is.Not.Null);
+            Assert.That(root.Q<VisualElement>("debug-panel"), Is.Not.Null,
+                "编辑器里应由 ConfigPanelInstaller 创建调试面板骨架");
             _sourceAsset = bootstrap.CurrentAsset;
             _sourceJson = JsonUtility.ToJson(_sourceAsset.ToDocument());
             var document = _sourceAsset.ToDocument();
@@ -87,7 +90,9 @@ namespace Spotlight.Tests
             Assert.That(json.Count(c => !char.IsWhiteSpace(c)), Is.GreaterThan(20000));
             var session = bootstrap.Session;
             GUIUtility.systemCopyBuffer = json;
-            panel.Open();
+            // 入口用顶部工具条的快捷按钮（设置页里的“开发者配置”走的是同一个 DebugRequested）；
+            // 它由 HudView 在编辑器里用代码插入，所以这里能点到就是接线正常。
+            SubmitButton(root, "quick-debug-button");
             yield return null;
             yield return null;
             Assert.That(root.Q<TextField>("debug-json"), Is.Null);
@@ -102,13 +107,13 @@ namespace Spotlight.Tests
             SubmitButton(root, "debug-export-button");
             Assert.That(GUIUtility.systemCopyBuffer, Is.EqualTo(json));
             Assert.That(bootstrap.Session, Is.SameAs(session), "导入草稿不得直接重开对局");
-            panel.Close();
-            panel.Open();
+            SubmitButton(root, "debug-close-button");
+            SubmitButton(root, "quick-debug-button");
             yield return null;
             yield return null;
             Assert.That(root.Q<TextField>("debug-json"), Is.Null);
             Assert.That(GUIUtility.systemCopyBuffer, Is.EqualTo(json));
-            panel.Close();
+            SubmitButton(root, "debug-close-button");
             LogAssert.NoUnexpectedReceived();
         }
     }

@@ -13,9 +13,19 @@
 #      既多花分钟数，又会额外占用一个 Unity 授权席位（个人版席位制，席位不足
 #      会误报 no available seats，表现为与代码无关的红灯）。
 #
-#   4. unity-tests.yml 的 unity-tests job 必须设置 strategy.max-parallel: 1，
-#      避免同一矩阵的两个测试模式同时申请 / 归还共用账号的 Personal 授权。
-#      它只保证矩阵内串行，跨运行（不同 PR 各自一个 run）的账号级互斥靠下一条。
+#   4. unity-tests.yml 的两套 Unity 必须串行（详见 CheckUnitySerialization）：
+#      原先是 matrix + max-parallel: 1；为了让“不需要跑的那套”显示成 Skipped（job 级 if）
+#      矩阵被拆成两个字面名 job（job 级 if 读不到 matrix 上下文），串行改由
+#      playmode-tests 的 needs 链（包含 editmode-tests）保证。它只保证单次运行内串行，
+#      跨运行（不同 PR 各自一个 run）的账号级互斥靠下一条。
+#
+#   4b. unity-tests.yml 不得使用 workflow 级 paths / paths-ignore 过滤（详见 CheckNoPathFilter）：
+#      必需检查按 job 名精确匹配，workflow 没触发时检查会永久停在 Pending，PR 直接锁死。
+#      “这次少跑”只能表现为 job 级跳过（skipped 对 ruleset 等同通过）。
+#
+#   4c. unity-tests.yml 必须调用 scripts/classify-change-set.sh，且两个测试 job 的
+#      needs 要包含 classify、if 要带 always() 与“分类失败就照跑”的兜底（详见 CheckClassificationWiring）：
+#      否则分类 job 自己出错时两个测试 job 会被静默跳过，PR 依旧全绿。
 #
 #   5. unity-tests.yml 顶层的 concurrency 必须是仓库级固定组名（详见 CheckUnityConcurrency）：
 #      Personal 授权是账号级“席位”，同一时刻只能有一个 Unity 进程。不同 PR 跑在各自的
@@ -78,36 +88,107 @@ _on_block() {
 }
 
 # -----------------------------------------------------------------------------
-# CheckUnityParallelism —— 校验 Unity 测试矩阵必须串行
-# 输入：unity-tests.yml 文件路径；输出：失败时打印原因，返回 0 合规 / 1 违规。
-# 为什么需要：PR #9 在并行激活后发生授权识别失败；把串行约束变为可执行守卫，
-# 避免以后无意删除或提高并发上限。仅接受本仓库的块状缩进格式，并精确定位到
-# jobs.unity-tests.strategy，防止其他 job、matrix 或步骤中的同名键误满足检查。
+# _job_block —— 取出某个 job 的配置块（去掉 job 自身那行）
+# 输入：workflow 文件路径、job 键名（如 playmode-tests）；输出：该 job 下所有缩进更深的行
+# 为什么需要：串行与接线约束都必须“只看这个 job 内部”，否则别的 job/注释里出现同名字样
+#   就会误满足检查（历史上 max-parallel 的检查就专门为此按缩进定位过 strategy）。
+# 为什么按缩进：本仓库 workflow 固定是 `jobs:` → 两空格 job 键 → 四空格键；
+#   只依赖缩进可以避开值或注释里出现同名文本造成的误匹配。
 # -----------------------------------------------------------------------------
-CheckUnityParallelism() {
-  if ! awk '
-    /^[[:space:]]*(#|$)/ { next }
-    /^jobs:[[:space:]]*$/ { jobs = 1; next }
-    /^[^[:space:]]/ { jobs = 0; job = 0; strategy = 0 }
-    jobs && /^  [^[:space:]]/ {
-      job = ($0 ~ /^  unity-tests:[[:space:]]*$/)
-      strategy = 0
-      next
-    }
-    job && /^    [^[:space:]]/ {
-      strategy = ($0 ~ /^    strategy:[[:space:]]*$/)
-      next
-    }
-    strategy && /^      max-parallel:/ {
-      count++
-      if ($0 ~ /^      max-parallel:[[:space:]]*1[[:space:]]*(#.*)?$/) valid++
-    }
-    END { exit !(count == 1 && valid == 1) }
-  ' "$1"; then
-    echo "  ❌ $1：jobs.unity-tests.strategy 必须设置 max-parallel: 1，避免矩阵内并行授权竞争"
+_job_block() {
+  awk -v k="$2" '
+    $0 ~ "^  " k ":[[:space:]]*(#.*)?$" { inside = 1; next }
+    inside && /^  [^[:space:]#]/ { inside = 0 }
+    inside { print }
+  ' "$1"
+}
+
+# -----------------------------------------------------------------------------
+# CheckUnitySerialization —— 校验两套 Unity 测试不会同时启动
+# 输入：unity-tests.yml 文件路径；输出：失败时打印原因，返回 0 合规 / 1 违规。
+# 为什么需要：个人版授权是账号级“席位”，两个 Unity 进程同时 --activate-all 时，
+#   输的一方会拿到 “0 free entitlements” 而整轮假失败（PR #9 实测过）。矩阵拆开后
+#   不再有 max-parallel: 1，串行只能靠 playmode-tests 依赖 editmode-tests 表达，
+#   而“把 needs 里的依赖删掉”是一个看起来毫无影响的改动，必须做成可执行守卫。
+# -----------------------------------------------------------------------------
+CheckUnitySerialization() {
+  local _file="$1" _block
+  _block=$(_job_block "$_file" playmode-tests)
+  if [ -z "$_block" ]; then
+    echo "  ❌ $_file：找不到 playmode-tests job —— 串行守卫按 job 键名定位，改名时守卫要同步更新"
+    return 1
+  fi
+  # 两种合法写法：内联 `needs: [classify, editmode-tests]` 与块状列表 `- editmode-tests`。
+  if grep -Eq '^    needs:.*editmode-tests' <<<"$_block" \
+    || grep -Eq '^      - editmode-tests[[:space:]]*(#.*)?$' <<<"$_block"; then
+    return 0
+  fi
+  echo "  ❌ $_file：playmode-tests 的 needs 必须包含 editmode-tests"
+  echo "     ↑ 矩阵拆开后没有 max-parallel: 1，两套 Unity 并行会各自 --activate-all 抢同一个席位。"
+  return 1
+}
+
+# -----------------------------------------------------------------------------
+# CheckNoPathFilter —— 校验 unity-tests.yml 没有用 workflow 级 paths 过滤
+# 输入：unity-tests.yml 文件路径；输出：失败时打印原因，返回 0 合规 / 1 违规。
+# 为什么需要：必需检查按 job 名精确匹配；workflow 因路径过滤未触发时，对应检查会永久
+#   停在 Pending（官方文档 “Skipping workflow runs” 明写），PR 既不能合并也不会报错。
+#   “按变更范围少跑”必须走 job 级跳过（Skipped 等同通过），不能走触发过滤。
+# -----------------------------------------------------------------------------
+CheckNoPathFilter() {
+  local _file="$1" _block
+  _block=$(_on_block "$_file")
+  if grep -Eq '^[[:space:]]*(paths|paths-ignore):' <<<"$_block"; then
+    echo "  ❌ $_file：unity-tests.yml 不得使用 paths / paths-ignore 过滤触发"
+    echo "     ↑ 没触发就没检查结论，必需检查会永久 Pending、PR 被锁死。"
+    echo "       需要按变更范围少跑时用 scripts/classify-change-set.sh 做 job 级跳过。"
     return 1
   fi
   return 0
+}
+
+# -----------------------------------------------------------------------------
+# CheckClassificationWiring —— 校验变更分类接到了两个测试 job 上，且失败时不会静默跳过
+# 输入：unity-tests.yml 文件路径；输出：失败时打印原因，返回 0 合规 / 1 违规。
+# 校验项：
+#   1) 文件里真的调用了 scripts/classify-change-set.sh（分层唯一判定入口）；
+#   2) 两个测试 job 的 needs 都包含 classify；
+#   3) 两个测试 job 的 if 都以 always() 开头并带 needs.classify.result != 'success' 兜底。
+# 为什么需要：分类器算错只会表现为“少跑了一层测试”，没有任何红灯；
+#   而 if 缺少 always() 时，上游 job 被跳过会让下游一起被跳过——同样全绿，同样危险。
+# -----------------------------------------------------------------------------
+CheckClassificationWiring() {
+  local _file="$1" _job _block _rc=0
+
+  if ! grep -q 'scripts/classify-change-set.sh' "$_file"; then
+    echo "  ❌ $_file：没有调用 scripts/classify-change-set.sh —— 分层判定的唯一入口缺失"
+    return 1
+  fi
+
+  for _job in editmode-tests playmode-tests; do
+    _block=$(_job_block "$_file" "$_job")
+    if [ -z "$_block" ]; then
+      echo "  ❌ $_file：找不到 $_job job（分类接线守卫按 job 键名定位）"
+      _rc=1
+      continue
+    fi
+    if ! grep -Eq '^    needs:.*classify' <<<"$_block" && ! grep -Eq '^      - classify[[:space:]]*(#.*)?$' <<<"$_block"; then
+      echo "  ❌ $_file：$_job 的 needs 必须包含 classify"
+      _rc=1
+    fi
+    if ! grep -q 'always()' <<<"$_block"; then
+      echo "  ❌ $_file：$_job 的 if 必须以 always() 开头"
+      echo "     ↑ 否则 needs 里的 job 被跳过时它也会被跳过，PR 显示全绿但什么都没跑。"
+      _rc=1
+    fi
+    if ! grep -Fq "needs.classify.result != 'success'" <<<"$_block"; then
+      echo "  ❌ $_file：$_job 的 if 缺少 needs.classify.result != 'success' 兜底"
+      echo "     ↑ 分类 job 自己出错时应当照跑两套，而不是静默跳过。"
+      _rc=1
+    fi
+  done
+
+  return "$_rc"
 }
 
 # -----------------------------------------------------------------------------
@@ -210,8 +291,10 @@ _check_file() {
   fi
 
   if [ "${_file##*/}" = "unity-tests.yml" ]; then
-    CheckUnityParallelism "$_file" || _rc=1
+    CheckUnitySerialization "$_file" || _rc=1
     CheckUnityConcurrency "$_file" || _rc=1
+    CheckNoPathFilter "$_file" || _rc=1
+    CheckClassificationWiring "$_file" || _rc=1
   fi
 
   CheckBuildArtifactCleanup "$_file" || _rc=1
@@ -405,30 +488,48 @@ _self_test() {
   trap "rm -rf '$_tmp'" RETURN
 
   # _write_unity_tests_fixture —— 构造一份 unity-tests.yml 夹具
-  # 输入：输出路径、strategy 下额外追加的行（%b 解释换行）、
-  #       concurrency 变体（global 默认 / ref / cancel / missing）；输出：写入文件，返回 0。
-  # 为什么抽成函数：E–H（矩阵串行约束）与 P–S（席位并发约束）需要同一份骨架，
+  # 输入：输出路径、串行写法变体（ok / nofollow / block / noalways / nowiring）、
+  #       concurrency 变体（global / ref / cancel / missing）、on 块追加行（可为空，%b 解释换行）；
+  #       输出：写入文件，返回 0。
+  # 为什么抽成函数：串行/接线约束（E–H、W–X）与席位并发约束（P–S）需要同一份骨架，
   # 只在一处构造才能保证“某个用例失败”确实因为目标规则，而不是骨架各自漂移。
-  # concurrency 变体必须能逐项关闭，否则测不出“缺了哪一件会被拦”。
+  # 每个变体必须能单独关闭，否则测不出“缺了哪一件会被拦”。
   _write_unity_tests_fixture() {
-    local _path="$1" _strategy="$2" _conc="${3:-global}"
+    local _path="$1" _serial="${2:-ok}" _conc="${3:-global}" _on_extra="${4:-}"
     {
-      printf '%s\n' \
-        'on:' \
-        '  pull_request:' \
-        '  workflow_dispatch:'
+      printf '%s\n' 'on:' '  pull_request:'
+      [ -n "$_on_extra" ] && printf '%b\n' "$_on_extra"
+      printf '%s\n' '  workflow_dispatch:'
       case "$_conc" in
         global) printf '%s\n' 'concurrency:' '  group: unity-seat' ;;
         ref) printf '%s\n' 'concurrency:' '  group: unity-tests-${{ github.ref }}' ;;
         cancel) printf '%s\n' 'concurrency:' '  group: unity-seat' '  cancel-in-progress: true' ;;
         missing) : ;;
       esac
+      printf '%s\n' 'jobs:' '  classify:' '    runs-on: ubuntu-latest' '    steps:'
+      if [ "$_serial" = "nowiring" ]; then
+        printf '%s\n' '      - run: echo 判定'
+      else
+        printf '%s\n' '      - run: bash scripts/classify-change-set.sh'
+      fi
       printf '%s\n' \
-        'jobs:' \
-        '  unity-tests:' \
-        '    strategy:' \
-        '      fail-fast: false'
-      [ -n "$_strategy" ] && printf '%b\n' "$_strategy"
+        '  editmode-tests:' \
+        '    needs: classify' \
+        "    if: always() && (needs.classify.result != 'success' || needs.classify.outputs.edit == 'true')" \
+        '    steps:' \
+        '      - run: echo edit'
+      printf '%s\n' '  playmode-tests:'
+      case "$_serial" in
+        block) printf '%s\n' '    needs:' '      - classify' '      - editmode-tests' ;;
+        nofollow) printf '%s\n' '    needs: [classify]' ;;
+        *) printf '%s\n' '    needs: [classify, editmode-tests]' ;;
+      esac
+      if [ "$_serial" = "noalways" ]; then
+        printf '%s\n' "    if: needs.classify.outputs.play == 'true'"
+      else
+        printf '%s\n' "    if: always() && (needs.classify.result != 'success' || needs.classify.outputs.play == 'true')"
+      fi
+      printf '%s\n' '    steps:' '      - run: echo play'
     } >"$_path"
     return 0
   }
@@ -488,10 +589,13 @@ YAML
     _rc=1
   fi
 
-  # --- 用例 E–H：通过脚本公开入口验证矩阵串行约束，不能仅凭文件中出现该字符串放行。
-  local _case _setting _expected _actual
-  while IFS='|' read -r _case _setting _expected; do
-    _write_unity_tests_fixture "$_tmp/unity-tests.yml" "$_setting"
+  # --- 用例 E–H、W–X：通过脚本公开入口验证“两套 Unity 串行”与“分层接线”约束，
+  # 不能仅凭文件中出现某段字符串就放行。
+  # 为什么必须覆盖这几条：它们被改坏时的表现都是“PR 全绿但什么都没跑”或“PR 永久 Pending”，
+  # 日志里完全看不出是配置回归。
+  local _case _serial _expected _actual
+  while IFS='|' read -r _case _serial _expected; do
+    _write_unity_tests_fixture "$_tmp/unity-tests.yml" "$_serial"
     _actual=0
     bash "$_self_path" "$_tmp/unity-tests.yml" >/dev/null 2>&1 || _actual=$?
     if [ "$_actual" -eq "$_expected" ]; then
@@ -501,18 +605,30 @@ YAML
       _rc=1
     fi
   done <<'CASES'
-E（串行配置放行）|      max-parallel: 1 # 共用授权|0
-F（缺少并发上限拦截）|      matrix: { testMode: [EditMode, PlayMode] }|1
-G（并行配置拦截）|      max-parallel: 2|1
-H（其他 job 的串行配置不算）|  other:\n    strategy:\n      max-parallel: 1|1
+E（playmode 依赖 editmode → 放行）|ok|0
+F（playmode 不依赖 editmode → 拦截）|nofollow|1
+G（块状 needs 列表 → 放行）|block|0
+H（if 缺 always() 兜底 → 拦截）|noalways|1
+W（没调用分类脚本 → 拦截）|nowiring|1
 CASES
+
+  # --- 用例 X：unity-tests.yml 不得用 workflow 级 paths 过滤（否则必需检查永久 Pending）。
+  _write_unity_tests_fixture "$_tmp/unity-tests.yml" ok global '    paths:\n      - "docs/**"'
+  _actual=0
+  bash "$_self_path" "$_tmp/unity-tests.yml" >/dev/null 2>&1 || _actual=$?
+  if [ "$_actual" -eq 1 ]; then
+    echo "  ✅ 自检 X 通过：unity-tests.yml 出现 paths 过滤 → 已拦截"
+  else
+    echo "  ❌ 自检 X 失败：期望退出码 1，实际 $_actual"
+    _rc=1
+  fi
 
   # --- 用例 P–S：席位并发约束（顶层 concurrency 必须是仓库级单组，且不得中途取消）。
   # 为什么必须覆盖：把组名改回按 ref 分组是“看起来能让 PR 跑得更快”的自然改动，
   # 它只在两个 PR 同时启动时表现为 0 free entitlements，日志里根本看不出是配置回归。
   local _ccase _cconc _cexpected _cactual
   while IFS='|' read -r _ccase _cconc _cexpected; do
-    _write_unity_tests_fixture "$_tmp/unity-tests.yml" '      max-parallel: 1' "$_cconc"
+    _write_unity_tests_fixture "$_tmp/unity-tests.yml" ok "$_cconc"
     _cactual=0
     bash "$_self_path" "$_tmp/unity-tests.yml" >/dev/null 2>&1 || _cactual=$?
     if [ "$_cactual" -eq "$_cexpected" ]; then
@@ -590,7 +706,7 @@ GATES
 if [ "${1:-}" = "--self-test" ]; then
   echo "== check-ci-config.sh 自检 =="
   if _self_test; then
-    echo "自检结果：18/18 通过"
+    echo "自检结果：全部用例通过"
     exit 0
   fi
   echo "自检结果：存在失败用例"

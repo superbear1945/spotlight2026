@@ -49,8 +49,10 @@ namespace Spotlight
         public event Action<bool> PauseChanged;
         /// <summary>点击暂停面板中的“退出战斗”。</summary>
         public event Action ExitRequested;
-        /// <summary>点击调试入口（只有调试构建才会创建这个按钮）。</summary>
+#if UNITY_EDITOR
+        /// <summary>点击调试入口（只有编辑器里才会创建这个按钮；正式包不含该事件）。</summary>
         public event Action DebugRequested;
+#endif
         /// <summary>点击“离场”：请求让当前选中的己方单位离开棋盘。</summary>
         public event Action WithdrawRequested;
         /// <summary>点击齿轮：请求进入菜单（隐藏战斗界面，显示原有面板与「继续 / 重开」）。</summary>
@@ -308,7 +310,7 @@ namespace Spotlight
             if (menuQuit != null) menuQuit.clicked += () => QuitRequested?.Invoke();
             // 调试入口不再写在 UXML 里：正式包连这两个按钮的文案都不能有，
             // 因此只在调试构建里由代码插入（见 CreateDebugEntryButtons）。
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
+#if UNITY_EDITOR
             CreateDebugEntryButtons();
 #endif
             var victoryRestart = _root.Q<Button>("victory-restart-button");
@@ -326,9 +328,9 @@ namespace Spotlight
             SetMenuVisible(false);
         }
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
+#if UNITY_EDITOR
         /// <summary>
-        /// 在调试构建里插入两个调试入口按钮：“顶部工具条的快捷入口”与“设置页底部的「开发者配置」”。
+        /// 在编辑器里插入两个调试入口按钮：“顶部工具条的快捷入口”与“设置页底部的「开发者配置」”。
         /// 输入：无（用 Bind 已查到的 _root / _settingsOverlay）；输出：无。
         /// 为什么用代码而不是 UXML：正式包必须连按钮文案（例如“开发者配置”）都找不到，
         /// 而 UXML 是被无条件打包的资源；放在条件编译里才能保证字符串不出现在正式包中。
@@ -595,16 +597,20 @@ namespace Spotlight
             PauseChanged?.Invoke(false);
         }
 
+#if UNITY_EDITOR
         /// <summary>
         /// 从设置页打开开发者配置面板。
         /// 输入：无；输出：先关闭普通设置，再触发 DebugRequested。
-        /// 为什么不把调试项放在顶部：它只属于编辑器/开发包，并且应与玩家常用入口明确分层。
+        /// 为什么不把调试项放在顶部：它只在编辑器里存在，应与玩家常用入口明确分层。
+        /// 为什么整段包在 #if UNITY_EDITOR 里：它引用的 DebugRequested 只在编辑器编译，
+        /// 玩家程序集里没有这个事件，不守卫会直接编译失败。
         /// </summary>
         void OpenDebugFromSettings()
         {
             CloseSettingsPanel();
             DebugRequested?.Invoke();
         }
+#endif
 
         /// <summary>
         /// 打开规则帮助面板。

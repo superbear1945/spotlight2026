@@ -2,7 +2,7 @@
 
 ## 0. 项目概述
 
-Spotlight 是一款基于卡牌的战棋对局游戏（首版为 Windows 桌面可玩验证版）。
+Spotlight 是一款基于卡牌的战棋对局游戏（首版为 Windows 桌面可玩验证版，同时产出 Android 安装包）。
 
 - 棋盘默认 5 行 × 10 列，双方各有“家”，摧毁敌方家即获胜。
 - 卡牌分资源卡 / 攻击卡 / 特殊卡，可部署、移动、攻击、互换、覆盖升级；星门提供四邻部署扩展。
@@ -23,7 +23,7 @@ Spotlight 是一款基于卡牌的战棋对局游戏（首版为 Windows 桌面�
 | 测试 | Unity Test Framework 1.1.33（NUnit） | EditMode + PlayMode |
 | 动画反馈 | DOTween Free 1.2.765（`Assets/Plugins/Demigiant/DOTween/`） | 仅做表现，不参与结算 |
 | Excel 读取 | ExcelDataReader 3.9.0（`Assets/Plugins/ExcelDataReader/Editor/`） | **仅编辑器**，正式运行包不包含 |
-| 目标平台 | Windows | 首版只交付 Windows 桌面包 |
+| 目标平台 | Windows（桌面）+ Android（手机，APK） | `Build/windows/` 与 `Build/android/` 两个产物目录；Android 固定 IL2CPP、APK 侧载 |
 
 约束：
 
@@ -121,8 +121,8 @@ Assets/Spotlight/
 - 配置资产（运行层）：`CardDefinitionSO` / `CombatConfigSO` / `ResourceConfigSO` / `TeleportConfigSO` / `SpawnConfigSO` / `AdjacentClearanceConfigSO` / `KillActionConfigSO` / `DamageMarkConfigSO` / `SpotlightConfigAsset`，均实现只读接口；`GeneratedConfigAttribute` 是**无参标记**（特性参数会被编译进正式包程序集，不得携带工作簿路径）。**`ConfigManifest` 不在运行层**：它是纯编辑器侧的校验依据，类型放在 `Editor/ConfigManifest.cs`（`Spotlight.EditorTools`），否则它的 `_sourceWorkbookPath` / `_sourceHash` 字段名会跟着进 `Spotlight.Runtime.dll`。
 - 加载入口：`ConfigLoader`（`DefaultResourcePath = "SpotlightConfig"`，`TryCreateConfiguration(...)` 失败返回错误文本，不抛异常）。
 - 视图：`BoardView` / `BoardCellView`（UGUI 棋盘）、`HandView`（UGUI 手牌）、`HudView`（UI Toolkit / UXML）、`DeckSelectionPanel`（UI Toolkit 携带选择面板）、`CardFactory` / `CardText`。
-- 引导与支持：`GameBootstrap`（加载配置 → 创建对局 → 绑定视图）、`DebugSupport.IsDebugAvailable`（调试能力唯一判定点）、`CardFeedback`（DOTween 表现）。
-- 调试面板（**仅编辑器与 Development Build，且是编译期剥离**）：`ConfigDebugPanel` / `ConfigFieldBuilder` / `DebugConfigDraft`（含 `LegacyJsonMigration` / `JsonShapeValidator`）三个文件整文件包在 `#if UNITY_EDITOR || DEVELOPMENT_BUILD` 里；面板骨架由 `ConfigDebugPanel.EnsurePanelSkeleton` **用代码搭建**（不得做成 UXML/任何资产：场景组件一旦持有资产引用，构建依赖收集就会把它打进 `sharedassets`），组件由 `GameBootstrap.EnsureDebugPanel` 运行时创建（**不得挂在场景上**，否则 `globalgamemanagers` 会留下 MonoScript 类名），两个入口按钮由 `HudView` 在调试构建里用代码插入。正式包里这些类型、按钮文案与面板节点都不存在（不是“隐藏”，是“不编译/不打包”）。**调试改动只存在于本次运行会话**。面板里不再有“逐卡种卡组数量”：抽牌堆一侧改为抽牌堆规则 7 项数值 + “调试用强制牌堆”（任一卡种填 > 0 即整体覆盖抽牌堆，全 0 表示按选卡结果生成）。
+- 引导与支持：`GameBootstrap`（加载配置 → 创建对局 → 绑定视图）、`DebugSupport`（`IsDebugAvailable` 判定 + `PanelInstaller` 编辑器侧回调点，面板类型不在运行层）、`CardFeedback`（DOTween 表现）。
+- 调试面板（**只在编辑器内存在**）：`ConfigDebugPanel` / `ConfigFieldBuilder` / `DebugConfigDraft`（含 `LegacyJsonMigration` / `JsonShapeValidator`）与安装器 `ConfigPanelInstaller` 全部放在 `Editor/Debug/`（编进 `Spotlight.Editor`，仅编辑器平台）；面板是**普通类不是 MonoBehaviour**（编辑器程序集的脚本禁止 `AddComponent`），由 `ConfigPanelInstaller`（`[InitializeOnLoad]` 注册到 `DebugSupport.PanelInstaller`）在进入 Play 时 `new` 出来并绑定 `HudView.Root`；面板骨架由 `EnsurePanelSkeleton` **用代码搭建**（不得做成 UXML/任何资产），两个入口按钮由 `HudView` 在 `#if UNITY_EDITOR` 里用代码插入。运行层只保留一个 `_debugPanelOpen` 状态位与编辑器侧回调点。**为什么必须搬到 Editor 下**：`#if` 能把类型从 DLL 去掉，但 Unity 仍会按编辑器编译结果在 `globalgamemanagers.assets` 写出顶层类名；放进仅编辑器程序集后连类名都不进包。**调试改动只存在于本次运行会话**。面板里不再有“逐卡种卡组数量”：抽牌堆一侧改为抽牌堆规则 7 项数值 + “调试用强制牌堆”（任一卡种填 > 0 即整体覆盖抽牌堆，全 0 表示按选卡结果生成）。
 
 表现层硬性约定：
 
@@ -140,7 +140,8 @@ Assets/Spotlight/
 - 资产与模板：`ViewTemplateBuilder`（外观模板与 Prefab）、`CjkFontSetup`（中文字体资产）。
 - 入口与门禁：`SpotlightMenu`（`Tools/Spotlight/*` 菜单）、`ConfigManifest`（编译清单 SO，记录源工作簿路径/摘要/编译时间与产出清单，只供编辑器侧的 `ConfigBuildGate` 与测试使用）、`ConfigBuildGate` + `ConfigBuildProcessor`（`IPreprocessBuildWithReport` + Play 前检查）。
 - 构建产物：`BuildArtifactCleanup`（`IPostprocessBuildWithReport`）删除输出目录下的 `*_BurstDebugInformation_DoNotShip` 与残留的 `lib_burst_generated.pdb`；必须挂接口而不能只改 `BuildEntry`，否则 CI 的构建脚本不会执行清理。打完包用 `scripts/check-build-hygiene.sh` 复核（详见第 7 节）。
-- **发布包体约束（已实测）**：Unity 会在 `globalgamemanagers.assets` 里给每个“引用引擎的程序集”写一份 MonoScript 类名目录，即使类型被 `#if` 挡在正式包程序集之外，**顶层类名仍会入表**（嵌套类型不会）。因此调试/开发专用代码除了条件编译，还必须做到“不挂场景、不持有会被打包的资产引用”：否则场景组件会把类名（甚至整个 UXML）带进包。`check-build-hygiene.sh` 对这 3 个类名在该文件中的命中按“已知残留”提示（不静默、不计失败），一旦出现在其它文件即失败。
+- 打包入口：`BuildEntry` 一个类同时负责 Windows 与 Android（`BuildWindows` / `BuildAndroid` / `BuildAll`，菜单与命令行共用）。产物按平台分子目录：`Build/windows/`（exe + 数据目录）与 `Build/android/*.apk`；每次打包只清空**自己平台**的子目录。Android 在构建期临时覆盖三项设置并在构建后还原：出 **APK**（非 AAB）、**ARMv7 + ARM64** 双 ABI、**仅横屏**（棋盘 10 列宽、CanvasScaler 按 1920×1080 设计，竖屏装不下）。`ProjectSettings` 里 Android 脚本后端**固定 IL2CPP**：Mono 不支持 ARM64，改回 Mono 会让纯 64 位机型装不上，且会被静默降级成纯 armeabi-v7a。
+- **发布包体约束（已实测）**：Unity 会在 `globalgamemanagers.assets` 里给每个“引用引擎的程序集”写一份 MonoScript 类名目录，即使类型被 `#if` 挡在正式包程序集之外，**顶层类名仍会入表**（嵌套类型不会、`noEngineReferences` 的 Core 不在表内）。结论：调试/开发专用代码**不能只靠条件编译**，必须放进仅编辑器编译的程序集（`Editor/` 或 `includePlatforms: ["Editor"]` 的 asmdef）；另外“场景上挂过组件”“持有 UXML 等资产引用”都会把内容拉进包。`scripts/check-build-hygiene.sh` 对上述泄露是硬失败。
 
 ## 5. 关键名词表
 
@@ -196,16 +197,24 @@ Excel 配置编译（菜单 `Tools/Spotlight/*`，按顺序）：
 - 洗牌类逻辑使用 `SeededRandom` 固定种子，保证测试可复现。
 - 测试与调试面板只修改独立配置文档，不得修改加载中的正式 SO 或它暴露的表行引用。`SpotlightConfigAsset.ToDocument()` 必须深拷贝全部可变表行；使用正式资产的 PlayMode 夹具需核对测试前后配置一致，避免测试参数泄漏到后续对局。
 - GitHub Actions（**PR 测试只在 PR 上跑**，不在 main 的 `push` 上重复跑，理由见下一条）：
-  - `.github/workflows/unity-tests.yml`：`game-ci/unity-test-runner`，EditMode + PlayMode 矩阵。
-  - **Unity 席位互斥：** `unity-tests.yml` 的 `concurrency.group` 固定为仓库级 `unity-seat`（不按 ref 分组），因此两个 PR 的测试不会同时启动去抢同一个个人版授权席位；也不得设 `cancel-in-progress: true`（中途杀 Unity 会泄漏席位）。代价是仓库内同一时刻只留 1 个 running + 1 个 pending 运行，排队中的旧运行会被新的顶掉（PR 检查可能显示 cancelled，重跑即可）。这项由 `scripts/check-ci-config.sh` 校验——`max-parallel: 1` 只管矩阵内串行，跨 run 的互斥靠这一条；彻底不排队需浮动授权（`unityLicensingServer`）或 self-hosted runner。
+  - `.github/workflows/unity-tests.yml`：`game-ci/unity-test-runner`，按**变更分层**决定跑哪套（详见下一条“测试分层”与 `docs/tasks/completed/CI测试分层计划.md`）。
+  - **测试分层：** 先由 `classify` job 调用 `scripts/classify-change-set.sh` 给 PR 的变更文件分层，再决定两个测试 job 跑不跑：
+    - **文档层**（`docs/**`、任意 `*.md`、`AGENTS.md`、`.gitattributes`、issue 模板）→ 两套都跳过，只留大文件/LFS 检查（约 1 分钟、零 Unity 席位）。
+    - **表现层**（`Runtime/UI|View|Feedback|Debug/**`、`UI/**` 的 uxml/uss/prefab、`Scenes/**`、`Tests/PlayMode/**`）→ 只跑 PlayMode。
+    - **规则层**（`Core/**`、`Generated/**`、`Config/*.xlsx`、`Editor/**`、`Tests/EditMode/**`）与**交叉层**（`Runtime/Cards|Config|Game/**`、`Fonts/**`、任意 `*.meta`/`*.asmdef`、`ProjectSettings/**`、`Packages/**`、`.github/workflows/**`、`scripts/**`、**一切未识别路径**）→ 两套都跑。
+    - 注释改动不特殊处理：`Core/**` 里只改一行 `//` 也算规则层（脚本拿不到“只改了注释”这个信息，误判=静默漏测）。
+    - 判不准时一律两套都跑（fail-safe）：读不到 diff、空变更集、分类脚本报错都走这条；需要强制全量时用 `workflow_dispatch` 手动触发（无 PR 上下文 → 必然两套）。
+    - 每 PR 的分类结论会写进运行摘要并粘成 PR 上的 sticky 评论；跳过的检查在 PR 上显示为灰色 **Skipped**，对 ruleset 等同通过。
+  - **不能用 workflow 级 `paths:` 过滤：** 三条必需检查按 job 名精确匹配，workflow 没触发时检查会永久停在 Pending、PR 被锁死。“少跑”只能是 job 级跳过，由 `scripts/check-ci-config.sh` 强制拦截 `paths`/`paths-ignore`。
+  - **Unity 席位互斥：** `unity-tests.yml` 的 `concurrency.group` 固定为仓库级 `unity-seat`（不按 ref 分组），因此两个 PR 的测试不会同时启动去抢同一个个人版授权席位；也不得设 `cancel-in-progress: true`（中途杀 Unity 会泄漏席位）。代价是仓库内同一时刻只留 1 个 running + 1 个 pending 运行，排队中的旧运行会被新的顶掉（PR 检查可能显示 cancelled，重跑即可）。矩阵拆成两个字面名 job 后，**单次运行内的两套串行由 `playmode-tests` 的 `needs` 链保证**（不能再靠 `max-parallel: 1`），跨 run 的互斥靠 `concurrency`；两条都由 `scripts/check-ci-config.sh` 校验。彻底不排队需浮动授权（`unityLicensingServer`）或 self-hosted runner。
   - **CI 自动打包：未接入。** 曾经尝试用 `game-ci/unity-builder` + `schedule` 夜间发 Release，已在 PR #29 整体移除：builder 的前置校验只认 `UNITY_LICENSE`(.ulf) 或 `UNITY_SERIAL`，不接受个人版的邮箱+密码激活（两次实测均在步骤启动后 0.3 秒报 `Missing Unity License File and no Serial was found`），而 .ulf 对 Personal 机器绑定、serial 需付费订阅。恢复时需先换成带 `cliVersion` 的 builder（v5.0.1 / v6.0.0）并验证，再重新引入触发与发布步骤；目前发版靠手动流程（见 `docs/使用说明.md` 8.2）。
-  - `.github/workflows/repo-hygiene.yml`：大文件与 Git-LFS 一致性检查（`scripts/check-repo-hygiene.sh`）、CI 触发配置守卫（`scripts/check-ci-config.sh`）与发布包体去调试化检查（`scripts/check-build-hygiene.sh`，无 `Build/` 时自动跳过但自检步骤始终跑），大二进制必须以 LFS 指针入库。
+  - `.github/workflows/repo-hygiene.yml`：大文件与 Git-LFS 一致性检查（`scripts/check-repo-hygiene.sh`）、CI 触发/串行/分层接线守卫（`scripts/check-ci-config.sh`）、变更分类器自检（`scripts/classify-change-set.sh --self-test`）与发布包体去调试化检查（`scripts/check-build-hygiene.sh`，无 `Build/` 时自动跳过但自检步骤始终跑），大二进制必须以 LFS 指针入库。
   - `.github/workflows/diagrams-check.yml`：校验 `docs/diagrams` 图源 JSON 仍能生成结构完整的 drawio。
 - `main` 由分支规则集「main」保护，**只能通过 PR 新增提交**：`pull_request` 规则要求所有变更都关联一个 PR，直推（含普通快进推送）会被拒；`non_fast_forward` 另行禁掉 force push；`deletion` 禁删分支；`bypass_actors` 为空且 `current_user_can_bypass` 为 `never`，连仓库所有者也不能绕过。
 - **不要求任何人工审阅**：`required_approving_review_count` 为 0、`require_code_owner_review` 关闭、`required_reviewers` 为空，仓库也不使用 CODEOWNERS。合并条件只有两条——全部必需检查通过、分支已与最新 main 同步（`strict_required_status_checks_policy` 开启）；两条同时满足后 PR 作者即可自行手动合并（不启用 auto-merge）。
-- 必需检查共三条：`EditMode 测试（Unity 2022.3.62f3）`、`PlayMode 测试（Unity 2022.3.62f3）`、`大文件与 LFS 一致性检查`，且 `strict_required_status_checks_policy` 开启（PR 分支必须先与 main 同步）。因此 PR 阶段被测的结果就是合并后落到 main 的结果，`push` 触发只会重复跑（既费时间又额外占用 Unity 授权席位）；需要临时在 main 上验证时用 `workflow_dispatch`。
+- 必需检查共三条：`EditMode 测试（Unity 2022.3.62f3）`、`PlayMode 测试（Unity 2022.3.62f3）`、`大文件与 LFS 一致性检查`，且 `strict_required_status_checks_policy` 开启（PR 分支必须先与 main 同步）。因此 PR 阶段被测的结果就是合并后落到 main 的结果，`push` 触发只会重复跑（既费时间又额外占用 Unity 授权席位）；需要临时在 main 上验证时用 `workflow_dispatch`。两条 Unity 检查在不需要跑时显示为灰色 **Skipped**，对 ruleset 等同通过。
 - 不需要在本地跑任何测试，测试留在推送后的pr中，github action云端跑，必要时用gh监视测试
-- ⚠️ ruleset 里的必需检查名与 workflow 的 **job 名 / 矩阵变量** 是字符串精确匹配（如 `EditMode 测试（Unity 2022.3.62f3）`）。改动 job 名或矩阵里的 `unityVersion` 时必须同步修改 ruleset，否则所有 PR 会**永久 pending 且没有任何报错提示**。
+- ⚠️ ruleset 里的必需检查名与 workflow 的 **job 名**是字符串精确匹配（如 `EditMode 测试（Unity 2022.3.62f3）`）。矩阵已拆成两个字面名 job，**版本号直接写在 job 名里**：改 `unityVersion` 或改 job 名时必须同步修改 ruleset，否则所有 PR 会**永久 pending 且没有任何报错提示**。推送前先在本地跑 `bash scripts/check-ci-config.sh --check-ruleset` 比对一次。
 
 ## 8. 编码规范
 

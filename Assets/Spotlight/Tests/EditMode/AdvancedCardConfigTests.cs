@@ -5,6 +5,7 @@
 using System;
 using System.Linq;
 using NUnit.Framework;
+using Spotlight.EditorTools;
 using UnityEngine;
 
 namespace Spotlight.Tests

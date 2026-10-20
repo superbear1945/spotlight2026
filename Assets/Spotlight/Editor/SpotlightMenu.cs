@@ -556,10 +556,8 @@ namespace Spotlight.EditorTools
         [MenuItem("Tools/Spotlight/在运行中打开配置面板", priority = 41)]
         public static void OpenConfigPanelInPlayMode()
         {
-            if (!Application.isPlaying) { Debug.LogWarning("请先进入 Play 模式。"); return; }
-            var panel = Object.FindObjectOfType<ConfigDebugPanel>();
-            if (panel == null) { Debug.LogWarning("当前场景中没有 ConfigDebugPanel。"); return; }
-            panel.Open();
+            // 面板的创建与接线都在 ConfigPanelInstaller 里（它是编辑器侧的唯一安装点）。
+            ConfigPanelInstaller.OpenPanelInPlayMode();
         }
 
         /// <summary>
