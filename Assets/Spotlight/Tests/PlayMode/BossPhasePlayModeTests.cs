@@ -147,8 +147,7 @@ namespace Spotlight.Tests
             yield return WaitForPresentation();
             var root = Object.FindObjectOfType<HudView>().Root;
             var state = _bootstrap.Session.GetSnapshot();
-            Assert.That(root.Q<Label>("boss-info-label").text, Does.Contain("第 2 阶段"));
-            Assert.That(root.Q<Label>("boss-info-label").text, Does.Contain("存活 2"));
+            Assert.That(root.Q<Label>("boss-info-label"), Is.Null, "旧侧栏已废弃：Boss 阶段与战舰统计只出现在顶部摘要");
             var summary = root.Q<Label>("boss-phase-label");
             Assert.That(summary.text, Does.Contain("第 2 阶段").And.Contain("锁血").And.Contain("存活 2"));
             Assert.That(summary.visible, Is.True);

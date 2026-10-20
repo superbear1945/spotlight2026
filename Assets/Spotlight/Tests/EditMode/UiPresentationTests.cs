@@ -61,7 +61,7 @@ namespace Spotlight.Tests
             var requiredNames = new[]
             {
                 "turn-label", "resource-label", "plays-label", "round-number-label",
-                "player-life-label", "boss-life-label", "boss-info-label", "boss-phase-label", "phase-label", "unit-detail",
+                "player-life-label", "boss-life-label", "boss-phase-label",
                 "log-panel", "log-list", "log-content", "pause-button", "settings-button", "history-button",
                 "help-button",
                 "withdraw-button", "bomb-deploy-button", "bomb-skip-button",
@@ -92,10 +92,13 @@ namespace Spotlight.Tests
             {
                 "victory-overlay", "victory-art", "defeat-art", "modal-overlay",
                 "error-label", "withdraw-button", "skip-deploy-button", "restart-button",
-                "log-panel", "side-panel", "opponent-turn-indicator", "pause-overlay",
+                "log-panel", "opponent-turn-indicator", "pause-overlay",
                 "settings-overlay", "help-overlay", "menu-overlay", "deck-select-confirm-overlay", "deck-select-mask"
             };
             var uxml = File.ReadAllText(UxmlPath);
+            Assert.That(uxml, Does.Not.Contain("side-panel").And.Not.Contain("boss-info-label")
+                .And.Not.Contain("name=\"phase-label\"").And.Not.Contain("unit-detail"),
+                "右下角旧「Boss 状态 / 选中详情」侧栏已废弃：Boss 阶段看顶部摘要，选中详情看左右卡面详情区");
             Assert.That(uxml, Does.Not.Contain("pause-deck-select-button")
                 .And.Not.Contain("pause-settings-icon")
                 .And.Not.Contain("text=\"重新选卡\""),
