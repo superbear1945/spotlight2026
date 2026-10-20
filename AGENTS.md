@@ -196,16 +196,24 @@ Excel 配置编译（菜单 `Tools/Spotlight/*`，按顺序）：
 - 洗牌类逻辑使用 `SeededRandom` 固定种子，保证测试可复现。
 - 测试与调试面板只修改独立配置文档，不得修改加载中的正式 SO 或它暴露的表行引用。`SpotlightConfigAsset.ToDocument()` 必须深拷贝全部可变表行；使用正式资产的 PlayMode 夹具需核对测试前后配置一致，避免测试参数泄漏到后续对局。
 - GitHub Actions（**PR 测试只在 PR 上跑**，不在 main 的 `push` 上重复跑，理由见下一条）：
-  - `.github/workflows/unity-tests.yml`：`game-ci/unity-test-runner`，EditMode + PlayMode 矩阵。
-  - **Unity 席位互斥：** `unity-tests.yml` 的 `concurrency.group` 固定为仓库级 `unity-seat`（不按 ref 分组），因此两个 PR 的测试不会同时启动去抢同一个个人版授权席位；也不得设 `cancel-in-progress: true`（中途杀 Unity 会泄漏席位）。代价是仓库内同一时刻只留 1 个 running + 1 个 pending 运行，排队中的旧运行会被新的顶掉（PR 检查可能显示 cancelled，重跑即可）。这项由 `scripts/check-ci-config.sh` 校验——`max-parallel: 1` 只管矩阵内串行，跨 run 的互斥靠这一条；彻底不排队需浮动授权（`unityLicensingServer`）或 self-hosted runner。
+  - `.github/workflows/unity-tests.yml`：`game-ci/unity-test-runner`，按**变更分层**决定跑哪套（详见下一条“测试分层”与 `docs/tasks/completed/CI测试分层计划.md`）。
+  - **测试分层：** 先由 `classify` job 调用 `scripts/classify-change-set.sh` 给 PR 的变更文件分层，再决定两个测试 job 跑不跑：
+    - **文档层**（`docs/**`、任意 `*.md`、`AGENTS.md`、`.gitattributes`、issue 模板）→ 两套都跳过，只留大文件/LFS 检查（约 1 分钟、零 Unity 席位）。
+    - **表现层**（`Runtime/UI|View|Feedback|Debug/**`、`UI/**` 的 uxml/uss/prefab、`Scenes/**`、`Tests/PlayMode/**`）→ 只跑 PlayMode。
+    - **规则层**（`Core/**`、`Generated/**`、`Config/*.xlsx`、`Editor/**`、`Tests/EditMode/**`）与**交叉层**（`Runtime/Cards|Config|Game/**`、`Fonts/**`、任意 `*.meta`/`*.asmdef`、`ProjectSettings/**`、`Packages/**`、`.github/workflows/**`、`scripts/**`、**一切未识别路径**）→ 两套都跑。
+    - 注释改动不特殊处理：`Core/**` 里只改一行 `//` 也算规则层（脚本拿不到“只改了注释”这个信息，误判=静默漏测）。
+    - 判不准时一律两套都跑（fail-safe）：读不到 diff、空变更集、分类脚本报错都走这条；需要强制全量时用 `workflow_dispatch` 手动触发（无 PR 上下文 → 必然两套）。
+    - 每 PR 的分类结论会写进运行摘要并粘成 PR 上的 sticky 评论；跳过的检查在 PR 上显示为灰色 **Skipped**，对 ruleset 等同通过。
+  - **不能用 workflow 级 `paths:` 过滤：** 三条必需检查按 job 名精确匹配，workflow 没触发时检查会永久停在 Pending、PR 被锁死。“少跑”只能是 job 级跳过，由 `scripts/check-ci-config.sh` 强制拦截 `paths`/`paths-ignore`。
+  - **Unity 席位互斥：** `unity-tests.yml` 的 `concurrency.group` 固定为仓库级 `unity-seat`（不按 ref 分组），因此两个 PR 的测试不会同时启动去抢同一个个人版授权席位；也不得设 `cancel-in-progress: true`（中途杀 Unity 会泄漏席位）。代价是仓库内同一时刻只留 1 个 running + 1 个 pending 运行，排队中的旧运行会被新的顶掉（PR 检查可能显示 cancelled，重跑即可）。矩阵拆成两个字面名 job 后，**单次运行内的两套串行由 `playmode-tests` 的 `needs` 链保证**（不能再靠 `max-parallel: 1`），跨 run 的互斥靠 `concurrency`；两条都由 `scripts/check-ci-config.sh` 校验。彻底不排队需浮动授权（`unityLicensingServer`）或 self-hosted runner。
   - **CI 自动打包：未接入。** 曾经尝试用 `game-ci/unity-builder` + `schedule` 夜间发 Release，已在 PR #29 整体移除：builder 的前置校验只认 `UNITY_LICENSE`(.ulf) 或 `UNITY_SERIAL`，不接受个人版的邮箱+密码激活（两次实测均在步骤启动后 0.3 秒报 `Missing Unity License File and no Serial was found`），而 .ulf 对 Personal 机器绑定、serial 需付费订阅。恢复时需先换成带 `cliVersion` 的 builder（v5.0.1 / v6.0.0）并验证，再重新引入触发与发布步骤；目前发版靠手动流程（见 `docs/使用说明.md` 8.2）。
-  - `.github/workflows/repo-hygiene.yml`：大文件与 Git-LFS 一致性检查（`scripts/check-repo-hygiene.sh`）、CI 触发配置守卫（`scripts/check-ci-config.sh`）与发布包体去调试化检查（`scripts/check-build-hygiene.sh`，无 `Build/` 时自动跳过但自检步骤始终跑），大二进制必须以 LFS 指针入库。
+  - `.github/workflows/repo-hygiene.yml`：大文件与 Git-LFS 一致性检查（`scripts/check-repo-hygiene.sh`）、CI 触发/串行/分层接线守卫（`scripts/check-ci-config.sh`）、变更分类器自检（`scripts/classify-change-set.sh --self-test`）与发布包体去调试化检查（`scripts/check-build-hygiene.sh`，无 `Build/` 时自动跳过但自检步骤始终跑），大二进制必须以 LFS 指针入库。
   - `.github/workflows/diagrams-check.yml`：校验 `docs/diagrams` 图源 JSON 仍能生成结构完整的 drawio。
 - `main` 由分支规则集「main」保护，**只能通过 PR 新增提交**：`pull_request` 规则要求所有变更都关联一个 PR，直推（含普通快进推送）会被拒；`non_fast_forward` 另行禁掉 force push；`deletion` 禁删分支；`bypass_actors` 为空且 `current_user_can_bypass` 为 `never`，连仓库所有者也不能绕过。
 - **不要求任何人工审阅**：`required_approving_review_count` 为 0、`require_code_owner_review` 关闭、`required_reviewers` 为空，仓库也不使用 CODEOWNERS。合并条件只有两条——全部必需检查通过、分支已与最新 main 同步（`strict_required_status_checks_policy` 开启）；两条同时满足后 PR 作者即可自行手动合并（不启用 auto-merge）。
-- 必需检查共三条：`EditMode 测试（Unity 2022.3.62f3）`、`PlayMode 测试（Unity 2022.3.62f3）`、`大文件与 LFS 一致性检查`，且 `strict_required_status_checks_policy` 开启（PR 分支必须先与 main 同步）。因此 PR 阶段被测的结果就是合并后落到 main 的结果，`push` 触发只会重复跑（既费时间又额外占用 Unity 授权席位）；需要临时在 main 上验证时用 `workflow_dispatch`。
+- 必需检查共三条：`EditMode 测试（Unity 2022.3.62f3）`、`PlayMode 测试（Unity 2022.3.62f3）`、`大文件与 LFS 一致性检查`，且 `strict_required_status_checks_policy` 开启（PR 分支必须先与 main 同步）。因此 PR 阶段被测的结果就是合并后落到 main 的结果，`push` 触发只会重复跑（既费时间又额外占用 Unity 授权席位）；需要临时在 main 上验证时用 `workflow_dispatch`。两条 Unity 检查在不需要跑时显示为灰色 **Skipped**，对 ruleset 等同通过。
 - 不需要在本地跑任何测试，测试留在推送后的pr中，github action云端跑，必要时用gh监视测试
-- ⚠️ ruleset 里的必需检查名与 workflow 的 **job 名 / 矩阵变量** 是字符串精确匹配（如 `EditMode 测试（Unity 2022.3.62f3）`）。改动 job 名或矩阵里的 `unityVersion` 时必须同步修改 ruleset，否则所有 PR 会**永久 pending 且没有任何报错提示**。
+- ⚠️ ruleset 里的必需检查名与 workflow 的 **job 名**是字符串精确匹配（如 `EditMode 测试（Unity 2022.3.62f3）`）。矩阵已拆成两个字面名 job，**版本号直接写在 job 名里**：改 `unityVersion` 或改 job 名时必须同步修改 ruleset，否则所有 PR 会**永久 pending 且没有任何报错提示**。推送前先在本地跑 `bash scripts/check-ci-config.sh --check-ruleset` 比对一次。
 
 ## 8. 编码规范
 

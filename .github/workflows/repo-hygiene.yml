@@ -47,11 +47,12 @@ jobs:
         run: bash scripts/test-font-lfs.sh
 
       # 与本 job 同驻的理由：都是秒级、无 Unity 依赖的仓库配置守卫。
-      # 它负责拦住“加回 push 触发”或“Unity 矩阵恢复并行授权”这类回归。
+      # 它负责拦住“加回 push 触发”“给 unity-tests 加 workflow 级 paths 过滤”“两套 Unity 改回并行抢席位”
+      # 以及“测试 job 不再依赖变更分类”这类回归。
       # 注意：脚本还有一个 --check-ruleset 模式（比对 job 名与分支规则集的必需检查），
       # 需要 admin 权限、而 Actions 默认的 GITHUB_TOKEN 读不到规则集，因此不上流水线，
       # 只能本地在合并前跑：bash scripts/check-ci-config.sh --check-ruleset
-      - name: CI 配置守卫（PR 入口与 Unity 矩阵串行）
+      - name: CI 配置守卫（PR 入口、Unity 串行与变更分类接线）
         run: bash scripts/check-ci-config.sh
 
       - name: 校验 CI 配置守卫脚本自身
@@ -66,3 +67,9 @@ jobs:
 
       - name: 发布包体卫生检查（无 Build/ 产物时自动跳过）
         run: bash scripts/check-build-hygiene.sh
+
+      # 变更分类器决定“哪个 PR 跑哪套测试”，它算错就会静默漏测一层，
+      # 因此和 --self-test 一起每次 PR 都跑（分层规则或自检用例被改坏会当场红）。
+      - name: 校验变更分类脚本自身
+        run: bash scripts/classify-change-set.sh --self-test
+
