@@ -57,6 +57,8 @@ MonoBehaviour:
   _prefab: {fileID: 3712024423335596556, guid: 0edda512eb8b5274ab45664ff24c4a1a, type: 3}
   _art: {fileID: 21300000, guid: 0f7b6220e9b9c2948b5d9122dfcaba49, type: 3}
   _artPath: Assets/Imported/SpotlightArt/CardArt/odysseus1.png
+  _unitArt: {fileID: 21300000, guid: d80bbfce0923cf44b9a34d9c78c259e7, type: 3}
+  _unitArtPath: Assets/Imported/SpotlightArt/Units/odysseus1.png
 --- !u!114 &5492580657133909310
 MonoBehaviour:
   m_ObjectHideFlags: 1

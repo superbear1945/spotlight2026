@@ -25,6 +25,12 @@ namespace Spotlight.Tests
         string _sourceDocumentJson;
         /// <summary>保留正式资产引用，避免场景重开后无法检查源数据。</summary>
         SpotlightConfigAsset _sourceAsset;
+        /// <summary>加载带音乐的正式场景前保留全局输出和时间缩放，避免影响其他帧循环测试。</summary>
+        float _listenerVolume, _timeScale;
+
+        /// <summary>记录全局状态；本夹具只通过独立对局配置推进阶段，不写音量偏好。</summary>
+        [SetUp]
+        public void SetUp() { _listenerVolume = AudioListener.volume; _timeScale = Time.timeScale; }
 
         /// <summary>加载演示场景并创建隔离配置。输出为可触发阶段、快速播放动画的手动对局。</summary>
         IEnumerator Load()
@@ -43,6 +49,7 @@ namespace Spotlight.Tests
             r.bossSpawnerAttackThreshold = 10000; r.summoningSickness = false;
             var soldier = d.cards.Single(c => c.id == "blade1"); soldier.atk = 20; soldier.range = 30; soldier.upkeep = 0;
             d.presentation[0].moveSeconds = .03f; d.presentation[0].feedbackSeconds = .01f;
+            d.presentation[0].musicFadeOutSeconds = .03f; d.presentation[0].musicPhaseGapSeconds = .03f;
             _configuration = new GameConfiguration(d).WithDeck(new[] { new DeckEntry(soldier.id, 20) }, false); _bootstrap.RestartWith(_configuration);
             yield return null;
         }
@@ -51,6 +58,9 @@ namespace Spotlight.Tests
         [TearDown]
         public void FormalConfigurationRemainsUnchanged()
         {
+            if (_bootstrap != null) _bootstrap.GetComponent<BossMusicController>()?.StopImmediately();
+            AudioListener.volume = _listenerVolume;
+            Time.timeScale = _timeScale;
             if (_sourceAsset != null && _sourceDocumentJson != null)
                 Assert.That(JsonUtility.ToJson(_sourceAsset.ToDocument()), Is.EqualTo(_sourceDocumentJson),
                     "阶段测试污染了正式配置资产");
@@ -90,6 +100,7 @@ namespace Spotlight.Tests
             var guard = d.cards.Single(c => c.id == d.rules[0].bossPhaseThreeFrontCardType);
             guard.hp = 12; guard.atk = 4; guard.range = 3;
             d.presentation[0].moveSeconds = .01f; d.presentation[0].feedbackSeconds = .01f;
+            d.presentation[0].musicFadeOutSeconds = .03f; d.presentation[0].musicPhaseGapSeconds = .03f;
             _configuration = new GameConfiguration(d).WithDeck(new[] { new DeckEntry(soldier.id, 20) }, false);
             _bootstrap.RestartWith(_configuration); yield return WaitForPresentation();
             var attackers = new long[4];
@@ -128,7 +139,19 @@ namespace Spotlight.Tests
                 }
             }
             Assert.That(Object.FindObjectOfType<HudView>().Root.Q<Label>("boss-phase-label").text, Does.Contain("第 3 阶段"));
+            var music = _bootstrap.GetComponent<BossMusicController>();
+            Assert.That(music.TargetPhase, Is.EqualTo(BossPhase.PhaseThree));
+            Submit(new GameCommand(CommandKind.EndTurn, Side.Player, skipDeployment: true));
+            yield return WaitForPresentation();
+            Submit(new GameCommand(CommandKind.EndTurn, Side.Boss, skipDeployment: true));
+            yield return WaitForPresentation();
+            Submit(new GameCommand(CommandKind.Attack, Side.Player, attackers[0], targetId: -2));
+            yield return WaitForPresentation();
+            Assert.That(_bootstrap.Session.GetSnapshot().Phase, Is.EqualTo(MatchPhase.Finished));
+            yield return new WaitForSecondsRealtime(.1f);
+            Assert.That(music.State, Is.EqualTo(MusicPlaybackState.Stopped));
             _bootstrap.RestartWith(_configuration); yield return WaitForPresentation();
+            Assert.That(music.TargetPhase, Is.EqualTo(BossPhase.PhaseOne));
             Assert.That(_bootstrap.Session.GetSnapshot().BossPhase, Is.EqualTo(BossPhase.PhaseOne));
             foreach (var unit in guards) Assert.That(_board.GetCard(unit.Id), Is.Null);
             LogAssert.NoUnexpectedReceived();
@@ -147,11 +170,11 @@ namespace Spotlight.Tests
             yield return WaitForPresentation();
             var root = Object.FindObjectOfType<HudView>().Root;
             var state = _bootstrap.Session.GetSnapshot();
-            Assert.That(root.Q<Label>("boss-info-label").text, Does.Contain("第 2 阶段"));
-            Assert.That(root.Q<Label>("boss-info-label").text, Does.Contain("存活 2"));
+            Assert.That(root.Q<Label>("boss-info-label"), Is.Null, "旧侧栏已废弃：Boss 阶段与战舰统计只出现在顶部摘要");
             var summary = root.Q<Label>("boss-phase-label");
             Assert.That(summary.text, Does.Contain("第 2 阶段").And.Contain("锁血").And.Contain("存活 2"));
             Assert.That(summary.visible, Is.True);
+            Assert.That(_bootstrap.GetComponent<BossMusicController>().TargetPhase, Is.EqualTo(BossPhase.PhaseTwo));
             Assert.That(root.Q<Button>("spawner-deploy-button").resolvedStyle.display, Is.EqualTo(DisplayStyle.None));
             foreach (var record in state.BossWarships)
             {

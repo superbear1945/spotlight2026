@@ -119,7 +119,8 @@ namespace Spotlight.EditorTools
                 new ColumnDefinition("canSwap", ColumnType.Boolean, true, "是否允许参与互换，默认 true；固定刷怪笼默认 false，资源分类始终不可互换。"),
                 new ColumnDefinition("spawnComponent", ColumnType.Boolean, true, "是否启用刷怪组件，默认 false；启用后从下个所属阵营回合开始八邻生成一架战机。"),
                 new ColumnDefinition("spawnCardType", ColumnType.Text, false, "生成战机卡种，默认空；启用刷怪时须引用攻击类卡种，普通刷怪笼与战舰默认 bossCombat。原 Rules.bossSpawnerSpawnCardType 请迁移到对应 Cards 行。"),
-                new ColumnDefinition("cardArt", ColumnType.Text, false, "卡图 Sprite，默认留空表示没有卡图（卡面保持纯色矩形）；可只填文件名（自动解析到 Assets/Imported/SpotlightArt/CardArt/），也可填以 Assets/ 开头的完整 .png 路径。PNG 必须以 Sprite (2D and UI) 导入才能被识别。")
+                new ColumnDefinition("cardArt", ColumnType.Text, false, "手牌卡图（手牌区显示的图片），默认留空表示没有手牌图；可只填文件名（自动解析到 Assets/Imported/SpotlightArt/CardArt/），也可填以 Assets/ 开头的完整 .png 路径。PNG 必须以 Sprite (2D and UI) 导入才能被识别。场上显示的是 cardArtUnit，与本列互不影响。"),
+                new ColumnDefinition("cardArtUnit", ColumnType.Text, false, "场地卡图（棋盘上的战斗单位显示的图片），默认留空表示“场上沿用 cardArt”；可只填文件名（自动解析到 Assets/Imported/SpotlightArt/Units/），也可填以 Assets/ 开头的完整 .png 路径。与阵营无关：Boss 专用卡只在场上出现，只填本列即可。两列都留空时卡面回退纯色矩形。PNG 必须以 Sprite (2D and UI) 导入。")
             }),
             new TableDefinition("Rules", new[]
             {
@@ -190,7 +191,10 @@ namespace Spotlight.EditorTools
                 new ColumnDefinition("moveColor", ColumnType.Text, true),
                 new ColumnDefinition("attackTargetColor", ColumnType.Text, true),
                 new ColumnDefinition("swapColor", ColumnType.Text, true),
-                new ColumnDefinition("deployColor", ColumnType.Text, true)
+                new ColumnDefinition("deployColor", ColumnType.Text, true),
+                new ColumnDefinition("musicLoopGapSeconds", ColumnType.Float, false, "音乐自然结束后等待的秒数，默认 10；非负有限数。旧表缺列使用默认值。"),
+                new ColumnDefinition("musicFadeOutSeconds", ColumnType.Float, false, "切阶段或结算淡出秒数，默认 5；非负有限数。"),
+                new ColumnDefinition("musicPhaseGapSeconds", ColumnType.Float, false, "淡出完成后等待新阶段音乐的秒数，默认 5；非负有限数。")
             })
         };
 

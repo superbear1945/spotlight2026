@@ -2,6 +2,9 @@
 
 `Cards.cardArt` 列只填文件名时，图片从这个目录解析。
 
+> 棋盘上的战斗单位显示的是另一列 `Cards.cardArtUnit`，默认目录是 `../Units/`（见那里的 README）。
+> `cardArtUnit` 留空时场上沿用手牌图，因此“场上和手牌同一张”不需要在这里或 `Units/` 里放两份。
+
 ## 约定
 
 - 文件名建议直接用卡种稳定 ID：`ge1.png`、`gate.png`、`houyi2.png`……（ID 见 `Cards.id`）。

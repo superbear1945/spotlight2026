@@ -106,7 +106,8 @@ namespace Spotlight
             _definition = definition;
             // 卡图先于能力配置应用：definition 为 null（回退模板/未注册卡种）时这里会关掉卡图，
             // 避免复用同一个 Card 实例时残留上一张卡的立绘。
-            ApplyArt(definition);
+            // 这里默认按“手牌”取图；绑定为棋盘单位时 BindUnit 会在装配后再按场上图覆盖一次。
+            ApplyArt(definition, false);
             if (definition == null) return;
             if (_combat != null) _combat.Configure(definition.Combat);
             if (_resource != null) _resource.Configure(definition.Resource);
@@ -141,6 +142,9 @@ namespace Spotlight
         public void BindUnit(CardDefinitionSO definition, UnitState unit)
         {
             Configure(definition);
+            // Configure 默认按手牌取图，这里必须再按“场上单位”取一次：
+            // 手牌与棋盘共用同一个 Card 模板，同一个实例从手牌复用到棋盘时必须换成场地卡图。
+            ApplyArt(definition, true);
             _customText = false;
             _unit = unit;
             // 棋盘单位只保存来源卡的值副本，不再持有卡牌记录；绑定棋盘身份时必须清空手牌记录，
@@ -164,7 +168,7 @@ namespace Spotlight
             _customText = true;
             // 家不是卡牌、没有 CardDefinitionSO，必须显式清掉卡图；
             // 否则手牌/单位实例被复用去当家时会残留上一张卡的立绘。
-            ApplyArt(null);
+            ApplyArt(null, false);
             _record = null;
             _unit = null;
             if (_combat != null) _combat.Bind(null);
@@ -185,7 +189,7 @@ namespace Spotlight
         public void Unbind()
         {
             _customText = false;
-            ApplyArt(null);
+            ApplyArt(null, false);
             _record = null;
             _unit = null;
             if (_combat != null) _combat.Bind(null);
@@ -247,15 +251,19 @@ namespace Spotlight
 
         /// <summary>
         /// 应用卡图。
-        /// 输入：卡种定义（可为 null，表示没有卡图）；输出：无。
-        /// 为什么需要：卡图是每张卡的展示数据，来自配置（CardDefinitionSO.Art）而不是 Prefab——
+        /// 输入：卡种定义（可为 null，表示没有卡图）与“是否按场上单位取图”；
+        /// 输出：无（只改 _art 的 sprite 与 enabled）。
+        /// 为什么需要：卡图是每张卡的展示数据，来自配置（CardDefinitionSO）而不是 Prefab——
         /// 「编译全部配置」会用模板覆盖生成 Prefab，把卡图写在那里等于每次编译都丢图。
+        /// 为什么区分场景：手牌卡面是 3:4 竖图，棋盘格接近正方形，两者用同一张图会被留边压小；
+        /// 手牌取 Art（cardArt），场上取 BoardArt（cardArtUnit，没配则回退 cardArt）。
+        /// 回退只在 CardDefinitionSO.BoardArt 里实现一次，这里不重复判断。
         /// 没有卡图时禁用整个节点而不是留一张白图，才能保持原来的纯色矩形外观。
         /// </summary>
-        void ApplyArt(CardDefinitionSO definition)
+        void ApplyArt(CardDefinitionSO definition, bool asUnit)
         {
             if (_art == null) return;
-            var sprite = definition != null ? definition.Art : null;
+            var sprite = definition == null ? null : asUnit ? definition.BoardArt : definition.Art;
             _art.sprite = sprite;
             _art.enabled = sprite != null;
         }

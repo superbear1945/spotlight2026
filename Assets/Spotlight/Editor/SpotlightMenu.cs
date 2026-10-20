@@ -219,6 +219,7 @@ namespace Spotlight.EditorTools
             SetObject(bootstrapSerialized, "_hudView", hud);
             SetObject(bootstrapSerialized, "_feedback", feedback);
             bootstrapSerialized.ApplyModifiedPropertiesWithoutUndo();
+            GameAudioInstaller.Install(bootstrap);
 
             EditorSceneManager.SaveScene(scene, DemoScenePath);
             RegisterSceneInBuildSettings();

@@ -69,6 +69,10 @@ namespace Spotlight
         [SerializeField] Sprite _art;
         /// <summary>卡图来源文本（Cards.cardArt 的原值），用于 Inspector 回显与 SO→行对象的往返。</summary>
         [SerializeField] string _artPath;
+        /// <summary>场地卡图 Sprite（棋盘上的战斗单位显示）；为 null 表示场上沿用 _art。</summary>
+        [SerializeField] Sprite _unitArt;
+        /// <summary>场地卡图来源文本（Cards.cardArtUnit 的原值），用于 Inspector 回显与 SO→行对象的往返。</summary>
+        [SerializeField] string _unitArtPath;
 
         // 注意：这里刻意不保存源工作簿/工作表名。卡种资产会被主配置引用、随包发布，
         // 存了就会在拆包后读到“Assets/Spotlight/Config/Spotlight.xlsx”。
@@ -128,6 +132,17 @@ namespace Spotlight
         public Sprite Art => _art;
         /// <summary>卡图来源文本（Cards.cardArt 原值），供调试与往返核对。</summary>
         public string ArtPath => _artPath;
+        /// <summary>场地卡图 Sprite（可能为 null，表示这一列没有配图，场上沿用 Art）。</summary>
+        public Sprite UnitArt => _unitArt;
+        /// <summary>场地卡图来源文本（Cards.cardArtUnit 原值），供调试与往返核对。</summary>
+        public string UnitArtPath => _unitArtPath;
+        /// <summary>
+        /// 场上实际使用的卡图：优先场地卡图，没配就沿用 <see cref="Art"/>。
+        /// 输入：无；输出：可用于显示或为 null（两列都留空）。
+        /// 为什么需要这个合并属性：回退规则只该有一处实现——视图（Card.ApplyArt）与测试都读它，
+        /// 若各处自己写 “UnitArt ?? Art”，迟早会有一处漏掉回退，表现为“某张卡上场突然变纯色”。
+        /// </summary>
+        public Sprite BoardArt => _unitArt != null ? _unitArt : _art;
 
         /// <summary>
         /// 把 SO 还原成表行对象。
@@ -180,7 +195,8 @@ namespace Spotlight
                 killActionComponent = _killAction != null,
                 damageMarkComponent = _damageMark != null,
                 damageMarkDamagePerStack = _damageMark != null ? _damageMark.DamagePerStack : 0,
-                cardArt = _artPath ?? string.Empty
+                cardArt = _artPath ?? string.Empty,
+                cardArtUnit = _unitArtPath ?? string.Empty
             };
         }
 
@@ -203,7 +219,7 @@ namespace Spotlight
         /// </summary>
         public void EditorApply(CardRow row, CombatConfigSO combat, ResourceConfigSO resource, TeleportConfigSO teleport, DeploymentPenaltyConfigSO deploymentPenalty, Card prefab, MarkOnEnterConfigSO markOnEnter = null, DeathGrowthConfigSO deathGrowth = null, InstantEffectConfigSO instant = null,
             SpawnConfigSO spawn = null, AdjacentClearanceConfigSO adjacentClearance = null, KillActionConfigSO killAction = null, DamageMarkConfigSO damageMark = null,
-            Sprite art = null, string artPath = null)
+            Sprite art = null, string artPath = null, Sprite unitArt = null, string unitArtPath = null)
         {
             _id = row.id;
             _name = row.name.Trim();
@@ -235,6 +251,9 @@ namespace Spotlight
             // 没有显式给 artPath 时回退用行里的 cardArt，保证任何调用路径都不会丢来源文本。
             _art = art;
             _artPath = !string.IsNullOrEmpty(artPath) ? artPath : (row.cardArt ?? string.Empty);
+            // 场地卡图同理：Sprite 与来源文本成对写入，留空表示这一列没配图（场上沿用 cardArt）。
+            _unitArt = unitArt;
+            _unitArtPath = !string.IsNullOrEmpty(unitArtPath) ? unitArtPath : (row.cardArtUnit ?? string.Empty);
         }
     }
 }

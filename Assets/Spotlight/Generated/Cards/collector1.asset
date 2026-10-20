@@ -57,6 +57,8 @@ MonoBehaviour:
   _prefab: {fileID: 5069651465247145585, guid: 401fdca25cd6913489a487c788b0b569, type: 3}
   _art: {fileID: 21300000, guid: 5fad56ac8d2a69c418203a3fd9efe0ae, type: 3}
   _artPath: Assets/Imported/SpotlightArt/CardArt/collector1.png
+  _unitArt: {fileID: 21300000, guid: a42d0991878b9114083443aaa201ae47, type: 3}
+  _unitArtPath: Assets/Imported/SpotlightArt/Units/collector1.png
 --- !u!114 &307183151322629060
 MonoBehaviour:
   m_ObjectHideFlags: 1

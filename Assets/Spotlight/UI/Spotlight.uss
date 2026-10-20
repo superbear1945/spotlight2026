@@ -229,26 +229,10 @@
     flex-direction: column;
 }
 
-.side-panel {
-    position: absolute;
-    right: 8px;
-    top: 138px;
-    width: 410px;
-    min-height: 300px;
-    max-height: 390px;
-}
-
 .info-label {
     font-size: 14px;
     color: rgb(212, 220, 224);
     white-space: normal;
-}
-
-.warn-label {
-    font-size: 14px;
-    color: rgb(238, 151, 62);
-    white-space: normal;
-    margin-top: 4px;
 }
 
 .section-label {
@@ -260,12 +244,6 @@
     border-bottom-width: 1px;
     border-bottom-color: rgba(227, 143, 55, 0.65);
     -unity-font-style: bold;
-}
-
-.detail-label {
-    font-size: 13px;
-    color: rgb(218, 225, 228);
-    white-space: normal;
 }
 
 .log-line {
@@ -835,14 +813,6 @@
     padding: 32px 26px 16px 26px;
     background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/06_panels_notices/dialog/dialog_static.png");
     -unity-background-scale-mode: scale-and-crop;
-}
-
-.hud-root .side-panel {
-    right: 24px;
-    top: 500px;
-    width: 360px;
-    min-height: 220px;
-    max-height: 310px;
 }
 
 .hud-root .bottom-bar {
