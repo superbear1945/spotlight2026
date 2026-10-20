@@ -73,3 +73,9 @@ jobs:
       - name: 校验变更分类脚本自身
         run: bash scripts/classify-change-set.sh --self-test
 
+      # 发版版本号（release-build.yml 的唯一版本来源）：只有手动发版时才真正跑，
+      # 但“+0.0.1 = patch+1”“没有 Release 从 v0.0.1 起”“versionCode 撞号必须报错”
+      # 这几条规则必须在每次 PR 上被自检钉住——它错了表现是 tag 与包内版本不一致，没人当场发现。
+      - name: 校验发版版本号脚本自身
+        run: bash scripts/next-release-version.sh --self-test
+

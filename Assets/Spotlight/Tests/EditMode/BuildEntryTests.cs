@@ -108,5 +108,142 @@ namespace Spotlight.Tests
             Assert.That(BuildEntry.Target, Is.EqualTo(BuildTarget.StandaloneWindows64), "旧常量 Target 必须保持 Windows");
             Assert.That(BuildEntry.AndroidTarget, Is.EqualTo(BuildTarget.Android));
         }
+
+        // ---------------------------------------------------------------------
+        // 发版版本覆盖：CI 传 -buildVersion / -androidVersionCode，本地菜单打包不传。
+        // 为什么这一组必须有测试：它只在 CI 里生效，本地怎么点菜单都遇不到；
+        // 一旦解析写错，表现是“Release 写着 v0.2.1，装上去还是 0.1.0”这种没人当场发现的事故。
+        // ---------------------------------------------------------------------
+
+        /// <summary>
+        /// 没有任何版本参数时不得产生覆盖项（本地菜单打包的常规情况）。
+        /// </summary>
+        [Test]
+        public void BuildVersionOverride_NoArguments_ProducesNoOverride()
+        {
+            string error;
+            BuildVersionOverride parsed;
+
+            Assert.That(BuildVersionOverride.TryParse(null, out parsed, out error), Is.True);
+            Assert.That(parsed, Is.Null);
+
+            Assert.That(BuildVersionOverride.TryParse(new[] { "-batchmode", "-quit" }, out parsed, out error), Is.True);
+            Assert.That(parsed, Is.Null, "没有版本参数时不应产生覆盖项");
+            Assert.That(error, Is.Null.Or.Empty);
+        }
+
+        /// <summary>
+        /// 两个参数同时出现时都要被读出来（这是 CI 实际传的形态）。
+        /// </summary>
+        [Test]
+        public void BuildVersionOverride_ReadsBundleVersionAndVersionCode()
+        {
+            var args = new[]
+            {
+                "-batchmode", "-quit",
+                "-executeMethod", "Spotlight.EditorTools.BuildEntry.BuildWindows",
+                BuildVersionOverride.BundleVersionArgument, "0.2.1",
+                BuildVersionOverride.AndroidVersionCodeArgument, "201",
+            };
+
+            string error;
+            BuildVersionOverride parsed;
+            Assert.That(BuildVersionOverride.TryParse(args, out parsed, out error), Is.True, error);
+            Assert.That(parsed, Is.Not.Null);
+            Assert.That(parsed.BundleVersion, Is.EqualTo("0.2.1"));
+            Assert.That(parsed.AndroidVersionCode, Is.EqualTo(201));
+            Assert.That(parsed.HasBundleVersion, Is.True);
+            Assert.That(parsed.HasAndroidVersionCode, Is.True);
+        }
+
+        /// <summary>
+        /// 支持 <c>-buildVersion=0.2.1</c> 这种等号写法，否则换个构建入口就会“版本覆盖静默失效”。
+        /// </summary>
+        [Test]
+        public void BuildVersionOverride_SupportsEqualsForm()
+        {
+            var args = new[] { "-buildVersion=0.3.7", "--androidVersionCode=307" };
+
+            string error;
+            BuildVersionOverride parsed;
+            Assert.That(BuildVersionOverride.TryParse(args, out parsed, out error), Is.True, error);
+            Assert.That(parsed.BundleVersion, Is.EqualTo("0.3.7"));
+            Assert.That(parsed.AndroidVersionCode, Is.EqualTo(307));
+        }
+
+        /// <summary>
+        /// 非法版本号必须报错（而不是被当成“没有覆盖”而静默忽略）。
+        /// </summary>
+        [Test]
+        public void BuildVersionOverride_RejectsMalformedVersion()
+        {
+            foreach (var bad in new[] { "0.2", "v0.2.1", "0.2.1-rc1", "0.2.1.4", "" })
+            {
+                string error;
+                BuildVersionOverride parsed;
+                var args = new[] { BuildVersionOverride.BundleVersionArgument, bad };
+                Assert.That(BuildVersionOverride.TryParse(args, out parsed, out error), Is.False,
+                    "非法版本号必须报错：" + bad);
+                Assert.That(error, Is.Not.Null.And.Not.Empty);
+                Assert.That(parsed, Is.Null);
+            }
+        }
+
+        /// <summary>
+        /// 非法 versionCode 必须报错（0 或负数会被 Android 拒绝覆盖安装）。
+        /// </summary>
+        [Test]
+        public void BuildVersionOverride_RejectsInvalidVersionCode()
+        {
+            foreach (var bad in new[] { "0", "-1", "abc", "2.5" })
+            {
+                string error;
+                BuildVersionOverride parsed;
+                var args = new[] { BuildVersionOverride.AndroidVersionCodeArgument, bad };
+                Assert.That(BuildVersionOverride.TryParse(args, out parsed, out error), Is.False,
+                    "非法 versionCode 必须报错：" + bad);
+                Assert.That(error, Is.Not.Null.And.Not.Empty);
+            }
+        }
+
+        /// <summary>
+        /// 应用覆盖后 PlayerSettings 必须带着新版本号，Dispose 后必须原样还原。
+        /// 为什么必须验证还原：不还原会让第二次平台构建的“分支不干净”检查拦住流水线，
+        /// 也会让本机工程残留一个 release 版本号。测试自身用 try/finally 兜底恢复工程设置。
+        /// </summary>
+        [Test]
+        public void BuildVersionOverride_Apply_AppliesAndRestores()
+        {
+            var originalVersion = PlayerSettings.bundleVersion;
+            var originalCode = PlayerSettings.Android.bundleVersionCode;
+            try
+            {
+                var args = new[]
+                {
+                    BuildVersionOverride.BundleVersionArgument, "9.8.7",
+                    BuildVersionOverride.AndroidVersionCodeArgument, "90807",
+                };
+
+                string error;
+                BuildVersionOverride parsed;
+                Assert.That(BuildVersionOverride.TryParse(args, out parsed, out error), Is.True, error);
+
+                using (parsed.Apply())
+                {
+                    Assert.That(PlayerSettings.bundleVersion, Is.EqualTo("9.8.7"));
+                    Assert.That(PlayerSettings.Android.bundleVersionCode, Is.EqualTo(90807));
+                }
+
+                Assert.That(PlayerSettings.bundleVersion, Is.EqualTo(originalVersion), "构建后必须还原 bundleVersion");
+                Assert.That(PlayerSettings.Android.bundleVersionCode, Is.EqualTo(originalCode),
+                    "构建后必须还原 Android versionCode");
+            }
+            finally
+            {
+                // 断言失败也要还原：测试改过的是工程级设置，残留会污染后续用例与本地工程。
+                PlayerSettings.bundleVersion = originalVersion;
+                PlayerSettings.Android.bundleVersionCode = originalCode;
+            }
+        }
     }
 }

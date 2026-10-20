@@ -95,6 +95,7 @@
 | 策划填写说明 | `docs/策划填写说明.md` |
 | 使用说明 | `docs/使用说明.md` |
 | GitHub Action PR 测试 | `.github/workflows/unity-tests.yml`（game-ci/unity-test-runner，`testMode` 矩阵含 EditMode + PlayMode；**只在 PR 上触发，main 的 push 不重复跑**） |
+| GitHub Action 手动发版 | `.github/workflows/release-build.yml`（`workflow_dispatch` 手动触发：Windows zip + Android APK → `gh release create`；版本 = 上一个 Release +0.0.1，由 `scripts/next-release-version.sh` 统一计算，包内 `bundleVersion`/`versionCode` 同源；`dry_run` 可只打包不发布） |
 | Windows 独立构建 | **未执行**（需要 Windows 构建授权与较长时间；门禁已就位，可在本地执行 `Tools/Spotlight/编译全部配置` 后直接 Build） |
 
 ### 模块 5：界面同步修复（移动后棋子停留在原地 / 点击棋子无反应）
