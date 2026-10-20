@@ -56,66 +56,24 @@ readonly _needles=(
 
 readonly _burst_suffix='_BurstDebugInformation_DoNotShip'
 
-# 已知残留：Unity 会给“引用引擎的程序集”在 globalgamemanagers.assets 里写一份 MonoScript 类名目录，
-# 这份目录按编辑器的编译结果生成，因此即使类型被 #if 挡在正式包程序集之外，名字仍在里面。
-# 实测该目录只包含顶层类名（嵌套类型不会入表），内容上只有类名、没有任何字段/文案/结构。
-# 因此：这几个名字出现在 globalgamemanagers.assets 里只作“已知残留”提示，不计失败；
-# 一旦出现在别处（托管 DLL、sharedassets、resources）仍然失败——那才说明代码真的进了包。
-readonly _ggm_tolerated=(
-  'ConfigDebugPanel'
-  'ConfigFieldBuilder'
-  'DebugConfigDraft'
-)
-readonly _ggm_file='globalgamemanagers.assets'
-
-# -----------------------------------------------------------------------------
-# _is_tolerated —— 判断一条命中是否属于“globalgamemanagers 类型目录的已知残留”
-# 输入：被扫文件名与命中文案；输出：0 属于残留 / 1 不算
-# -----------------------------------------------------------------------------
-_is_tolerated() {
-  local _base="$1" _hit="$2" _name
-  [ "$_base" = "$_ggm_file" ] || return 1
-  for _name in "${_ggm_tolerated[@]}"; do
-    [ "$_hit" = "$_name" ] && return 0
-  done
-  return 1
-}
-
-# -----------------------------------------------------------------------------
 # _scan_dir —— 扫描一个构建输出目录
 # 输入：输出目录绝对路径；输出：命中行打印到标准输出，返回值 0 干净 / 1 有命中
 # 为什么把“命中”与“目录断言”分开写：两者失败原因不同，报错要能直接告诉人改代码还是删文件。
 # -----------------------------------------------------------------------------
 _scan_dir() {
-  local _dir="$1" _needle_file _hits=0 _warnings=0 _files=0 _path _found _base _hit
-  local _hard _tolerated
+  local _dir="$1" _needle_file _hits=0 _files=0 _path _found
   _needle_file=$(mktemp)
-  printf '%s\n' "${_needles[@]}" >"$_needle_file"
+  printf '%s
+' "${_needles[@]}" >"$_needle_file"
   echo "扫描目录：$_dir"
   while IFS= read -r -d '' _path; do
     _files=$((_files + 1))
     # -a 让二进制也被当作文本；-F 固定字符串，避免卡名里的正则元字符引发误判。
-    _found=$(grep -a -F -o -f "$_needle_file" "$_path" 2>/dev/null | sort -u)
-    [ -n "$_found" ] || continue
-    _base=$(basename "$_path")
-    _hard=""
-    _tolerated=""
-    while IFS= read -r _hit; do
-      [ -n "$_hit" ] || continue
-      if _is_tolerated "$_base" "$_hit"; then
-        _tolerated="$_tolerated$_hit "
-      else
-        _hard="$_hard$_hit "
-      fi
-    done <<<"$_found"
-    if [ -n "$_hard" ]; then
-      echo "  ❌ ${_path#"$_dir"/} → $_hard"
+    _found=$(grep -a -F -o -f "$_needle_file" "$_path" 2>/dev/null | sort -u | tr '
+' ' ')
+    if [ -n "$_found" ]; then
+      echo "  ❌ ${_path#"$_dir"/} → $_found"
       _hits=$((_hits + 1))
-    fi
-    if [ -n "$_tolerated" ]; then
-      # 不静默：每次扫描都把“已知残留”打出来，避免以后它变成真正的泄露时无人察觉。
-      echo "  ⚠️  已知残留（Unity 类型目录，仅类名）：${_path#"$_dir"/} → $_tolerated"
-      _warnings=$((_warnings + 1))
     fi
   done < <(find "$_dir" -type f -print0)
   rm -f "$_needle_file"
@@ -144,9 +102,6 @@ _scan_dir() {
     return 1
   fi
   echo "✅ 未发现开发期信息（扫描 $_files 个文件，且无 ${_burst_suffix} 目录与 Burst 符号文件）"
-  if [ "$_warnings" -ne 0 ]; then
-    echo "ℹ️  $_warnings 个文件只剩“已知残留”（globalgamemanagers 的 MonoScript 类名目录），无代码、无文案、无字段。"
-  fi
   return 0
 }
 
@@ -249,36 +204,6 @@ _self_test() {
     _rc=1
   fi
 
-  # globalgamemanagers 的类型目录只留了类名：属于已知残留，放行但必须打印提示。
-  _case_dir="$_tmp/ggm-names"
-  mkdir -p "$_case_dir/Game_Data"
-  printf 'ConfigDebugPanel ConfigFieldBuilder DebugConfigDraft' >"$_case_dir/Game_Data/globalgamemanagers.assets"
-  # 先收输出再 grep：`_scan_dir | grep -q` 会因 grep 提前退出让上流被 SIGPIPE 杀掉，
-  # 在 pipefail 下会把这段判断误判为失败。
-  if _scan_dir "$_case_dir" >/dev/null 2>&1; then
-    _scan_out=$(_scan_dir "$_case_dir" 2>/dev/null)
-    if grep -q '已知残留' <<<"$_scan_out"; then
-      echo "  ✅ 自检 I 通过：类型目录类名属已知残留且被打印"
-    else
-      echo "  ❌ 自检 I 失败：已知残留必须打印出来，不能静默"
-      _rc=1
-    fi
-  else
-    echo "  ❌ 自检 I 失败：类型目录里的类名不应让检查变红"
-    _rc=1
-  fi
-
-  # 同一个文件里只要出现真正的文案，就必须依旧失败（不能被“已知残留”顺带放过）。
-  _case_dir="$_tmp/ggm-content"
-  mkdir -p "$_case_dir/Game_Data"
-  printf 'ConfigDebugPanel 应用并重开' >"$_case_dir/Game_Data/globalgamemanagers.assets"
-  if _scan_dir "$_case_dir" >/dev/null 2>&1; then
-    echo "  ❌ 自检 J 失败：类型目录里的真实文案被当成了已知残留"
-    _rc=1
-  else
-    echo "  ✅ 自检 J 通过：类型目录里的真实文案依旧拦截"
-  fi
-
   return "$_rc"
 }
 
@@ -288,7 +213,7 @@ _self_test() {
 if [ "${1:-}" = "--self-test" ]; then
   echo "== check-build-hygiene.sh 自检 =="
   if _self_test; then
-    echo "自检结果：10/10 通过"
+    echo "自检结果：8/8 通过"
     exit 0
   fi
   echo "自检结果：存在失败用例"
