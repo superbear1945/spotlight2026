@@ -53,6 +53,8 @@ MonoBehaviour:
   _prefab: {fileID: 5833482983960701305, guid: 20fd03c8ec4c4504095817018894b4bb, type: 3}
   _art: {fileID: 21300000, guid: e29fae5d1582f8e4ebe98f2ebb3aea38, type: 3}
   _artPath: Assets/Imported/SpotlightArt/CardArt/kepler1.png
+  _unitArt: {fileID: 21300000, guid: 4388100a1e3b84b448eba473cdb14d2a, type: 3}
+  _unitArtPath: Assets/Imported/SpotlightArt/Units/kepler1.png
 --- !u!114 &6149477238161555251
 MonoBehaviour:
   m_ObjectHideFlags: 1

@@ -132,7 +132,7 @@ Assets/Spotlight/
 - HUD 由同一个 `Spotlight.uxml` 承载两套视图：**战斗界面**（左右详情区、墓地/抽牌堆计数、齿轮、结束回合）默认显示；**原有面板**（对局日志、Boss 状态、选中详情）移入齿轮菜单，点齿轮切换视图并暂停（复用 `SetModalOpen` 的“界面遮罩 + 规则层输入闸门”）。新增界面元素要明确属于哪一套，避免菜单里点不到按钮或被遮罩压住。
 - 开局前必经携带选择：`GameBootstrap` 加载配置后先显示 `DeckSelectionPanel`，确认后才创建对局；开局入口没有“取消”按钮。齿轮菜单里的「选卡」复用同一面板，进入前先弹二次确认（确认后当前对局重开）。
 - 牌堆与墓地共用同一套计数面板（`.pile-panel`：底图 + 正中数字 + 上方标题 + 底部阶级小字；底图到位前用 USS 占位圆章，换图只改 `.pile-panel` 的一条 `background-image`）：**牌堆**正中显示剩余总张数（取 `snapshot.DrawPile.Count`，不以三阶级相加代替），底部一行小字给阶级构成「高 x · 中 y · 初 z」（按快照逐张查卡种阶级统计，抽牌递减、墓地洗回后回涨）；**墓地**只显示总数。标题与数字都绝对定位（`.pile-title` / `.pile-value`），因此牌堆多一行小字也不会把数字顶偏，两块面板的数字始终在同一高度。
-- 卡面由两层组成：底色 Image（`Card._body`，仍是分类色 × 阵营色）与卡图 Image（`Card._art`）。卡图来源是 `Cards.cardArt` → 发布时解析成 `CardDefinitionSO.Art`（Sprite）→ 运行时 `Card.ApplyArt` 应用；**禁止把卡图写进 `Generated/Cards/*.prefab`**（每次「编译全部配置」都会覆盖）。没有卡图时 `_art` 整个节点禁用，回退纯色矩形；绑定为“家”或 `Unbind` 必须清掉卡图。`_art` 固定是外观模板的第一个子节点（渲染顺序：底色 → 卡图 → 高亮框 → 文本）且开启 `preserveAspect`，因此高亮仍由 `_highlight` 覆盖层表达。
+- 卡面由两层组成：底色 Image（`Card._body`，仍是分类色 × 阵营色）与卡图 Image（`Card._art`）。卡图按**使用场景**分两列：`Cards.cardArt`（手牌）→ `CardDefinitionSO.Art`，`Cards.cardArtUnit`（棋盘上的战斗单位，默认目录 `Assets/Imported/SpotlightArt/Units/`）→ `CardDefinitionSO.UnitArt`；发布时解析成 Sprite，运行时 `Card.ApplyArt(definition, asUnit)` 按场景取图（`BindHand` 取 `Art`，`BindUnit` 取 `BoardArt = UnitArt ?? Art`）。卡图与阵营无关：Boss 专用卡只在场上出现，只填 `cardArtUnit`。**禁止把卡图写进 `Generated/Cards/*.prefab`**（每次「编译全部配置」都会覆盖）。没有卡图时 `_art` 整个节点禁用，回退纯色矩形；绑定为“家”或 `Unbind` 必须清掉卡图。`_art` 固定是外观模板的第一个子节点（渲染顺序：底色 → 卡图 → 高亮框 → 文本）且开启 `preserveAspect`，因此高亮仍由 `_highlight` 覆盖层表达。
 
 ### 4.3 编辑器工具（`Spotlight.EditorTools`）
 

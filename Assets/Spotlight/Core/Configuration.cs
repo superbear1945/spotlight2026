@@ -208,6 +208,16 @@ namespace Spotlight
         /// 注意：本类是规则内核契约，这里只保存“指向图片的文本”，不引用 UnityEngine.Sprite。
         /// </summary>
         public string cardArt;
+        /// <summary>
+        /// 场地卡图的来源，给“棋盘上的战斗单位”使用。写法与 <c>cardArt</c> 完全一致：
+        /// 只填文件名（自动解析到 Assets/Imported/SpotlightArt/Units），或以 <c>Assets/</c> 开头的完整路径。
+        /// 留空表示场上沿用 cardArt；两列都留空时卡面回退成纯色矩形。
+        /// 为什么单独一列：手牌卡面是 3:4 的竖图，棋盘格接近正方形，同一张图在场上会被留边压小；
+        /// 拆成两列之后“手牌长什么样”与“场上长什么样”可以各自替换而互不影响。
+        /// 与阵营无关：场上任何单位（含 Boss 专用卡）都取这一列，Boss 卡没有手牌界面，只填本列即可。
+        /// 注意：本类不引用 UnityEngine.Sprite，这里只保存“指向图片的文本”。
+        /// </summary>
+        public string cardArtUnit;
         // 生命必须为正整数，其余数值为非负整数；移动距离不设置玩法上的固定上限。
         /// <summary>初始生命与上限。</summary>
         public int hp;
@@ -1179,18 +1189,10 @@ namespace Spotlight
                 if (c.requiresUpgrade && c.category != "resource") errors.Add(p + "：仅资源卡可覆盖升级");
                 if (!c.requiresUpgrade && !string.IsNullOrEmpty(c.upgradeFrom)) errors.Add(p + "：未启用升级却填写 upgradeFrom");
                 if (string.IsNullOrWhiteSpace(c.viewKey)) errors.Add(p + "：viewKey 不能为空");
-                // 卡图是可选项：留空表示只用纯色矩形。填了就只接受 .png，且只允许两种写法
-                // （纯文件名 → 解析到默认卡图目录；或以 Assets/ 开头的完整路径），
-                // 避免出现“写了路径但没人能解析”的死值；反斜杠与 .. 一律拒绝，防止跨目录逃逸。
-                var art = (c.cardArt ?? string.Empty).Trim();
-                if (art.Length > 0)
-                {
-                    if (art.IndexOf('\\') >= 0) errors.Add(p + "：cardArt 不能使用反斜杠，请用 / 分隔路径");
-                    else if (art.Contains("..")) errors.Add(p + "：cardArt 不能包含 ..");
-                    else if (!art.EndsWith(".png", StringComparison.OrdinalIgnoreCase)) errors.Add(p + "：cardArt 必须是 .png 文件");
-                    else if (!art.StartsWith("Assets/", StringComparison.Ordinal) && art.IndexOf('/') >= 0)
-                        errors.Add(p + "：cardArt 只能填文件名（自动解析到卡图默认目录）或以 Assets/ 开头的完整路径");
-                }
+                // 卡图是可选项：留空表示只用纯色矩形（场地列留空则沿用 cardArt）。
+                // 两列共用同一套写法规则，避免出现“手牌图能用、场地图写错却被静默忽略”的分叉。
+                ValidateCardArt(errors, p, "cardArt", c.cardArt);
+                ValidateCardArt(errors, p, "cardArtUnit", c.cardArtUnit);
                 if (c.deployCost < 0) errors.Add(p + "：deployCost 不得为负");
                 if (c.markOnEnterRadius < 0 || c.markRewardResource < 0) errors.Add(p + "：markOnEnterRadius / markRewardResource 不得为负");
                 if (!c.markOnEnterComponent && (c.markOnEnterRadius != 0 || c.markRewardResource != 0)) errors.Add(p + "：未启用 markOnEnterComponent 时标记半径与奖励必须为 0");
@@ -1265,6 +1267,26 @@ namespace Spotlight
             foreach (var f in typeof(PresentationRow).GetFields().Where(f => f.FieldType == typeof(string)))
                 if (!System.Text.RegularExpressions.Regex.IsMatch((string)f.GetValue(pz) ?? "", "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$")) errors.Add("Presentation " + f.Name + "：需要 #RRGGBB 或 #RRGGBBAA");
             return errors;
+        }
+
+        /// <summary>
+        /// 校验一列卡图路径的写法。
+        /// 输入：错误列表、行前缀（如 "Cards 行 3 (ge1)"）、列名与单元格原文；
+        /// 输出：把发现的问题追加进错误列表（不抛异常，留空视为合法）。
+        /// 为什么需要它：cardArt 与 cardArtUnit 的规则完全相同，各写一遍会在以后改规则时漏掉其中一列，
+        /// 表现为“某一列填了错路径却照样编译通过”，只能靠肉眼发现图没出来。
+        /// 合法写法只有两种：只填文件名（发布时解析到该列对应的默认目录），或以 Assets/ 开头的完整路径；
+        /// 反斜杠与 .. 一律拒绝，防止写出跨目录逃逸的路径。
+        /// </summary>
+        static void ValidateCardArt(List<string> errors, string prefix, string column, string value)
+        {
+            var art = (value ?? string.Empty).Trim();
+            if (art.Length == 0) return;
+            if (art.IndexOf('\\') >= 0) errors.Add(prefix + "：" + column + " 不能使用反斜杠，请用 / 分隔路径");
+            else if (art.Contains("..")) errors.Add(prefix + "：" + column + " 不能包含 ..");
+            else if (!art.EndsWith(".png", StringComparison.OrdinalIgnoreCase)) errors.Add(prefix + "：" + column + " 必须是 .png 文件");
+            else if (!art.StartsWith("Assets/", StringComparison.Ordinal) && art.IndexOf('/') >= 0)
+                errors.Add(prefix + "：" + column + " 只能填文件名（自动解析到卡图默认目录）或以 Assets/ 开头的完整路径");
         }
 
         /// <summary>
