@@ -2,7 +2,7 @@
 
 ## 0. 项目概述
 
-Spotlight 是一款基于卡牌的战棋对局游戏（首版为 Windows 桌面可玩验证版）。
+Spotlight 是一款基于卡牌的战棋对局游戏（首版为 Windows 桌面可玩验证版，同时产出 Android 安装包）。
 
 - 棋盘默认 5 行 × 10 列，双方各有“家”，摧毁敌方家即获胜。
 - 卡牌分资源卡 / 攻击卡 / 特殊卡，可部署、移动、攻击、互换、覆盖升级；星门提供四邻部署扩展。
@@ -23,7 +23,7 @@ Spotlight 是一款基于卡牌的战棋对局游戏（首版为 Windows 桌面�
 | 测试 | Unity Test Framework 1.1.33（NUnit） | EditMode + PlayMode |
 | 动画反馈 | DOTween Free 1.2.765（`Assets/Plugins/Demigiant/DOTween/`） | 仅做表现，不参与结算 |
 | Excel 读取 | ExcelDataReader 3.9.0（`Assets/Plugins/ExcelDataReader/Editor/`） | **仅编辑器**，正式运行包不包含 |
-| 目标平台 | Windows | 首版只交付 Windows 桌面包 |
+| 目标平台 | Windows（桌面）+ Android（手机，APK） | `Build/windows/` 与 `Build/android/` 两个产物目录；Android 固定 IL2CPP、APK 侧载 |
 
 约束：
 
@@ -140,6 +140,7 @@ Assets/Spotlight/
 - 资产与模板：`ViewTemplateBuilder`（外观模板与 Prefab）、`CjkFontSetup`（中文字体资产）。
 - 入口与门禁：`SpotlightMenu`（`Tools/Spotlight/*` 菜单）、`ConfigManifest`（编译清单 SO，记录源工作簿路径/摘要/编译时间与产出清单，只供编辑器侧的 `ConfigBuildGate` 与测试使用）、`ConfigBuildGate` + `ConfigBuildProcessor`（`IPreprocessBuildWithReport` + Play 前检查）。
 - 构建产物：`BuildArtifactCleanup`（`IPostprocessBuildWithReport`）删除输出目录下的 `*_BurstDebugInformation_DoNotShip` 与残留的 `lib_burst_generated.pdb`；必须挂接口而不能只改 `BuildEntry`，否则 CI 的构建脚本不会执行清理。打完包用 `scripts/check-build-hygiene.sh` 复核（详见第 7 节）。
+- 打包入口：`BuildEntry` 一个类同时负责 Windows 与 Android（`BuildWindows` / `BuildAndroid` / `BuildAll`，菜单与命令行共用）。产物按平台分子目录：`Build/windows/`（exe + 数据目录）与 `Build/android/*.apk`；每次打包只清空**自己平台**的子目录。Android 在构建期临时覆盖三项设置并在构建后还原：出 **APK**（非 AAB）、**ARMv7 + ARM64** 双 ABI、**仅横屏**（棋盘 10 列宽、CanvasScaler 按 1920×1080 设计，竖屏装不下）。`ProjectSettings` 里 Android 脚本后端**固定 IL2CPP**：Mono 不支持 ARM64，改回 Mono 会让纯 64 位机型装不上，且会被静默降级成纯 armeabi-v7a。
 - **发布包体约束（已实测）**：Unity 会在 `globalgamemanagers.assets` 里给每个“引用引擎的程序集”写一份 MonoScript 类名目录，即使类型被 `#if` 挡在正式包程序集之外，**顶层类名仍会入表**（嵌套类型不会、`noEngineReferences` 的 Core 不在表内）。结论：调试/开发专用代码**不能只靠条件编译**，必须放进仅编辑器编译的程序集（`Editor/` 或 `includePlatforms: ["Editor"]` 的 asmdef）；另外“场景上挂过组件”“持有 UXML 等资产引用”都会把内容拉进包。`scripts/check-build-hygiene.sh` 对上述泄露是硬失败。
 
 ## 5. 关键名词表

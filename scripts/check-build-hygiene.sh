@@ -3,8 +3,9 @@
 # check-build-hygiene.sh —— 发布包体去调试化检查
 #
 # 【作用】
-#   扫描一份 Unity Windows 构建产物（默认工程根下的 Build/），确认开发期信息没有
-#   被编译进必需资产、也没有随目录一起发出去。两类检查：
+#   扫描 Unity 构建产物（默认工程根下的 Build/，递归覆盖 Build/windows 与
+#   Build/android 两份包），确认开发期信息没有被编译进必需资产、也没有随目录
+#   一起发出去。两类检查：
 #
 #   1. 目录断言：不存在 *_BurstDebugInformation_DoNotShip。该目录里是 Burst 编译记录，
 #      带着构建机的绝对路径（Temp/Burst、Library/Burst、编辑器安装位置）。
@@ -17,7 +18,8 @@
 #      就只能靠改代码/改编译产物解决，删文件是删不掉的，所以必须有个可重复跑的检查。
 #
 # 【输入】
-#   [输出目录]    默认 Build（相对仓库根）；目录不存在时判定为“没有可检查的产物”并退出 0。
+#   [输出目录]    默认 Build（相对仓库根）；递归扫描子目录，因此 Build/windows 与
+#                 Build/android 会被一起检查；目录不存在时判定为“没有可检查的产物”并退出 0。
 #   --self-test   只跑本脚本自身的隔离用例，不检查真实产物。
 #
 # 【输出】
@@ -236,7 +238,7 @@ case "$_target" in
 esac
 
 if [ ! -d "$_target_dir" ]; then
-  echo "== 发布包体卫生检查：未找到产物目录 $_target_dir，跳过（先执行 Tools/Spotlight/打包 Windows 版本）=="
+  echo "== 发布包体卫生检查：未找到产物目录 $_target_dir，跳过（先执行 Tools/Spotlight/打包全部版本）=="
   exit 0
 fi
 
