@@ -90,7 +90,9 @@ namespace Spotlight.Tests
             Assert.That(json.Count(c => !char.IsWhiteSpace(c)), Is.GreaterThan(20000));
             var session = bootstrap.Session;
             GUIUtility.systemCopyBuffer = json;
-            SubmitButton(root, "debug-button");
+            // 入口用顶部工具条的快捷按钮（设置页里的“开发者配置”走的是同一个 DebugRequested）；
+            // 它由 HudView 在编辑器里用代码插入，所以这里能点到就是接线正常。
+            SubmitButton(root, "quick-debug-button");
             yield return null;
             yield return null;
             Assert.That(root.Q<TextField>("debug-json"), Is.Null);
@@ -106,7 +108,7 @@ namespace Spotlight.Tests
             Assert.That(GUIUtility.systemCopyBuffer, Is.EqualTo(json));
             Assert.That(bootstrap.Session, Is.SameAs(session), "导入草稿不得直接重开对局");
             SubmitButton(root, "debug-close-button");
-            SubmitButton(root, "debug-button");
+            SubmitButton(root, "quick-debug-button");
             yield return null;
             yield return null;
             Assert.That(root.Q<TextField>("debug-json"), Is.Null);
