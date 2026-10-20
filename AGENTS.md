@@ -120,7 +120,7 @@ Assets/Spotlight/
 - 卡牌视图：`Card : MonoBehaviour`，配合 `CombatComponent` / `ResourceComponent` / `TeleportComponent` / `DeploymentPenaltyComponent` / `SpawnComponent` 五个能力组件；**同一个 `Card` 承载所有卡种，不为卡种建子类**。四邻空格限制、击杀恢复行动与伤害标记是纯规则能力，只有 SO 子资产、没有 MonoBehaviour，视图读取快照与卡种定义显示。
 - 配置资产（运行层）：`CardDefinitionSO` / `CombatConfigSO` / `ResourceConfigSO` / `TeleportConfigSO` / `SpawnConfigSO` / `AdjacentClearanceConfigSO` / `KillActionConfigSO` / `DamageMarkConfigSO` / `SpotlightConfigAsset`，均实现只读接口；`GeneratedConfigAttribute` 是**无参标记**（特性参数会被编译进正式包程序集，不得携带工作簿路径）。**`ConfigManifest` 不在运行层**：它是纯编辑器侧的校验依据，类型放在 `Editor/ConfigManifest.cs`（`Spotlight.EditorTools`），否则它的 `_sourceWorkbookPath` / `_sourceHash` 字段名会跟着进 `Spotlight.Runtime.dll`。
 - 加载入口：`ConfigLoader`（`DefaultResourcePath = "SpotlightConfig"`，`TryCreateConfiguration(...)` 失败返回错误文本，不抛异常）。
-- 视图：`BoardView` / `BoardCellView`（UGUI 棋盘）、`HandView`（UGUI 手牌）、`HudView`（UI Toolkit / UXML）、`DeckSelectionPanel`（UI Toolkit 携带选择面板）、`CardFactory` / `CardText`。
+- 视图：`BoardView` / `BoardCellView`（UGUI 棋盘）、`HandView`（UGUI 手牌）、`HudView`（UI Toolkit / UXML）、`DeckSelectionPanel`（UI Toolkit 携带选择面板，每行显示属性行 + 特性短标，右侧详情区由悬停/点击触发）、`CardFactory` / `CardText`。
 - 引导与支持：`GameBootstrap`（加载配置 → 创建对局 → 绑定视图）、`DebugSupport`（`IsDebugAvailable` 判定 + `PanelInstaller` 编辑器侧回调点，面板类型不在运行层）、`CardFeedback`（DOTween 表现）。
 - 调试面板（**只在编辑器内存在**）：`ConfigDebugPanel` / `ConfigFieldBuilder` / `DebugConfigDraft`（含 `LegacyJsonMigration` / `JsonShapeValidator`）与安装器 `ConfigPanelInstaller` 全部放在 `Editor/Debug/`（编进 `Spotlight.Editor`，仅编辑器平台）；面板是**普通类不是 MonoBehaviour**（编辑器程序集的脚本禁止 `AddComponent`），由 `ConfigPanelInstaller`（`[InitializeOnLoad]` 注册到 `DebugSupport.PanelInstaller`）在进入 Play 时 `new` 出来并绑定 `HudView.Root`；面板骨架由 `EnsurePanelSkeleton` **用代码搭建**（不得做成 UXML/任何资产），两个入口按钮由 `HudView` 在 `#if UNITY_EDITOR` 里用代码插入。运行层只保留一个 `_debugPanelOpen` 状态位与编辑器侧回调点。**为什么必须搬到 Editor 下**：`#if` 能把类型从 DLL 去掉，但 Unity 仍会按编辑器编译结果在 `globalgamemanagers.assets` 写出顶层类名；放进仅编辑器程序集后连类名都不进包。**调试改动只存在于本次运行会话**。面板里不再有“逐卡种卡组数量”：抽牌堆一侧改为抽牌堆规则 7 项数值 + “调试用强制牌堆”（任一卡种填 > 0 即整体覆盖抽牌堆，全 0 表示按选卡结果生成）。
 
@@ -130,7 +130,7 @@ Assets/Spotlight/
 - 规则快照变化后，界面位置必须跟随，不得把棋子留在旧格（DOTween 需 `SetTarget` + `OnComplete/OnKill`，`Kill` 用 `DOKill(true)`）。
 - `Card.OnDestroy` 只停止自身补间（不补完），避免访问已销毁的 `RectTransform`。
 - HUD 由同一个 `Spotlight.uxml` 承载两套视图：**战斗界面**（左右详情区、墓地/抽牌堆计数、顶部工具栏、结束回合）默认显示；**菜单视图**（对局日志）移入菜单，进入时切换并暂停（复用 `SetModalOpen` 的“界面遮罩 + 规则层输入闸门”）。右下角旧的 `side-panel`（“Boss 状态 / 选中详情”两块文本侧栏）已删除：Boss 阶段与战舰状态由顶部常驻 `boss-phase-label` 承载，选中详情由左右卡面详情区承载，阶段提示只走 `error-label` 提示条与对局日志。新增界面元素要明确属于哪一套，避免菜单里点不到按钮或被遮罩压住。
-- 开局前必经携带选择：`GameBootstrap` 加载配置后先显示 `DeckSelectionPanel`，确认后才创建对局；开局入口没有“取消”按钮。齿轮菜单里的「选卡」复用同一面板，进入前先弹二次确认（确认后当前对局重开）。
+- 开局前必经携带选择：`GameBootstrap` 加载配置后先显示 `DeckSelectionPanel`，确认后才创建对局；开局入口没有“取消”按钮。齿轮菜单里的「选卡」复用同一面板，进入前先弹二次确认（确认后当前对局重开）。选卡界面必须让玩家看清每张卡再决定：行内属性行与特性短标**必须**取自 `CardText.StatLine(CardArchetype)` / `CardText.TraitTags`（与对局卡面同源，不得在面板里另拼数值），右侧详情正文取自 `CardText.DetailBody`；“携带/取消”按钮与查看详情必须是两个独立点击区域。触屏没有 hover，因此点击卡种信息块也要能固定详情。
 - 牌堆与墓地共用同一套计数面板（`.pile-panel`：底图 + 正中数字 + 上方标题 + 底部阶级小字；底图到位前用 USS 占位圆章，换图只改 `.pile-panel` 的一条 `background-image`）：**牌堆**正中显示剩余总张数（取 `snapshot.DrawPile.Count`，不以三阶级相加代替），底部一行小字给阶级构成「高 x · 中 y · 初 z」（按快照逐张查卡种阶级统计，抽牌递减、墓地洗回后回涨）；**墓地**只显示总数。标题与数字都绝对定位（`.pile-title` / `.pile-value`），因此牌堆多一行小字也不会把数字顶偏，两块面板的数字始终在同一高度。
 - 卡面由两层组成：底色 Image（`Card._body`，仍是分类色 × 阵营色）与卡图 Image（`Card._art`）。卡图按**使用场景**分两列：`Cards.cardArt`（手牌）→ `CardDefinitionSO.Art`，`Cards.cardArtUnit`（棋盘上的战斗单位，默认目录 `Assets/Imported/SpotlightArt/Units/`）→ `CardDefinitionSO.UnitArt`；发布时解析成 Sprite，运行时 `Card.ApplyArt(definition, asUnit)` 按场景取图（`BindHand` 取 `Art`，`BindUnit` 取 `BoardArt = UnitArt ?? Art`）。卡图与阵营无关：Boss 专用卡只在场上出现，只填 `cardArtUnit`。**禁止把卡图写进 `Generated/Cards/*.prefab`**（每次「编译全部配置」都会覆盖）。没有卡图时 `_art` 整个节点禁用，回退纯色矩形；绑定为“家”或 `Unbind` 必须清掉卡图。`_art` 固定是外观模板的第一个子节点（渲染顺序：底色 → 卡图 → 高亮框 → 文本）且开启 `preserveAspect`，因此高亮仍由 `_highlight` 覆盖层表达。
 
@@ -151,7 +151,7 @@ Assets/Spotlight/
 | 名词 | 含义 |
 |---|---|
 | 抽牌堆 `GameSnapshot.DrawPile` | 本次对局的卡牌来源，由携带选择 + 抽牌堆规则生成；HUD 显示剩余**总张数**并为底部一行阶级小字。**不得称为“牌库”** |
-| 携带选择（选卡）`DeckSelectionState` | 开局前勾选本次携带的卡种（每阶级至少 1 种、最多到有效上限），确认后生成抽牌堆开局；菜单「选卡」会先二次确认再重开对局；结果不持久化 |
+| 携带选择（选卡）`DeckSelectionState` | 开局前勾选本次携带的卡种（每阶级至少 1 种、最多到有效上限），确认后生成抽牌堆开局；菜单「选卡」会先二次确认再重开对局；结果不持久化。界面每行显示属性行与特性短标，悬停/点击行内信息块在右侧展开完整规则与消耗 |
 | 抽牌堆规则 `DeckConfig` / `DeckComposition` | `Rules` 的张数 + 三阶级比例 + 三阶级携带上限 7 列，以及把比例换算成张数、再分给已选卡种的唯一算法 |
 | 有效携带上限 `DeckConfig.EffectiveMaxTypes` | `min(配置上限, 该阶级卡种数)`；该阶级可选卡种池不足时，界面按它判断能否继续勾选 |
 | 强制牌堆 | 调试面板的“调试用强制牌堆”：任一卡种填 > 0 即整体覆盖抽牌堆（与选卡结果无关），仅本次运行会话有效，不写入任何资产 |
