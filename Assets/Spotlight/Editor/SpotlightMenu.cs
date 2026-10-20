@@ -105,6 +105,22 @@ namespace Spotlight.EditorTools
             Debug.Log("字体资产已重建。");
         }
 
+        /// <summary>
+        /// 给现有外观模板补齐卡图节点（幂等，不会覆盖手工外观）。
+        /// 输入：无；输出：无（结果打印到 Console）。
+        /// 为什么单独开一个入口：换皮（重建外观模板）会覆盖手工调好的层级，
+        /// 而“加卡图节点”只增补一个子节点；分开之后升级模板不必冒重建的风险。
+        /// 改完后卡种 Prefab 作为模板变体会自动继承该节点，不需要重新编译配置。
+        /// </summary>
+        [MenuItem("Tools/Spotlight/升级卡牌外观模板", priority = 26)]
+        public static void UpgradeTemplateArtNode()
+        {
+            ViewTemplateBuilder.EnsureTemplate();
+            Debug.Log(ViewTemplateBuilder.HasArtNode()
+                ? "外观模板已包含卡图节点（Art）。"
+                : "外观模板仍缺少卡图节点，请先执行“重建外观模板”后重试。");
+        }
+
         /// <summary>生成中文 TMP 字体资产与 UI Toolkit 文本设置。输入：无；输出：无。</summary>
         [MenuItem("Tools/Spotlight/生成中文字体资产", priority = 23)]
         public static void GenerateCjkFont()

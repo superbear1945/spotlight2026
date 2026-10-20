@@ -55,6 +55,8 @@ MonoBehaviour:
   _killAction: {fileID: 0}
   _damageMark: {fileID: 208750862775590117}
   _prefab: {fileID: 6525540940052022041, guid: ff4124cd1ba5a6f4990715df2b343054, type: 3}
+  _art: {fileID: 21300000, guid: 3f004e1c681d84d409d5c3e7a06daa22, type: 3}
+  _artPath: Assets/Imported/SpotlightArt/CardArt/snpEu.png
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
   _sourceSheet: Cards
 --- !u!114 &208750862775590117
