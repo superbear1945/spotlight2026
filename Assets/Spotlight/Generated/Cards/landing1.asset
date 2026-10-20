@@ -53,8 +53,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c3099d18b4ff55c4cbe7732b2d6561a9, type: 3}
   m_Name: landing1_Combat
   m_EditorClassIdentifier: 
-  _hp: 2
-  _attack: 1
+  _hp: 3
+  _attack: 2
   _range: 1
   _moveDistance: 0
   _canAttackResources: 1

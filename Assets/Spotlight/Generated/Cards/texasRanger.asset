@@ -15,7 +15,7 @@ MonoBehaviour:
   _hp: 3
   _attack: 3
   _range: 2
-  _moveDistance: 1
+  _moveDistance: 2
   _canAttackResources: 1
   _canSwap: 1
 --- !u!114 &-5857759444688928831
