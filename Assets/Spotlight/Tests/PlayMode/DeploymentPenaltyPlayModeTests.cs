@@ -167,13 +167,18 @@ namespace Spotlight.Tests
             var hand = Object.FindObjectOfType<HandView>().GetCard(record.Id);
             Invoke("OnCardClicked", hand);
             yield return null;
-            Assert.That(_root.Q<Label>("detail-left-body").text, Does.Contain("高级 · 攻击"));
+            // 卡面式详情把阶级写在副标题（我方/SENIOR 这类短标签）；正文只留规则补充，简单卡可以是空的，
+            // 所以“阶级进详情”必须用副标题与侧栏详情一起断言，不能再要求正文包含阶级文案。
+            Assert.That(_root.Q<Label>("detail-left-meta").text, Does.Contain("SENIOR"),
+                "手牌详情的副标题必须显示高级卡阶级标签");
+            Assert.That(_root.Q<Label>("unit-detail").text, Does.Contain("高级 · 攻击"));
             var id = Put("blade1", new Cell(0, 4));
             yield return WaitForPresentation();
             Invoke("OnCellClicked", new Cell(0, 4));
             yield return null;
             Assert.That(_bootstrap.Session.GetSnapshot().Round, Is.EqualTo(1));
-            Assert.That(_root.Q<Label>("detail-left-body").text, Does.Contain("高级 · 攻击"));
+            Assert.That(_root.Q<Label>("detail-left-meta").text, Does.Contain("SENIOR"),
+                "场上单位详情的副标题必须继续显示高级卡阶级标签");
             Assert.That(_root.Q<Label>("unit-detail").text, Does.Contain("高级 · 攻击"));
             Assert.That(_board.GetCard(id).GetComponentsInChildren<Graphic>().All(g => !g.raycastTarget), Is.True);
             LogAssert.NoUnexpectedReceived();

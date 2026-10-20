@@ -252,13 +252,14 @@ namespace Spotlight.Tests
         }
 
         /// <summary>
-        /// 齿轮在两套界面之间切换：默认是战斗界面（左右详情区与卡牌计数可见、日志与 Boss 状态隐藏），
-        /// 点齿轮后隐藏战斗界面、显示原有面板与「继续 / 重开」，点「继续」恢复；菜单打开期间规则层不接受操作。
+        /// 顶部四个入口按钮必须真的渲染出图标，且打开设置遮罩后规则层拒绝操作。
         /// 输入：无；输出：NUnit 断言结果。
-        /// 为什么需要：原有面板没有删除，只是移进菜单，必须防止以后误删或忘记恢复，也要确认暂停真的挡住了输入。
+        /// 为什么需要：旧的齿轮菜单入口（menu-button）已经由「暂停 / 设置 / 日志 / 帮助」四个职责单一的入口取代，
+        /// 而每个入口的全部外观就是那张背景图标——图标读不到就只剩一个空方块，玩家再也找不到入口；
+        /// 同时遮罩打开期间必须由规则层挡住操作，只靠界面盖一层的话按下结束回合仍会推进对局。
         /// </summary>
         [UnityTest]
-        public IEnumerator MenuButtonSwapsBattleAndLegacyHud()
+        public IEnumerator EntryIconsRenderAndSettingsOverlayBlocksInput()
         {
             var context = new SceneContext();
             yield return context.Load();
@@ -266,53 +267,34 @@ namespace Spotlight.Tests
             Assert.That(hud, Is.Not.Null, "场景缺少 HudView");
             var root = hud.Root;
 
-            var detailLeft = root.Q<VisualElement>("detail-left");
-            var pileLeft = root.Q<VisualElement>("pile-left");
-            var logPanel = root.Q<VisualElement>("log-panel");
-            var sidePanel = root.Q<VisualElement>("side-panel");
-            var menuOverlay = root.Q<VisualElement>("menu-overlay");
-            var menuButton = root.Q<VisualElement>("menu-button");
-            Assert.That(detailLeft, Is.Not.Null, "UXML 缺少 detail-left");
-            Assert.That(pileLeft, Is.Not.Null, "UXML 缺少 pile-left");
-            Assert.That(logPanel, Is.Not.Null, "UXML 缺少 log-panel");
-            Assert.That(sidePanel, Is.Not.Null, "UXML 缺少 side-panel");
-            Assert.That(menuOverlay, Is.Not.Null, "UXML 缺少 menu-overlay");
-            Assert.That(menuButton, Is.Not.Null, "UXML 缺少 menu-button");
-            // 齿轮按钮的全部外观就是那张背景图标（gear.png，由 .action-button.menu-button 指定）：
-            // 图标读不到就会剩下一个空方块，玩家再也找不到菜单入口，所以这里既不让它退回文字，也要求图标真的解析出来。
-            var gear = (UnityEngine.UIElements.Button)menuButton;
-            Assert.That(gear.text, Is.Empty, "齿轮按钮只显示图标，不应再有文字");
-            Assert.That(gear.resolvedStyle.backgroundImage.texture != null || gear.resolvedStyle.backgroundImage.sprite != null,
-                "齿轮按钮没有读到背景图标（gear.png），菜单入口会变成一个空方块");
-            var debugButton = root.Q<VisualElement>("debug-button");
-            Assert.That(debugButton, Is.Not.Null, "UXML 缺少 debug-button");
-            Assert.That(menuOverlay.Contains(debugButton), Is.True, "“配置/调试”入口应当位于齿轮菜单里");
+            Assert.That(root.Q<VisualElement>("menu-button"), Is.Null, "顶部不应再保留职责重复的旧齿轮菜单入口");
+            foreach (var entryName in new[] { "pause-button", "settings-button", "history-button", "help-button" })
+            {
+                var entry = root.Q<Button>(entryName);
+                Assert.That(entry, Is.Not.Null, "UXML 缺少入口按钮：" + entryName);
+                Assert.That(entry.text, Is.Empty, entryName + " 只显示图标，不应带文字");
+                Assert.That(
+                    entry.resolvedStyle.backgroundImage.texture != null || entry.resolvedStyle.backgroundImage.sprite != null,
+                    entryName + " 没有读到背景图标，入口会变成一个空方块");
+            }
 
-            Assert.That(detailLeft.style.display.value, Is.EqualTo(DisplayStyle.Flex), "默认应显示战斗界面的左右详情区");
-            Assert.That(pileLeft.style.display.value, Is.EqualTo(DisplayStyle.Flex), "默认应显示卡牌计数区");
-            Assert.That(logPanel.style.display.value, Is.EqualTo(DisplayStyle.None), "默认应隐藏对局日志");
-            Assert.That(sidePanel.style.display.value, Is.EqualTo(DisplayStyle.None), "默认应隐藏 Boss 状态");
-            Assert.That(menuOverlay.style.display.value, Is.EqualTo(DisplayStyle.None), "默认不该显示菜单");
+            var settingsOverlay = root.Q<VisualElement>("settings-overlay");
+            Assert.That(settingsOverlay, Is.Not.Null, "UXML 缺少 settings-overlay");
+            Assert.That(settingsOverlay.style.display.value, Is.EqualTo(DisplayStyle.None), "默认不该显示设置遮罩");
 
-            Invoke(context.Bootstrap, "OnMenuRequested");
+            Invoke(hud, "OpenSettingsPanel");
             yield return WaitSeconds(SettleSeconds);
-            Assert.That(detailLeft.style.display.value, Is.EqualTo(DisplayStyle.None), "菜单打开时应隐藏战斗界面");
-            Assert.That(pileLeft.style.display.value, Is.EqualTo(DisplayStyle.None), "菜单打开时应隐藏卡牌计数区");
-            Assert.That(logPanel.style.display.value, Is.EqualTo(DisplayStyle.Flex), "菜单打开时应显示对局日志");
-            Assert.That(sidePanel.style.display.value, Is.EqualTo(DisplayStyle.Flex), "菜单打开时应显示 Boss 状态");
-            Assert.That(menuOverlay.style.display.value, Is.EqualTo(DisplayStyle.Flex), "菜单打开时应显示遮罩与两个按钮");
+            Assert.That(settingsOverlay.style.display.value, Is.EqualTo(DisplayStyle.Flex), "打开设置后应显示设置遮罩");
 
-            // 菜单是暂停状态：结束回合必须被规则层拒绝，回合数不推进。
+            // 设置页是暂停状态：结束回合必须被规则层拒绝，回合数不推进。
             var pausedRound = context.Session.GetSnapshot().Round;
             Invoke(context.Bootstrap, "OnEndTurnRequested");
             yield return WaitSeconds(SettleSeconds);
-            Assert.That(context.Session.GetSnapshot().Round, Is.EqualTo(pausedRound), "菜单打开期间不应能结束回合");
+            Assert.That(context.Session.GetSnapshot().Round, Is.EqualTo(pausedRound), "设置遮罩打开期间不应能结束回合");
 
-            Invoke(context.Bootstrap, "OnMenuResumeRequested");
+            Invoke(hud, "CloseSettingsPanel");
             yield return WaitSeconds(SettleSeconds);
-            Assert.That(detailLeft.style.display.value, Is.EqualTo(DisplayStyle.Flex), "继续后应恢复战斗界面");
-            Assert.That(logPanel.style.display.value, Is.EqualTo(DisplayStyle.None), "继续后应重新隐藏日志");
-            Assert.That(menuOverlay.style.display.value, Is.EqualTo(DisplayStyle.None), "继续后应关闭菜单");
+            Assert.That(settingsOverlay.style.display.value, Is.EqualTo(DisplayStyle.None), "关闭设置后应隐藏遮罩");
         }
 
         /// <summary>
@@ -368,24 +350,29 @@ namespace Spotlight.Tests
             yield return context.Load();
             var hud = Object.FindObjectOfType<HudView>();
             Assert.That(hud, Is.Not.Null, "场景缺少 HudView");
-            var leftBody = hud.Root.Q<Label>("detail-left-body");
-            var rightBody = hud.Root.Q<Label>("detail-right-body");
-            Assert.That(leftBody, Is.Not.Null, "UXML 缺少 detail-left-body");
-            Assert.That(rightBody, Is.Not.Null, "UXML 缺少 detail-right-body");
-            Assert.That(leftBody.text, Is.Empty, "未选中时左侧详情应为空");
-            Assert.That(rightBody.text, Is.Empty, "未选中时右侧详情应为空");
+            // 卡面式详情把卡名放在标题、阵营与阶级放在副标题、规则补充放在正文；
+            // 正文对没有额外规则的简单卡本来就可以为空，所以“这一侧有没有内容”必须以标题为准。
+            var leftTitle = hud.Root.Q<Label>("detail-left-title");
+            var leftMeta = hud.Root.Q<Label>("detail-left-meta");
+            var rightTitle = hud.Root.Q<Label>("detail-right-title");
+            Assert.That(leftTitle, Is.Not.Null, "UXML 缺少 detail-left-title");
+            Assert.That(leftMeta, Is.Not.Null, "UXML 缺少 detail-left-meta");
+            Assert.That(rightTitle, Is.Not.Null, "UXML 缺少 detail-right-title");
+            Assert.That(leftTitle.text, Is.Empty, "未选中时左侧详情应为空");
+            Assert.That(rightTitle.text, Is.Empty, "未选中时右侧详情应为空");
 
             var record = context.Session.GetSnapshot().Hand.First();
             Invoke(context.Bootstrap, "OnCardClicked", context.Hand.GetCard(record.Id));
             yield return WaitSeconds(SettleSeconds);
-            Assert.That(leftBody.text, Is.Not.Empty, "选中我方手牌后左侧详情应有卡面信息");
-            Assert.That(rightBody.text, Is.Empty, "选中我方手牌时右侧应保持为空");
+            Assert.That(leftTitle.text, Is.Not.Empty, "选中我方手牌后左侧详情应有卡名");
+            Assert.That(leftMeta.text, Does.Contain("我方"), "左侧详情副标题必须标出所属阵营");
+            Assert.That(rightTitle.text, Is.Empty, "选中我方手牌时右侧应保持为空");
 
             var home = context.Session.GetSnapshot().Homes.First(h => h.Owner == Side.Player);
             Invoke(context.Bootstrap, "OnCellClicked", home.Position);
             yield return WaitSeconds(SettleSeconds);
-            Assert.That(leftBody.text, Is.Empty, "选中家时左侧详情应清空（家不在卡面区显示）");
-            Assert.That(rightBody.text, Is.Empty, "选中家时右侧详情应清空");
+            Assert.That(leftTitle.text, Is.Empty, "选中家时左侧详情应清空（家不在卡面区显示）");
+            Assert.That(rightTitle.text, Is.Empty, "选中家时右侧详情应清空");
 
             // 结束回合让 Boss 部署，等回放结束后选中敌方单位。
             Invoke(context.Bootstrap, "OnEndTurnRequested");
@@ -400,8 +387,8 @@ namespace Spotlight.Tests
             Assert.That(enemy, Is.Not.Null, "Boss 回合结束后场上仍没有敌方单位");
             Invoke(context.Bootstrap, "OnCellClicked", enemy.Position);
             yield return WaitSeconds(SettleSeconds);
-            Assert.That(rightBody.text, Is.Not.Empty, "选中敌方单位后右侧详情应有卡面信息");
-            Assert.That(leftBody.text, Is.Empty, "选中敌方单位时左侧应保持为空");
+            Assert.That(rightTitle.text, Is.Not.Empty, "选中敌方单位后右侧详情应有卡名");
+            Assert.That(leftTitle.text, Is.Empty, "选中敌方单位时左侧应保持为空");
         }
 
         /// <summary>

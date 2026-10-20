@@ -186,7 +186,9 @@ namespace Spotlight.Tests
                 .And.Match(@"(?s)\.hud-root \.settings-music-row\s*\{[^}]*top:\s*246px;")
                 .And.Match(@"(?s)\.hud-root \.settings-sound-row\s*\{[^}]*top:\s*310px;"),
                 "三条滑条必须落在统一 64px 节拍的固定基线上");
-            Assert.That(uxml, Does.Match(@"(?s)<ui:VisualElement class=""utility-actions"">\s*<ui:Button name=""settings-debug-button""[^>]*>\s*</ui:Button>\s*<ui:Button name=""settings-reset-button""[^>]*>\s*</ui:Button>\s*<ui:Button name=""settings-close-button"""),
+            // 只断言三枚按钮按顺序同层相邻，不断言标签的闭合写法：UXML 里自闭合（<ui:Button ... />）与
+            // 成对（<ui:Button ...></ui:Button>）都合法，把闭合形式写死进正则会让合法的界面文件凭空变红。
+            Assert.That(uxml, Does.Match(@"(?s)<ui:VisualElement class=""utility-actions"">\s*<ui:Button name=""settings-debug-button""[^>]*>\s*<ui:Button name=""settings-reset-button""[^>]*>\s*<ui:Button name=""settings-close-button"""),
                 "开发者配置、恢复默认与返回必须组成同一层级的底部操作区");
             Assert.That(uss, Does.Match(@"(?s)\.hud-root \.utility-actions\s*\{[^}]*top:\s*462px;[^}]*height:\s*60px;")
                 .And.Match(@"(?s)\.hud-root \.utility-actions \.action-button\s*\{[^}]*width:\s*225px;[^}]*height:\s*60px;"),
