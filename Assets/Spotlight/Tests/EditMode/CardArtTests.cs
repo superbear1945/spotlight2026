@@ -161,7 +161,7 @@ namespace Spotlight.Tests
                     viewKey = "default", hp = 1, cardArt = "ge1.png"
                 };
                 // 故意不传 artPath：来源文本必须能从行里的 cardArt 自动落到 SO 上。
-                definition.EditorApply(row, null, null, null, null, null, "w.xlsx", "Cards");
+                definition.EditorApply(row, null, null, null, null, null);
                 Assert.That(definition.ArtPath, Is.EqualTo("ge1.png"));
                 Assert.That(definition.Art, Is.Null, "没有传入 Sprite 时 Art 必须为 null（回退纯色）");
                 Assert.That(definition.ToCardRow().cardArt, Is.EqualTo("ge1.png"));
@@ -196,7 +196,7 @@ namespace Spotlight.Tests
                     id = "ge1", name = "GE-1开采机", category = "resource", tier = "basic",
                     viewKey = "default", hp = 1, cardArt = "ge1.png"
                 };
-                definition.EditorApply(row, null, null, null, null, null, "w.xlsx", "Cards", art: sprite, artPath: "ge1.png");
+                definition.EditorApply(row, null, null, null, null, null, art: sprite, artPath: "ge1.png");
 
                 card.Configure(definition);
                 Assert.That(artImage.sprite, Is.SameAs(sprite));

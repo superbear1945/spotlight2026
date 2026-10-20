@@ -23,6 +23,11 @@
 #      输的一方拿到 “0 free entitlements” 而整轮假失败。
 #      同时不得设置 cancel-in-progress: true（中途杀掉 Unity 会泄漏席位）。
 #
+#   6. 一旦 workflow 里出现打包/归档动作（zip / 7z / tar，或引用 build/ 产物目录），
+#      就必须同时保留删除 *_BurstDebugInformation_DoNotShip 的兜底行（详见 CheckBuildArtifactCleanup）：
+#      Burst 调试目录里是构建机的绝对路径，整目录压进 nightly 包就把开发期信息发出去了。
+#      当前 main 的 unity-tests.yml 已不含打包 job，所以这条现在是“一旦加回打包就会启用”的守卫。
+#
 # 【输入】
 #   无参数：扫描仓库内 .github/workflows/*.yml（相对仓库根目录）。
 #   --self-test：只跑本脚本自身的用例，不检查当前仓库。
@@ -153,6 +158,33 @@ CheckUnityConcurrency() {
 }
 
 # -----------------------------------------------------------------------------
+# CheckBuildArtifactCleanup —— 校验“打包 workflow 必须清掉 Burst 调试目录”
+# 输入：workflow 文件路径；输出：失败时打印原因，返回 0 合规 / 1 违规。
+# 为什么需要：Unity 会在输出目录旁生成 <产品名>_BurstDebugInformation_DoNotShip/，
+# 里面记录 Temp/Burst、Library/Burst 与编辑器安装路径；打包步骤 cp 到 runner 后再 zip，
+# 泄露的就是 runner 的 /github/workspace/... 路径。目录名里的 DoNotShip 说明 Unity 自己也
+# 认为它不该发布，但“压缩整个产物目录”这个写法很自然会把它一起带上，且不会有任何报错。
+# 现在 main 的 workflow 没有打包 job，因此本条只在重新引入打包时才生效（其余情况直接放行）。
+# -----------------------------------------------------------------------------
+CheckBuildArtifactCleanup() {
+  local _file="$1"
+
+  # 只有真的存在打包/归档动作时才要求兜底清理，避免给纯测试 workflow 加无意义的行。
+  if ! grep -Eq '(^|[[:space:]])(zip|7z|tar)[[:space:]]|build/' "$_file"; then
+    return 0
+  fi
+
+  if grep -Eq '_BurstDebugInformation_DoNotShip' "$_file"; then
+    return 0
+  fi
+
+  echo "  ❌ $_file：存在打包/归档步骤，但缺少删除 *_BurstDebugInformation_DoNotShip 的兜底行"
+  echo "     ↑ 该目录里是构建机绝对路径（Temp/Burst、Library/Burst、编辑器安装位置）。"
+  echo "       压缩前加一行：find build/StandaloneWindows64 -maxdepth 1 -name \"*_BurstDebugInformation_DoNotShip\" -exec rm -rf {} +"
+  return 1
+}
+
+# -----------------------------------------------------------------------------
 # _check_file —— 校验单个 workflow 文件的触发策略与 Unity 串行约束
 # 输入：workflow 文件路径
 # 输出：标准输出打印结论；返回 0 表示合规，1 表示存在违规
@@ -181,6 +213,8 @@ _check_file() {
     CheckUnityParallelism "$_file" || _rc=1
     CheckUnityConcurrency "$_file" || _rc=1
   fi
+
+  CheckBuildArtifactCleanup "$_file" || _rc=1
 
   return "$_rc"
 }
@@ -494,6 +528,36 @@ R（cancel-in-progress: true → 拦截）|cancel|1
 S（缺 concurrency 块 → 拦截）|missing|1
 CONCCASES
 
+  # --- 用例 T–V：打包 workflow 必须清掉 Burst 调试目录（当前无打包 job，这条在加回打包时生效）。
+  # 为什么必须覆盖："把整个输出目录压缩上传"是最自然的写法，它会把 Unity 自己标了
+  # DoNotShip 的 Burst 调试目录一起带上，泄露构建机绝对路径，而且全程不会报错。
+  local _pcase _pstep _pexpected _pactual
+  while IFS='|' read -r _pcase _pstep _pexpected; do
+    [ -n "${_pcase:-}" ] || continue
+    {
+      printf '%s\n' \
+        'on:' \
+        '  pull_request:' \
+        '  workflow_dispatch:' \
+        'jobs:' \
+        '  package:' \
+        '    steps:'
+      [ -n "$_pstep" ] && printf '      - run: %b\n' "$_pstep"
+    } >"$_tmp/case-pack.yml"
+    _pactual=0
+    bash "$_self_path" "$_tmp/case-pack.yml" >/dev/null 2>&1 || _pactual=$?
+    if [ "$_pactual" -eq "$_pexpected" ]; then
+      echo "  ✅ 自检 $_pcase 通过"
+    else
+      echo "  ❌ 自检 $_pcase 失败：期望退出码 $_pexpected，实际 $_pactual"
+      _rc=1
+    fi
+  done <<'PACKCASES'
+T（有 zip 打包但无 Burst 清理 → 拦截）|cd build/StandaloneWindows64 && zip -r out.zip .|1
+U（压缩前删掉 Burst 目录 → 放行）|cd build/StandaloneWindows64 && find . -maxdepth 1 -name "*_BurstDebugInformation_DoNotShip" -exec rm -rf {} + && zip -r out.zip .|0
+V（没有打包步骤 → 放行）|echo test|0
+PACKCASES
+
   # --- 用例 I–K：合并门槛只允许“检查全绿 + 分支最新”，不得要求人工审阅。
   # 为什么必须在自检里覆盖：这条约定平时看不出问题，一旦规则集被改回要求审阅，
   # 表现只是 PR 卡在等 approval；而校验它的 --check-ruleset 需要 gh 登录才能跑，
@@ -526,7 +590,7 @@ GATES
 if [ "${1:-}" = "--self-test" ]; then
   echo "== check-ci-config.sh 自检 =="
   if _self_test; then
-    echo "自检结果：15/15 通过"
+    echo "自检结果：18/18 通过"
     exit 0
   fi
   echo "自检结果：存在失败用例"

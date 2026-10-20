@@ -15,7 +15,7 @@ namespace Spotlight.Tests
     /// <summary>配置面板表单测试。输入：UXML 实例与内存草稿；输出：NUnit 断言结果。</summary>
     public class ConfigPanelTests
     {
-        /// <summary>面板界面资产路径。</summary>
+        /// <summary>面板界面资产路径（皮肤 UXML 只提供 HUD 根节点，面板骨架由 ConfigDebugPanel 用代码搭建）。</summary>
         const string UxmlPath = "Assets/Spotlight/UI/Spotlight.uxml";
 
         /// <summary>测试用界面根元素。</summary>
@@ -35,6 +35,7 @@ namespace Spotlight.Tests
             var asset = UnityEditor.AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(UxmlPath);
             Assert.That(asset, Is.Not.Null, "找不到界面文件 " + UxmlPath);
             _root = asset.Instantiate();
+            // 面板骨架不在皮肤 UXML 里（正式包不能带上它），由 BindTo 在根节点下用代码搭建。
             _host = new GameObject("ConfigPanelTestHost");
             _panel = _host.AddComponent<ConfigDebugPanel>();
             _panel.BindTo(_root, null);

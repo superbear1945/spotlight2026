@@ -1,3 +1,8 @@
+// 【仅调试构建编译】整个文件被 UNITY_EDITOR || DEVELOPMENT_BUILD 包住。
+// 为什么：正式包（BuildOptions.None）里这些类型必须完全不存在，否则拆包能看到
+// “这游戏有一套可改棋盘/卡表/Boss 参数的配置编辑器”，等于把半张设计稿交给玩家。
+// 约束：本文件不得被运行层无条件引用；GameBootstrap / HudView 里对它的使用同样包着条件编译。
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
 // 调试配置草稿：只在当前运行会话内存在，不写回 Excel，也不修改生成资产。
 // 为什么单独抽出纯 C# 类：JSON 迁移、校验与候选对局创建都可以在不打开界面的情况下被测试覆盖。
 using System;
@@ -465,3 +470,5 @@ namespace Spotlight
         }
     }
 }
+
+#endif // UNITY_EDITOR || DEVELOPMENT_BUILD

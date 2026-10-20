@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Spotlight;
+using Spotlight.EditorTools;
 using UnityEngine;
 
 namespace Spotlight.Tests
@@ -45,7 +46,7 @@ namespace Spotlight.Tests
             var asset = ScriptableObject.CreateInstance<SpotlightConfigAsset>();
             try
             {
-                asset.EditorApply(Document(), System.Array.Empty<CardDefinitionSO>(), "fixture", "hash", "time");
+                asset.EditorApply(Document(), System.Array.Empty<CardDefinitionSO>());
                 var original = JsonUtility.ToJson(asset.ToDocument());
                 var copy = asset.ToDocument();
                 var other = asset.ToDocument();
@@ -70,7 +71,7 @@ namespace Spotlight.Tests
             var asset = ScriptableObject.CreateInstance<SpotlightConfigAsset>();
             try
             {
-                asset.EditorApply(Document(), System.Array.Empty<CardDefinitionSO>(), "fixture", "hash", "time");
+                asset.EditorApply(Document(), System.Array.Empty<CardDefinitionSO>());
                 var original = JsonUtility.ToJson(asset.ToDocument());
                 var draft = new DebugConfigDraft(asset);
                 draft.Document.rules[0].homeRegionWidth = 10;

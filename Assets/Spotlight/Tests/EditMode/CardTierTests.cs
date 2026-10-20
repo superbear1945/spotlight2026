@@ -146,7 +146,7 @@ namespace Spotlight.Tests
                 foreach (var tier in new[] { "basic", "intermediate", "advanced", "none" })
                 {
                     row.tier = tier;
-                    definition.EditorApply(row, null, null, null, null, null, "test.xlsx", "Cards");
+                    definition.EditorApply(row, null, null, null, null, null);
                     Assert.That(definition.TierText, Is.EqualTo(tier));
                     Assert.That(definition.ToCardRow().tier, Is.EqualTo(tier));
                     Assert.That(definition.ToArchetype().Tier, Is.EqualTo(CardTiers.Parse(tier)));

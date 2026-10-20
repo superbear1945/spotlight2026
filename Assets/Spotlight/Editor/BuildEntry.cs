@@ -97,7 +97,10 @@ namespace Spotlight.EditorTools
                 Directory.CreateDirectory(outputDirectory);
                 var executablePath = Path.Combine(outputDirectory, PlayerSettings.productName + ".exe");
 
-                // BuildOptions.None = 非 Development 包：按 docs/使用说明.md，正式包不包含调试配置面板。
+                // BuildOptions.None = 非 Development 包。
+                // 调试面板不是“只在界面隐藏”：Runtime/Debug 下的三个文件、GameBootstrap 的 
+                // _debugPanel 字段与两个调试按钮都由 UNITY_EDITOR || DEVELOPMENT_BUILD 挡在编译期之外，
+                // 因此正式包里连类型名与按钮文案都不存在（见 docs/使用说明.md 第 5 节）。
                 // 配置门禁（ConfigBuildProcessor）会在此步之前自动执行，不通过时抛出 BuildFailedException。
                 var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
                 {

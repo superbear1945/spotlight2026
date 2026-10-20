@@ -7,29 +7,15 @@ namespace Spotlight
 {
     /// <summary>
     /// 标记一个 ScriptableObject 是“由 Excel 编译生成、只读”的配置资产。
-    /// 输入：无（特性）；输出：编辑器为带此特性的类型禁用 Inspector 编辑并显示源表提示。
+    /// 输入：无（纯标记特性）；输出：编辑器为带此特性的类型禁用 Inspector 编辑。
     /// 为什么需要：生成资产手工改数值会破坏“配置来源于工作簿”的约束，
     /// 因此必须让策划在 Inspector 上无法编辑，并在运行/构建门禁中检测篡改。
+    /// 为什么不带源文件路径参数：特性参数会被编译进运行时程序集，
+    /// 正式包拆开后就能看到“Assets/Spotlight/Config/Spotlight.xlsx”这类开发期路径；
+    /// 溯源信息只写在不进包的 ConfigManifest。
     /// </summary>
     [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
     public sealed class GeneratedConfigAttribute : System.Attribute
     {
-        /// <summary>默认源工作簿相对路径，用于在 Inspector 与错误报告中定位来源。</summary>
-        public string SourcePath { get; }
-
-        /// <summary>构造标记。输入：默认源文件相对路径（可为空）；输出：可标注在配置类上的特性。</summary>
-        public GeneratedConfigAttribute(string sourcePath = "") { SourcePath = sourcePath; }
-    }
-
-    /// <summary>
-    /// 所有“可追溯到某张表”的生成资产共用的来源描述。
-    /// 输入：编译器写入的文件名与工作表名；输出：Inspector 与校验报告统一读取的来源文本。
-    /// </summary>
-    public interface IConfigSourceInfo
-    {
-        /// <summary>源工作簿文件名（含扩展名），例如 Spotlight.xlsx。</summary>
-        string SourceWorkbook { get; }
-        /// <summary>源工作表名，例如 Cards。</summary>
-        string SourceSheet { get; }
     }
 }
