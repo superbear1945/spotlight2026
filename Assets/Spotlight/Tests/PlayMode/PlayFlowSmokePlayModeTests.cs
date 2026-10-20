@@ -73,8 +73,7 @@ namespace Spotlight.Tests
             var swapCells = session.GetLegalActions(new Selection(SelectionKind.Unit, secondId)).Swap;
             Assert.That(swapCells.Count, Is.GreaterThan(0), "相邻且都未行动的两个非资源单位应当可以互换");
             var partner = session.GetSnapshot().Units.Single(u => u.Position == swapCells[0]);
-            var swap = Submit(new GameCommand(CommandKind.Swap, Side.Player, secondId, targetId: partner.Id));
-            Assert.That(swap, Is.Not.Null, "互换命令没有执行（上一个命令的演示未结束）");
+            var swap = MustSubmit(new GameCommand(CommandKind.Swap, Side.Player, secondId, targetId: partner.Id), "互换");
             Assert.That(swap.Success, Is.True, swap.Error);
             yield return WaitSeconds(SettleSeconds);
             Assert.That(session.GetSnapshot().Units.Single(u => u.Id == secondId).Position,
@@ -86,7 +85,7 @@ namespace Spotlight.Tests
             yield return WaitSeconds(SettleSeconds);
             var moveCells = session.GetLegalActions(new Selection(SelectionKind.Unit, moverId)).Move;
             Assert.That(moveCells.Count, Is.GreaterThan(0), "新部署的攻击单位应当有合法移动格（召唤失调已关闭）");
-            var move = Submit(new GameCommand(CommandKind.Move, Side.Player, moverId, moveCells[0]));
+            var move = MustSubmit(new GameCommand(CommandKind.Move, Side.Player, moverId, moveCells[0]), "移动");
             Assert.That(move.Success, Is.True, move.Error);
             yield return WaitSeconds(SettleSeconds);
             Assert.That(session.GetSnapshot().Units.Single(u => u.Id == moverId).Position,
@@ -99,7 +98,7 @@ namespace Spotlight.Tests
             var attackCells = session.GetLegalActions(new Selection(SelectionKind.Unit, attackerId)).Attack;
             Assert.That(attackCells.Any(c => c.Equals(bossHome.Position)), Is.True, "贴着 Boss 家的单位应当可以攻击家");
             var hpBefore = session.GetSnapshot().Homes.Single(h => h.Owner == Side.Boss).Hp;
-            var attack = Submit(new GameCommand(CommandKind.Attack, Side.Player, attackerId, targetId: bossHome.Id));
+            var attack = MustSubmit(new GameCommand(CommandKind.Attack, Side.Player, attackerId, targetId: bossHome.Id), "攻击家");
             Assert.That(attack.Success, Is.True, attack.Error);
             yield return WaitSeconds(SettleSeconds);
             Assert.That(session.GetSnapshot().Homes.Single(h => h.Owner == Side.Boss).Hp, Is.LessThan(hpBefore),
@@ -108,7 +107,7 @@ namespace Spotlight.Tests
 
             // ⑤ 离场：来源卡在部署时已进墓地，离场既不回收卡牌也不消耗行动。
             var graveyardBefore = session.GetSnapshot().Graveyard.Count;
-            var withdraw = Submit(new GameCommand(CommandKind.Withdraw, Side.Player, moverId));
+            var withdraw = MustSubmit(new GameCommand(CommandKind.Withdraw, Side.Player, moverId), "离场");
             Assert.That(withdraw.Success, Is.True, withdraw.Error);
             yield return WaitSeconds(SettleSeconds);
             Assert.That(session.GetSnapshot().Units.Any(u => u.Id == moverId), Is.False, "离场后单位仍在场上");
@@ -118,7 +117,7 @@ namespace Spotlight.Tests
 
             // ⑥ 结束回合：Boss（AI）回合整段跑完，回到玩家。
             var roundBefore = session.GetSnapshot().Round;
-            var endTurn = Submit(new GameCommand(CommandKind.EndTurn, Side.Player, skipDeployment: true));
+            var endTurn = MustSubmit(new GameCommand(CommandKind.EndTurn, Side.Player, skipDeployment: true), "结束回合");
             Assert.That(endTurn.Success, Is.True, endTurn.Error);
             yield return WaitForPresentation();
             yield return WaitSeconds(SettleSeconds);
@@ -237,21 +236,34 @@ namespace Spotlight.Tests
             Assert.That(best, Is.Not.Null, "手里没有更多可部署的卡");
             Assert.That(bestDistance, Is.LessThanOrEqualTo(maxDistance),
                 $"找不到距 {anchor} ≤{maxDistance} 的合法部署格（最近为 {best} 距离 {bestDistance}）");
-            var result = Submit(new GameCommand(CommandKind.Deploy, Side.Player, bestRecord.Id, best.Value));
-            Assert.That(result, Is.Not.Null, "部署命令没有执行（上一个命令的演示未结束）");
+            var result = MustSubmit(new GameCommand(CommandKind.Deploy, Side.Player, bestRecord.Id, best.Value), "增援部署");
             Assert.That(result.Success, Is.True, result.Error);
             return session.GetSnapshot().Units.Single(u => u.SourceCardId == bestRecord.Id).Id;
         }
 
+        /// <summary>提交并断言命令被执行（演示期间 Submit 返回 null，直接解引用只会得到无信息量的 NRE）。</summary>
+        /// <param name="command">要提交的不可变命令。</param>
+        /// <param name="stage">阶段名，用于失败时指出是哪一步。</param>
+        /// <returns>已经确认非空且成功的结算结果。</returns>
+        CommandResult MustSubmit(GameCommand command, string stage)
+        {
+            var result = Submit(command);
+            Assert.That(result, Is.Not.Null, $"{stage}：命令没有执行（上一个命令的演示还没结束）");
+            return result;
+        }
+
         /// <summary>
-        /// 核对“棋盘卡牌视图 ⇄ 规则快照单位”。输入：会话与阶段名；输出：NUnit 断言。
+        /// 核对“棋盘卡牌视图 ⇄ 规则快照实体”。输入：会话与阶段名；输出：NUnit 断言。
+        /// 注意：棋盘上除战斗单位外还有两个「家」，且它们共用同一个卡面字典
+        /// （<see cref="BoardView.UnitCards"/>），所以期望张数是“单位数 + 家数”。
         /// 为什么单列一条不变式：它同时能抓住“卡牌留在原格”“卡牌消失”“卡牌拦截射线”三类视图失步问题。
         /// </summary>
         void AssertCardsMatchSnapshot(GameSession session, string stage)
         {
             var snapshot = session.GetSnapshot();
-            Assert.That(_board.UnitCards.Count, Is.EqualTo(snapshot.Units.Count),
-                $"{stage}：棋盘卡牌数量（{_board.UnitCards.Count}）与快照单位数（{snapshot.Units.Count}）不一致");
+            var expected = snapshot.Units.Count + snapshot.Homes.Count;
+            Assert.That(_board.UnitCards.Count, Is.EqualTo(expected),
+                $"{stage}：棋盘卡牌数量（{_board.UnitCards.Count}）与快照实体数（单位 {snapshot.Units.Count} + 家 {snapshot.Homes.Count}）不一致");
             foreach (var unit in snapshot.Units)
             {
                 var card = _board.GetCard(unit.Id);
@@ -260,6 +272,15 @@ namespace Spotlight.Tests
                     $"{stage}：单位 {unit.Id} 的卡牌没有挂在快照位置 {unit.Position}");
                 Assert.That(card.GetComponentsInChildren<Graphic>().All(g => !g.raycastTarget), Is.True,
                     $"{stage}：棋盘卡牌不得拦截点击");
+            }
+            foreach (var home in snapshot.Homes)
+            {
+                var card = _board.GetCard(home.Id);
+                Assert.That(card, Is.Not.Null, $"{stage}：家 {home.Id} 缺少卡牌视图");
+                Assert.That(card.transform.parent, Is.EqualTo(_board.CellRect(home.Position)),
+                    $"{stage}：家 {home.Id} 的卡牌没有挂在快照位置 {home.Position}");
+                Assert.That(card.GetComponentsInChildren<Graphic>().All(g => !g.raycastTarget), Is.True,
+                    $"{stage}：家里的卡牌不得拦截点击");
             }
         }
 
