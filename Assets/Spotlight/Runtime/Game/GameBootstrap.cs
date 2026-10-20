@@ -32,8 +32,6 @@ namespace Spotlight
         [SerializeField] BoardView _boardView;
         /// <summary>手牌视图。</summary>
         [SerializeField] HandView _handView;
-        /// <summary>玩家抽牌堆与墓地视图（UGUI）。</summary>
-        [SerializeField] CardZonesView _cardZonesView;
         /// <summary>HUD 视图（UI Toolkit）。</summary>
         [SerializeField] HudView _hudView;
         /// <summary>动效播放器。</summary>
@@ -843,7 +841,6 @@ namespace Spotlight
             var actions = _presentingTurn ? new LegalActions() : _session.GetLegalActions(_selection);
             _boardView?.Render(snapshot, actions, _selection);
             _handView?.Render(snapshot, _selection);
-            _cardZonesView?.Render(snapshot);
             _hudView?.Render(snapshot, _configuration, _selection, actions, _presentingTurn || _modalOpen);
             SyncSelectionFeedback();
         }

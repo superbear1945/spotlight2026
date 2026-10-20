@@ -206,13 +206,21 @@ namespace Spotlight.Tests
             Assert.That(uss, Does.Match(@"(?s)\.hud-root \.utility-actions\s*\{[^}]*top:\s*462px;[^}]*height:\s*60px;")
                 .And.Match(@"(?s)\.hud-root \.utility-actions \.action-button\s*\{[^}]*width:\s*225px;[^}]*height:\s*60px;"),
                 "三枚设置操作按钮必须完整落在放大后的底板安全区内");
-            Assert.That(uss, Does.Match(@"(?s)\.hud-root \.log-panel\s*\{[^}]*bottom:\s*214px;[^}]*width:\s*300px;[^}]*height:\s*150px;[^}]*dialog_static\.png"),
-                "对局日志必须改用更小的对话框面板，并避开墓地面板");
+            Assert.That(uss, Does.Match(@"(?s)\.hud-root \.log-panel\s*\{[^}]*left:\s*auto;[^}]*right:\s*18px;[^}]*top:\s*104px;[^}]*bottom:\s*auto;[^}]*width:\s*360px;[^}]*height:\s*329px;[^}]*pause_panel\.png[^}]*scale-to-fit;")
+                .And.Match(@"(?s)\.hud-root \.log-panel \.section-label\s*\{[^}]*font-size:\s*20px;[^}]*middle-center;")
+                .And.Match(@"(?s)\.hud-root \.log-panel \.log-list \.unity-scroll-view__content-viewport\s*\{[^}]*background-color:\s*rgba\(0,\s*0,\s*0,\s*0\);")
+                .And.Match(@"(?s)\.hud-root \.log-panel \.log-list \.unity-scroller__low-button,\s*\.hud-root \.log-panel \.log-list \.unity-scroller__high-button\s*\{[^}]*display:\s*none;")
+                .And.Match(@"(?s)\.hud-root \.log-panel \.log-list \.unity-scroller__slider\s*\{[^}]*scroll_track_static\.png")
+                .And.Match(@"(?s)\.hud-root \.log-panel \.log-list \.unity-base-slider__dragger\s*\{[^}]*width:\s*34px;[^}]*scroll_handle_normal\.png"),
+                "展开后的对局日志必须紧接在右上角对局记录按钮下方，并把标题与正文完整放入内框安全区");
             Assert.That(uss, Does.Match(@"(?s)\.hud-root \.help-panel\s*\{[^}]*width:\s*920px;[^}]*height:\s*613px;")
-                .And.Match(@"(?s)\.hud-root \.help-scroll \.unity-scroll-view__vertical-scroller\s*\{[^}]*width:\s*44px;[^}]*translate:\s*-6px 0;")
+                .And.Match(@"(?s)\.hud-root \.help-scroll \.unity-scroll-view__vertical-scroller\s*\{[^}]*width:\s*44px;[^}]*translate:\s*-14px 0;")
                 .And.Match(@"(?s)\.hud-root \.help-scroll \.unity-base-slider__dragger\s*\{[^}]*width:\s*44px;[^}]*min-height:\s*108px;")
                 .And.Match(@"(?s)\.hud-root \.utility-close-button\s*\{[^}]*top:\s*462px;[^}]*height:\s*60px;"),
                 "帮助页必须使用放大的面板与可辨识的滚动条，关闭按钮必须完整停在底框安全区内");
+            Assert.That(uss, Does.Match(@"(?s)\.hud-root \.help-scroll \.unity-base-slider__drag-container,\s*\.hud-root \.log-panel \.log-list \.unity-base-slider__drag-container\s*\{[^}]*left:\s*0;[^}]*right:\s*0;[^}]*margin-left:\s*0;[^}]*margin-right:\s*0;")
+                .And.Match(@"(?s)\.hud-root \.help-scroll \.unity-base-slider__dragger,\s*\.hud-root \.log-panel \.log-list \.unity-base-slider__dragger\s*\{[^}]*left:\s*0;[^}]*margin-left:\s*0;[^}]*margin-right:\s*0;[^}]*translate:\s*0 0;"),
+                "规则帮助与对局日志的滚动轨道、拖拽层和滑块必须共享同一水平中心线");
 
             Assert.That(uss, Does.Match(@"(?s)\.hud-root \.end-turn-button:hover\s*\{[^}]*end_turn_hover\.png"),
                 "结束回合按钮的高优先级 HUD 规则必须切换 Hover 美术，避免被基础布局规则覆盖");
@@ -226,6 +234,10 @@ namespace Spotlight.Tests
                 "暂停面板必须使用不含文字与控件的独立底板素材");
             Assert.That(uss, Does.Match(@"(?s)\.hud-root \.round-counter\s*\{[^}]*top:\s*0;[^}]*width:\s*150px;[^}]*height:\s*150px;"),
                 "回合圆盘必须保持原尺寸，不能靠放大圆盘掩盖长条比例问题");
+            Assert.That(uss, Does.Match(@"(?s)\.hud-root \.round-counter\.opponent-turn \.round-number-label\s*\{[^}]*color:\s*rgb\(184,\s*59,\s*34\);"),
+                "对方回合数字必须使用高对比敌方色，不能继续与浅色圆盘底色混在一起");
+            Assert.That(uss, Does.Match(@"(?s)\.hud-root \.error-label\s*\{[^}]*width:\s*540px;[^}]*height:\s*98px;[^}]*scale-and-crop;"),
+                "弃牌等顶部提示必须按 notice 素材可见比例裁切透明边，不能横向强制拉伸成细条");
             Assert.That(uss, Does.Match(@"(?s)\.hud-root \.round-number-label\s*\{[^}]*top:\s*59px;[^}]*width:\s*78px;[^}]*height:\s*50px;[^}]*font-size:\s*36px;"),
                 "回合数字必须位于圆盘下半部的数字区域中央");
             Assert.That(uss, Does.Match(@"(?s)\.hud-root \.life-value\s*\{[^}]*top:\s*31px;[^}]*height:\s*44px;[^}]*font-size:\s*34px;"),
@@ -472,7 +484,7 @@ namespace Spotlight.Tests
                 "左右详情区必须各自只使用一张真实高斯透明度衬底");
             Assert.That(uxml, Does.Not.Contain("detail-backdrop-outer"));
             Assert.That(uxml, Does.Not.Contain("detail-backdrop-core"));
-            Assert.That(uss, Does.Match(@"(?s)\.detail-backdrop-blur\s*\{[^}]*detail_backdrop_blur\.png[^}]*-unity-slice-left:\s*112;[^}]*-unity-slice-right:\s*112;[^}]*-unity-slice-top:\s*112;[^}]*-unity-slice-bottom:\s*112;"),
+            Assert.That(uss, Does.Match(@"(?s)\.detail-backdrop-blur\s*\{[^}]*left:\s*-80px;[^}]*right:\s*-80px;[^}]*top:\s*-80px;[^}]*bottom:\s*-80px;[^}]*detail_backdrop_blur\.png[^}]*-unity-slice-left:\s*112;[^}]*-unity-slice-right:\s*112;[^}]*-unity-slice-top:\s*112;[^}]*-unity-slice-bottom:\s*112;"),
                 "深色衬底必须使用高斯透明度纹理并通过九宫格保持连续柔边，不能再用分层硬边矩形近似");
             Assert.That(uss, Does.Not.Contain(".detail-backdrop-outer"));
             Assert.That(uss, Does.Contain("font-size: 40px;"), "卡名必须使用更重的大标题层级");
@@ -576,7 +588,7 @@ namespace Spotlight.Tests
                 board.transform.SetParent(canvas.transform, false);
                 var cells = new GameObject("Cells", typeof(RectTransform));
                 cells.transform.SetParent(board.transform, false);
-                var hand = new GameObject("HandRoot", typeof(RectTransform));
+                var hand = new GameObject("HandRoot", typeof(RectTransform), typeof(UnityEngine.UI.HorizontalLayoutGroup));
                 hand.transform.SetParent(canvas.transform, false);
 
                 SpotlightMenu.EnsurePassiveArtwork(canvas);
@@ -602,11 +614,81 @@ namespace Spotlight.Tests
                 Assert.That(handBackdrop.rectTransform.sizeDelta.y, Is.EqualTo(650f));
                 Assert.That(((RectTransform)board.transform).offsetMin, Is.EqualTo(new Vector2(300f, 300f)));
                 Assert.That(((RectTransform)board.transform).offsetMax, Is.EqualTo(new Vector2(-300f, -210f)));
+                Assert.That(((RectTransform)hand.transform).anchoredPosition.y, Is.EqualTo(72f),
+                    "手牌容器必须整体上移，让放大后的卡面越出操作区");
+                var handLayout = hand.GetComponent<UnityEngine.UI.HorizontalLayoutGroup>();
+                Assert.That(handLayout.childAlignment, Is.EqualTo(TextAnchor.LowerCenter),
+                    "放大的手牌必须底对齐，只允许上缘越出操作区");
+                Assert.That(handLayout.spacing, Is.EqualTo(14f));
             }
             finally
             {
                 Object.DestroyImmediate(canvasObject);
             }
+        }
+
+        /// <summary>
+        /// 手牌运行时尺寸必须大于卡牌模板，并通过 LayoutElement 保持稳定布局。
+        /// 输入：内存创建的 HandView 与 120×160 卡牌模板实例；
+        /// 输出：断言手牌被放大为 180×240，RectTransform 与布局建议尺寸完全一致。
+        /// 为什么需要：模板同时用于棋盘，手牌只能在 HandView 内单独放大；否则改模板会让棋盘卡牌也溢出格子。
+        /// </summary>
+        [Test]
+        public void HandViewUsesLargeBottomOverflowCardSize()
+        {
+            var handObject = new GameObject("HandRoot", typeof(RectTransform), typeof(HandView));
+            var cardObject = new GameObject("Card", typeof(RectTransform), typeof(UnityEngine.UI.Image),
+                typeof(UnityEngine.UI.Button), typeof(Card));
+            try
+            {
+                var cardRect = (RectTransform)cardObject.transform;
+                cardRect.sizeDelta = new Vector2(120f, 160f);
+                var hand = handObject.GetComponent<HandView>();
+                InvokeMethod(hand, "EnsureLayoutSize", cardObject.GetComponent<Card>());
+
+                Assert.That(cardRect.sizeDelta, Is.EqualTo(new Vector2(180f, 240f)));
+                var layout = cardObject.GetComponent<UnityEngine.UI.LayoutElement>();
+                Assert.That(layout, Is.Not.Null);
+                Assert.That(layout.preferredWidth, Is.EqualTo(180f));
+                Assert.That(layout.preferredHeight, Is.EqualTo(240f));
+                Assert.That(layout.minWidth, Is.EqualTo(180f));
+                Assert.That(layout.minHeight, Is.EqualTo(240f));
+            }
+            finally
+            {
+                Object.DestroyImmediate(cardObject);
+                Object.DestroyImmediate(handObject);
+            }
+        }
+        /// <summary>
+        /// 底部抽牌堆与墓地只能使用 UI Toolkit 卡背显示，不能再生成旧 UGUI 矩形面板。
+        /// 输入：真实 UXML/USS、场景生成器、GameBootstrap 与演示场景文本；
+        /// 输出：卡背结构存在，且旧 CardZonesRoot、DrawPilePanel、GraveyardPanel 与运行绑定均不存在。
+        /// 为什么需要：两套牌区同时启用会在操作区重复显示同一份计数，并遮挡卡背与手牌底板。
+        /// </summary>
+        [Test]
+        public void BottomCardZonesUseOnlyToolkitCardBacks()
+        {
+            var uxml = File.ReadAllText(UxmlPath);
+            var uss = File.ReadAllText(UssPath);
+            var generator = File.ReadAllText("Assets/Spotlight/Editor/SpotlightMenu.cs");
+            var bootstrap = File.ReadAllText("Assets/Spotlight/Runtime/Game/GameBootstrap.cs");
+            var scene = File.ReadAllText("Assets/Spotlight/Scenes/Spotlight.unity");
+
+            Assert.That(File.ReadAllLines(UxmlPath).Count(line => line.Contains("class=\"pile-panel ")), Is.EqualTo(2),
+                "墓地与抽牌堆必须各保留一张 UI Toolkit 卡背");
+            Assert.That(uss, Does.Match(@"(?s)\.pile-panel\s*\{[^}]*CardArt/backside\.png"),
+                "两侧牌区必须共用卡背美术，不能退回纯色矩形");
+            Assert.That(uss, Does.Match(@"(?s)\.pile-panel\s*\{[^}]*bottom:\s*42px;[^}]*width:\s*165px;[^}]*height:\s*244px;")
+                .And.Match(@"(?s)\.pile-left\s*\{[^}]*left:\s*80px;")
+                .And.Match(@"(?s)\.pile-right\s*\{[^}]*right:\s*80px;"),
+                "两侧牌堆必须放大、整体上移并同时向屏幕中间收拢");
+            Assert.That(generator, Does.Not.Contain("CardZonesRoot").And.Not.Contain("DrawPilePanel").And.Not.Contain("GraveyardPanel"),
+                "场景生成器不能重新创建旧 UGUI 牌区");
+            Assert.That(bootstrap, Does.Not.Contain("CardZonesView").And.Not.Contain("_cardZonesView"),
+                "GameBootstrap 不应继续绑定或刷新旧 UGUI 牌区");
+            Assert.That(scene, Does.Not.Contain("m_Name: CardZonesRoot").And.Not.Contain("m_Name: DrawPilePanel").And.Not.Contain("m_Name: GraveyardPanel"),
+                "演示场景不能残留会与卡背重复显示的旧牌区对象");
         }
 
         /// <summary>

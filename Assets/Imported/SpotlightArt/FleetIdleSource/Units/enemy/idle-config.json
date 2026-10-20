@@ -1,0 +1,259 @@
+{
+  "id": "enemy",
+  "source": "01-enemy.png",
+  "kind": 4,
+  "canvas": [
+    1536,
+    1536
+  ],
+  "hover": 3,
+  "engines": [
+    [
+      399,
+      661,
+      122,
+      31,
+      -0.94,
+      -0.34
+    ],
+    [
+      948,
+      499,
+      111,
+      29,
+      -0.94,
+      -0.34
+    ]
+  ],
+  "sourceSize": [
+    1254,
+    1254
+  ],
+  "sourceOffset": [
+    141,
+    141
+  ],
+  "loopDuration": 6,
+  "rigLayers": [
+    {
+      "name": "body",
+      "motion": 0,
+      "sourceRect": [
+        177,
+        211,
+        1216,
+        1111
+      ],
+      "atlasRect": [
+        4,
+        4,
+        1216,
+        1111
+      ],
+      "motionA": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "motionB": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "near-fin",
+      "motion": 30,
+      "sourceRect": [
+        212,
+        587,
+        175,
+        211
+      ],
+      "atlasRect": [
+        1228,
+        4,
+        175,
+        211
+      ],
+      "motionA": [
+        328,
+        759,
+        0.045,
+        0
+      ],
+      "motionB": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "far-fin",
+      "motion": 30,
+      "sourceRect": [
+        981,
+        347,
+        185,
+        174
+      ],
+      "atlasRect": [
+        1411,
+        4,
+        185,
+        174
+      ],
+      "motionA": [
+        1117,
+        494,
+        -0.045,
+        0
+      ],
+      "motionB": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "near-gun-sleeve",
+      "motion": 31,
+      "sourceRect": [
+        621,
+        866,
+        116,
+        108
+      ],
+      "atlasRect": [
+        1604,
+        4,
+        116,
+        108
+      ],
+      "motionA": [
+        0.85,
+        0.52,
+        7,
+        0
+      ],
+      "motionB": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "far-gun-sleeve",
+      "motion": 31,
+      "sourceRect": [
+        1164,
+        674,
+        100,
+        84
+      ],
+      "atlasRect": [
+        1728,
+        4,
+        100,
+        84
+      ],
+      "motionA": [
+        0.87,
+        0.5,
+        6,
+        1.0
+      ],
+      "motionB": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "atlasSize": [
+    2048,
+    2048
+  ],
+  "rigVersion": 3,
+  "nozzles": [],
+  "nozzleParts": [],
+  "nozzleColor": [
+    1,
+    0.31,
+    0.045,
+    1
+  ],
+  "glowColor": [
+    1,
+    0.4,
+    0.03,
+    1
+  ],
+  "nozzleData": [],
+  "engineData": [
+    {
+      "shape": [
+        399,
+        661,
+        122,
+        31
+      ],
+      "direction": [
+        -0.94,
+        -0.34,
+        0.0,
+        0
+      ]
+    },
+    {
+      "shape": [
+        948,
+        499,
+        111,
+        29
+      ],
+      "direction": [
+        -0.94,
+        -0.34,
+        1.7,
+        0
+      ]
+    }
+  ]
+}

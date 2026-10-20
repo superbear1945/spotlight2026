@@ -1,0 +1,178 @@
+{
+  "id": "lingtu-back",
+  "source": "08-lingtu_back.png",
+  "kind": 2,
+  "canvas": [
+    2048,
+    1152
+  ],
+  "hover": 3,
+  "engines": [],
+  "sourceSize": [
+    1774,
+    887
+  ],
+  "sourceOffset": [
+    137,
+    132
+  ],
+  "loopDuration": 6,
+  "rigLayers": [
+    {
+      "name": "body",
+      "motion": 0,
+      "sourceRect": [
+        207,
+        239,
+        1487,
+        780
+      ],
+      "atlasRect": [
+        4,
+        4,
+        1487,
+        780
+      ],
+      "motionA": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "motionB": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "left-engine-arm",
+      "motion": 30,
+      "sourceRect": [
+        204,
+        416,
+        541,
+        348
+      ],
+      "atlasRect": [
+        1499,
+        4,
+        541,
+        348
+      ],
+      "motionA": [
+        727,
+        587,
+        -0.02,
+        0
+      ],
+      "motionB": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "right-engine-arm",
+      "motion": 30,
+      "sourceRect": [
+        1303,
+        416,
+        546,
+        348
+      ],
+      "atlasRect": [
+        4,
+        792,
+        546,
+        348
+      ],
+      "motionA": [
+        1321,
+        587,
+        0.02,
+        0
+      ],
+      "motionB": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "atlasSize": [
+    2048,
+    2048
+  ],
+  "rigVersion": 3,
+  "nozzles": [
+    [
+      366,
+      652,
+      62,
+      65
+    ],
+    [
+      1681,
+      652,
+      62,
+      65
+    ]
+  ],
+  "nozzleParts": [
+    1,
+    2
+  ],
+  "nozzleColor": [
+    0.08,
+    0.52,
+    1,
+    1
+  ],
+  "glowColor": [
+    0.1,
+    0.63,
+    1,
+    1
+  ],
+  "nozzleData": [
+    {
+      "shape": [
+        366,
+        652,
+        62,
+        65
+      ]
+    },
+    {
+      "shape": [
+        1681,
+        652,
+        62,
+        65
+      ]
+    }
+  ],
+  "engineData": []
+}

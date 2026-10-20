@@ -15,7 +15,7 @@ namespace Spotlight.EditorTools
     public static class CardArtResolver
     {
         /// <summary>只填文件名时使用的默认手牌卡图目录（项目根相对路径，统一用正斜杠）。</summary>
-        public const string DefaultFolder = "Assets/Imported/SpotlightArt/CardArt";
+        public const string DefaultFolder = "Assets/Imported/SpotlightArt/Cards/front";
 
         /// <summary>只填文件名时使用的默认场地卡图目录（棋盘上的战斗单位，Cards.cardArtUnit）。</summary>
         public const string UnitFolder = "Assets/Imported/SpotlightArt/Units";

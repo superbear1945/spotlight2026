@@ -1,0 +1,213 @@
+{
+  "id": "enemy-face",
+  "source": "03-enemy_face.png",
+  "kind": 4,
+  "canvas": [
+    2048,
+    1152
+  ],
+  "hover": 3,
+  "engines": [],
+  "sourceSize": [
+    1774,
+    887
+  ],
+  "sourceOffset": [
+    137,
+    132
+  ],
+  "loopDuration": 6,
+  "rigLayers": [
+    {
+      "name": "body",
+      "motion": 0,
+      "sourceRect": [
+        159,
+        144,
+        1723,
+        856
+      ],
+      "atlasRect": [
+        4,
+        4,
+        1723,
+        856
+      ],
+      "motionA": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "motionB": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "left-fin",
+      "motion": 30,
+      "sourceRect": [
+        326,
+        357,
+        127,
+        186
+      ],
+      "atlasRect": [
+        1735,
+        4,
+        127,
+        186
+      ],
+      "motionA": [
+        407,
+        513,
+        -0.045,
+        0
+      ],
+      "motionB": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "right-fin",
+      "motion": 30,
+      "sourceRect": [
+        1596,
+        357,
+        127,
+        186
+      ],
+      "atlasRect": [
+        1870,
+        4,
+        127,
+        186
+      ],
+      "motionA": [
+        1641,
+        513,
+        0.045,
+        0
+      ],
+      "motionB": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "left-cannon",
+      "motion": 31,
+      "sourceRect": [
+        555,
+        581,
+        109,
+        106
+      ],
+      "atlasRect": [
+        4,
+        868,
+        109,
+        106
+      ],
+      "motionA": [
+        0,
+        1,
+        6,
+        0
+      ],
+      "motionB": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "right-cannon",
+      "motion": 31,
+      "sourceRect": [
+        1384,
+        581,
+        109,
+        106
+      ],
+      "atlasRect": [
+        121,
+        868,
+        109,
+        106
+      ],
+      "motionA": [
+        0,
+        1,
+        6,
+        1.0
+      ],
+      "motionB": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "atlasSize": [
+    2048,
+    2048
+  ],
+  "rigVersion": 3,
+  "nozzles": [],
+  "nozzleParts": [],
+  "nozzleColor": [
+    1,
+    0.31,
+    0.045,
+    1
+  ],
+  "glowColor": [
+    1,
+    0.4,
+    0.03,
+    1
+  ],
+  "nozzleData": [],
+  "engineData": []
+}

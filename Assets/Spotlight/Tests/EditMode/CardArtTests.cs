@@ -37,14 +37,14 @@ namespace Spotlight.Tests
         }
 
         /// <summary>路径解析：只写文件名时落到默认卡图目录。</summary>
-        [TestCase("ge1.png")]
-        [TestCase("  ge1.png  ")]
+        [TestCase("GE-1开采机.png")]
+        [TestCase("  GE-1开采机.png  ")]
         public void Resolve_BareFileName_UsesDefaultFolder(string value)
         {
             var hasArt = CardArtResolver.TryResolve(value, out var assetPath, out var error);
             Assert.That(hasArt, Is.True);
             Assert.That(error, Is.Null);
-            Assert.That(assetPath, Is.EqualTo(CardArtResolver.DefaultFolder + "/ge1.png"));
+            Assert.That(assetPath, Is.EqualTo(CardArtResolver.DefaultFolder + "/GE-1开采机.png"));
         }
 
         /// <summary>路径解析：扩展名大小写不敏感，但路径本身原样保留（不做大小写改写）。</summary>
@@ -61,7 +61,7 @@ namespace Spotlight.Tests
         [Test]
         public void Resolve_FullProjectPath_IsKeptAsIs()
         {
-            const string full = "Assets/Imported/SpotlightArt/CardArt/ge1.png";
+            const string full = "Assets/Imported/SpotlightArt/Cards/front/GE-1开采机.png";
             var hasArt = CardArtResolver.TryResolve(full, out var assetPath, out var error);
             Assert.That(hasArt, Is.True);
             Assert.That(error, Is.Null);
@@ -128,7 +128,7 @@ namespace Spotlight.Tests
 
         /// <summary>合法写法（纯文件名 / Assets/ 完整路径）必须通过业务校验。</summary>
         [TestCase("ge1.png")]
-        [TestCase("Assets/Imported/SpotlightArt/CardArt/ge1.png")]
+        [TestCase("Assets/Imported/SpotlightArt/Cards/front/GE-1开采机.png")]
         public void Validate_AcceptsSupportedCardArtFormats(string value)
         {
             var document = CompileDefaultDocument();
@@ -147,6 +147,34 @@ namespace Spotlight.Tests
             document.cards[0].cardArt = value;
             var errors = ConfigValidation.Validate(document);
             Assert.That(errors.Any(e => e.Contains("cardArt")), Is.True, "错误信息必须点出 cardArt 列：" + string.Join(" | ", errors));
+        }
+
+        /// <summary>
+        /// 项目正式工作簿里的每张可携带卡都必须指向 Cards/front 中实际存在的正面图。
+        /// 输入：Assets/Spotlight/Config/Spotlight.xlsx 的 Cards 表；
+        /// 输出：断言全部非 none 阶级卡种都有合法且存在的 PNG，Boss 专用卡不参与这项要求。
+        /// 为什么需要：单测路径解析只能证明“字符串写法合法”，不能防止正式工作簿继续引用旧 CardArt 目录，
+        /// 这条回归测试把配置源与用户指定的正面图库绑定在一起，避免重新编译后又恢复错误卡面。
+        /// </summary>
+        [Test]
+        public void ProjectWorkbook_MapsEveryPlayableCardToFrontSprite()
+        {
+            const string workbookPath = "Assets/Spotlight/Config/Spotlight.xlsx";
+            var report = ConfigCompiler.Compile(workbookPath, false);
+            Assert.That(report.Success, Is.True, string.Join("\n", report.Issues.Select(i => i.Reason)));
+
+            var playableCards = report.Document.cards.Where(card => card.tier != "none").ToArray();
+            Assert.That(playableCards.Length, Is.EqualTo(20), "正式工作簿的可携带卡种数量发生变化时，必须同步核对正面图");
+            foreach (var card in playableCards)
+            {
+                Assert.That(card.cardArt, Is.Not.Null.And.Not.Empty, $"{card.id} 缺少 cardArt");
+                Assert.That(CardArtResolver.TryResolve(card.cardArt, out var assetPath, out var error), Is.True,
+                    $"{card.id} 的 cardArt 无法解析：{error}");
+                Assert.That(assetPath, Does.StartWith(CardArtResolver.DefaultFolder + "/"),
+                    $"{card.id} 没有使用 Cards/front 正面图库");
+                Assert.That(System.IO.File.Exists(assetPath), Is.True,
+                    $"{card.id} 指向的正面图不存在：{assetPath}");
+            }
         }
 
         /// <summary>
@@ -339,25 +367,40 @@ namespace Spotlight.Tests
         }
 
         /// <summary>
-        /// 卡视图行为：有图时显示卡图；绑定为“家”或解绑时必须清掉卡图。
-        /// 为什么需要：家与卡牌共用同一个 Card 模板，残留立绘会让“家”显示成某张卡。
+        /// 卡视图行为：有图手牌只显示正面图；棋盘/家等其它身份恢复文字和底色；家与解绑必须清掉卡图。
+        /// 输入：带卡图定义、三段真实 TMP 叠加文字与根 Image；
+        /// 输出：手牌模式隐藏文字且底色透明，退出手牌模式后恢复，身份清理不残留立绘。
+        /// 为什么需要：正面图已经印有名称和数值，旧叠字与分类底色会造成截图中的重影和蓝橙底块。
         /// </summary>
         [Test]
-        public void Card_AppliesArt_AndClearsForHomeAndUnbind()
+        public void Card_WithArt_UsesImageOnlyInHand_AndRestoresOtherPresentations()
         {
             var texture = new Texture2D(4, 4);
             var sprite = Sprite.Create(texture, new Rect(0f, 0f, 4f, 4f), new Vector2(0.5f, 0.5f));
             var definition = ScriptableObject.CreateInstance<CardDefinitionSO>();
             var cardObject = new GameObject("CardArtTest", typeof(RectTransform), typeof(Image), typeof(Card));
             var artObject = new GameObject("Art", typeof(RectTransform), typeof(Image));
+            var textType = System.Type.GetType("TMPro.TextMeshProUGUI, Unity.TextMeshPro", true);
+            var nameObject = new GameObject("Name", typeof(RectTransform), textType);
+            var statObject = new GameObject("Stat", typeof(RectTransform), textType);
+            var hpObject = new GameObject("HP", typeof(RectTransform), textType);
             try
             {
                 artObject.transform.SetParent(cardObject.transform, false);
+                nameObject.transform.SetParent(cardObject.transform, false);
+                statObject.transform.SetParent(cardObject.transform, false);
+                hpObject.transform.SetParent(cardObject.transform, false);
+                var bodyImage = cardObject.GetComponent<Image>();
                 var artImage = artObject.GetComponent<Image>();
                 var card = cardObject.GetComponent<Card>();
-                // _art 是私有序列化字段，测试按编辑器生成器的做法注入引用。
+
+                // 私有序列化字段按编辑器模板生成器的真实方式注入，保证测试覆盖运行时切换而不是测试替身。
                 var serialized = new SerializedObject(card);
+                serialized.FindProperty("_body").objectReferenceValue = bodyImage;
                 serialized.FindProperty("_art").objectReferenceValue = artImage;
+                serialized.FindProperty("_nameLabel").objectReferenceValue = nameObject.GetComponent(textType);
+                serialized.FindProperty("_statLabel").objectReferenceValue = statObject.GetComponent(textType);
+                serialized.FindProperty("_hpLabel").objectReferenceValue = hpObject.GetComponent(textType);
                 serialized.ApplyModifiedPropertiesWithoutUndo();
 
                 var row = new CardRow
@@ -371,9 +414,20 @@ namespace Spotlight.Tests
                 Assert.That(artImage.sprite, Is.SameAs(sprite));
                 Assert.That(artImage.enabled, Is.True);
 
+                card.BindHand(definition, new CardRecord(1, "ge1", Side.Player));
+                Assert.That(bodyImage.color.a, Is.EqualTo(0f), "有正面图的手牌不应露出分类色底块");
+                Assert.That(bodyImage.raycastTarget, Is.True, "隐藏底块不能破坏手牌点击目标");
+                Assert.That(nameObject.activeSelf, Is.False, "有图手牌不应叠加名称文字");
+                Assert.That(statObject.activeSelf, Is.False, "有图手牌不应叠加属性文字");
+                Assert.That(hpObject.activeSelf, Is.False, "有图手牌不应叠加生命文字");
+
                 card.BindHome(Side.Player, null, Color.white);
                 Assert.That(artImage.sprite, Is.Null, "家没有卡种定义，不能残留立绘");
                 Assert.That(artImage.enabled, Is.False);
+                Assert.That(bodyImage.color.a, Is.EqualTo(1f), "退出手牌纯图片模式后必须恢复底色");
+                Assert.That(nameObject.activeSelf, Is.True, "退出手牌纯图片模式后必须恢复文字节点");
+                Assert.That(statObject.activeSelf, Is.True);
+                Assert.That(hpObject.activeSelf, Is.True);
 
                 card.Configure(definition);
                 Assert.That(artImage.enabled, Is.True, "重新绑定卡种后卡图必须恢复");
@@ -393,7 +447,6 @@ namespace Spotlight.Tests
                 UnityEngine.Object.DestroyImmediate(texture);
             }
         }
-
         /// <summary>写出默认工作簿到临时文件。输入：无；输出：临时 xlsx 路径（调用方负责删除）。</summary>
         static string WriteDefaultWorkbook()
         {

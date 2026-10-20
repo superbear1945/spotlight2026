@@ -39,8 +39,8 @@ MonoBehaviour:
   _prefab: {fileID: 8937936972991684706, guid: e791ecba3115f6944a092a704dd37f49, type: 3}
   _art: {fileID: 0}
   _artPath: 
-  _unitArt: {fileID: 0}
-  _unitArtPath: 
+  _unitArt: {fileID: 21300000, guid: 217c6c79ad691864295238cc28760efb, type: 3}
+  _unitArtPath: Assets/Imported/SpotlightArt/Units/bossCombat.png
 --- !u!114 &7755972576799590082
 MonoBehaviour:
   m_ObjectHideFlags: 1

@@ -2,6 +2,13 @@ Shader "Fleet/Unit Idle"
 {
     Properties
     {
+        _HasViewEffects ("View Specific Effects", Float) = 0
+        _Nozzle0 ("Nozzle 0 XY Radii", Vector) = (0,0,0,0)
+        _Nozzle1 ("Nozzle 1 XY Radii", Vector) = (0,0,0,0)
+        _Nozzle2 ("Nozzle 2 XY Radii", Vector) = (0,0,0,0)
+        _NozzleParts ("Nozzle Rig Indices", Vector) = (0,0,0,0)
+        _NozzleColor ("Nozzle Color", Color) = (.08,.52,1,1)
+        _GlowColor ("Lamp Color", Color) = (.1,.63,1,1)
         _MainTex ("Unit RGBA", 2D) = "white" {}
         _EffectMask ("Effect Mask", 2D) = "black" {}
         _Canvas ("Canvas Pixels", Vector) = (1536,1536,0,0)
@@ -40,6 +47,9 @@ Shader "Fleet/Unit Idle"
             float _UnitKind, _HoverPx, _LoopDuration, _IdleTime;
             float4 _SourceOffset,_Drill,_PartSource[12],_PartAtlas[12],_PartInfo[12];
             float _PartCount,_MechanicalAmount;
+            float4 _PartMotionA[12],_PartMotionB[12],_PartMotionC[12];
+            float4 _Nozzle0,_Nozzle1,_Nozzle2,_NozzleParts,_NozzleColor,_GlowColor;
+            float _HasViewEffects;
             struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
             struct v2f { float4 vertex : SV_POSITION; float2 uv : TEXCOORD0; };
             v2f vert(appdata v)

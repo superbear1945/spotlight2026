@@ -57,8 +57,8 @@ MonoBehaviour:
   _prefab: {fileID: 7375170161478212966, guid: 962318f7f439e4c45ac66a4e12ca34e9, type: 3}
   _art: {fileID: 0}
   _artPath: 
-  _unitArt: {fileID: 0}
-  _unitArtPath: 
+  _unitArt: {fileID: 21300000, guid: dfc8e499685fe744d9af3b1483608dac, type: 3}
+  _unitArtPath: Assets/Imported/SpotlightArt/Units/bossWarship.png
 --- !u!114 &5527787680818654948
 MonoBehaviour:
   m_ObjectHideFlags: 1

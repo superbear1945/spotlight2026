@@ -52,8 +52,8 @@ MonoBehaviour:
   _prefab: {fileID: 5457677980275941708, guid: d0095c90a9e3e7e4d8710b3dba24d3cd, type: 3}
   _art: {fileID: 0}
   _artPath: 
-  _unitArt: {fileID: 0}
-  _unitArtPath: 
+  _unitArt: {fileID: 21300000, guid: 65b4b6524ac2db94ea1974bce562be26, type: 3}
+  _unitArtPath: Assets/Imported/SpotlightArt/Units/bossSpawner.png
 --- !u!114 &3487333844257740494
 MonoBehaviour:
   m_ObjectHideFlags: 1

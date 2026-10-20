@@ -1,0 +1,178 @@
+{
+  "id": "enemy-back",
+  "source": "02-enemy_back.png",
+  "kind": 4,
+  "canvas": [
+    2048,
+    1152
+  ],
+  "hover": 3,
+  "engines": [],
+  "sourceSize": [
+    1774,
+    887
+  ],
+  "sourceOffset": [
+    137,
+    132
+  ],
+  "loopDuration": 6,
+  "rigLayers": [
+    {
+      "name": "body",
+      "motion": 0,
+      "sourceRect": [
+        159,
+        215,
+        1723,
+        775
+      ],
+      "atlasRect": [
+        4,
+        4,
+        1723,
+        775
+      ],
+      "motionA": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "motionB": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "left-fin",
+      "motion": 30,
+      "sourceRect": [
+        306,
+        397,
+        143,
+        177
+      ],
+      "atlasRect": [
+        1735,
+        4,
+        143,
+        177
+      ],
+      "motionA": [
+        407,
+        546,
+        -0.045,
+        0
+      ],
+      "motionB": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "right-fin",
+      "motion": 30,
+      "sourceRect": [
+        1600,
+        397,
+        144,
+        177
+      ],
+      "atlasRect": [
+        1886,
+        4,
+        144,
+        177
+      ],
+      "motionA": [
+        1641,
+        546,
+        0.045,
+        0
+      ],
+      "motionB": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "motionC": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "atlasSize": [
+    2048,
+    2048
+  ],
+  "rigVersion": 3,
+  "nozzles": [
+    [
+      614,
+      675,
+      59,
+      66
+    ],
+    [
+      1435,
+      675,
+      59,
+      66
+    ]
+  ],
+  "nozzleParts": [
+    0,
+    0
+  ],
+  "nozzleColor": [
+    1,
+    0.31,
+    0.045,
+    1
+  ],
+  "glowColor": [
+    1,
+    0.4,
+    0.03,
+    1
+  ],
+  "nozzleData": [
+    {
+      "shape": [
+        614,
+        675,
+        59,
+        66
+      ]
+    },
+    {
+      "shape": [
+        1435,
+        675,
+        59,
+        66
+      ]
+    }
+  ],
+  "engineData": []
+}
