@@ -63,19 +63,19 @@ namespace Spotlight.Tests
                 "turn-label", "resource-label", "plays-label", "round-number-label",
                 "player-life-label", "boss-life-label", "boss-info-label", "boss-phase-label", "phase-label", "unit-detail",
                 "log-panel", "log-list", "log-content", "pause-button", "settings-button", "history-button",
-                "debug-button", "help-button",
+                "help-button",
                 "withdraw-button", "bomb-deploy-button", "bomb-skip-button",
                 "spawner-deploy-button", "spawner-skip-button", "end-turn-button",
                 "opponent-turn-indicator", "player-insignia", "enemy-insignia",
                 "player-insignia-dots", "enemy-insignia-dots",
                 "skip-deploy-button", "restart-button", "victory-overlay", "victory-label",
-                "victory-art", "defeat-art", "victory-restart-button", "modal-overlay", "debug-panel",
+                "victory-art", "defeat-art", "victory-restart-button", "modal-overlay",
                 "pause-overlay", "pause-panel", "pause-close-button", "pause-continue-button",
                 "pause-restart-button", "pause-exit-button",
                 "settings-overlay", "settings-panel", "master-volume-slider", "music-volume-slider", "sound-volume-slider",
                 "master-volume-fill", "music-volume-fill", "sound-volume-fill",
                 "master-volume-value", "music-volume-value", "sound-volume-value", "fullscreen-toggle",
-                "settings-debug-button", "settings-reset-button", "settings-close-button", "settings-x-button",
+                "settings-reset-button", "settings-close-button", "settings-x-button",
                 "help-overlay", "help-panel", "help-close-button",
                 "detail-left", "detail-right", "pile-left", "pile-right",
                 "grave-count", "draw-count", "draw-count-tiers",
@@ -186,10 +186,12 @@ namespace Spotlight.Tests
                 .And.Match(@"(?s)\.hud-root \.settings-music-row\s*\{[^}]*top:\s*246px;")
                 .And.Match(@"(?s)\.hud-root \.settings-sound-row\s*\{[^}]*top:\s*310px;"),
                 "三条滑条必须落在统一 64px 节拍的固定基线上");
-            // 只断言三枚按钮按顺序同层相邻，不断言标签的闭合写法：UXML 里自闭合（<ui:Button ... />）与
-            // 成对（<ui:Button ...></ui:Button>）都合法，把闭合形式写死进正则会让合法的界面文件凭空变红。
-            Assert.That(uxml, Does.Match(@"(?s)<ui:VisualElement class=""utility-actions"">\s*<ui:Button name=""settings-debug-button""[^>]*>\s*<ui:Button name=""settings-reset-button""[^>]*>\s*<ui:Button name=""settings-close-button"""),
-                "开发者配置、恢复默认与返回必须组成同一层级的底部操作区");
+            // 只断言“恢复默认 / 返回”按顺序同层相邻，不断言标签的闭合写法：UXML 里自闭合（<ui:Button ... />）
+            // 与成对（<ui:Button ...></ui:Button>）都合法，把闭合形式写死进正则会让合法的界面文件凭空变红。
+            // “开发者配置”不在 UXML 里：它只在调试构建由 HudView.CreateDebugEntryButtons 插到这一行，
+            // 正式包连按钮文案都不能有（见 ReleaseBuildHygieneTests）。
+            Assert.That(uxml, Does.Match(@"(?s)<ui:VisualElement class=""utility-actions"">\s*<ui:Button name=""settings-reset-button""[^>]*>\s*<ui:Button name=""settings-close-button"""),
+                "恢复默认与返回必须组成同一层级的底部操作区");
             Assert.That(uss, Does.Match(@"(?s)\.hud-root \.utility-actions\s*\{[^}]*top:\s*462px;[^}]*height:\s*60px;")
                 .And.Match(@"(?s)\.hud-root \.utility-actions \.action-button\s*\{[^}]*width:\s*225px;[^}]*height:\s*60px;"),
                 "三枚设置操作按钮必须完整落在放大后的底板安全区内");
@@ -263,7 +265,9 @@ namespace Spotlight.Tests
                 "暂停", "设置", "显示或隐藏对局日志", "规则帮助"
             }));
             Assert.That(_root.Q<Button>("menu-button"), Is.Null, "顶部不应再出现职责不清的第二个菜单入口");
-            Assert.That(_root.Q<Button>("quick-debug-button"), Is.Null, "开发者调试不应继续占用玩家顶部工具栏");
+            // 调试入口不进皮肤 UXML：只在调试构建里由 HudView.CreateDebugEntryButtons 用代码插入，
+            // 正式包连这个按钮都不存在（这里直接实例化 UXML，没有绑定 HudView，所以查得到 0 个）。
+            Assert.That(_root.Q<Button>("quick-debug-button"), Is.Null, "皮肤 UXML 不应自带调试入口");
         }
 
         /// <summary>

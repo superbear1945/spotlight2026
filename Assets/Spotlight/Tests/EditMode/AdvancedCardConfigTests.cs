@@ -78,7 +78,7 @@ namespace Spotlight.Tests
             {
                 clearance.EditorApply(2);
                 damageMark.EditorApply(1);
-                definition.EditorApply(row, null, null, null, null, null, "test.xlsx", "Cards", null, null, null, null, clearance, killAction, damageMark);
+                definition.EditorApply(row, null, null, null, null, null, null, null, null, null, clearance, killAction, damageMark);
 
                 var restoredRow = definition.ToCardRow();
                 Assert.That(restoredRow.adjacentClearanceComponent, Is.True);
@@ -94,7 +94,7 @@ namespace Spotlight.Tests
                 Assert.That(fromSo.DamageMark.DamagePerStack, Is.EqualTo(fromRow.DamageMark.DamagePerStack));
 
                 // 关闭能力后 SO 必须清空引用，避免旧资产残留“仍在启用”的假象。
-                definition.EditorApply(Row(false, false, false), null, null, null, null, null, "test.xlsx", "Cards");
+                definition.EditorApply(Row(false, false, false), null, null, null, null, null);
                 Assert.That(definition.ToCardRow().adjacentClearanceComponent, Is.False);
                 Assert.That(definition.ToCardRow().killActionComponent, Is.False);
                 Assert.That(definition.ToCardRow().damageMarkComponent, Is.False);

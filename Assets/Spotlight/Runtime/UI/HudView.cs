@@ -49,7 +49,7 @@ namespace Spotlight
         public event Action<bool> PauseChanged;
         /// <summary>点击暂停面板中的“退出战斗”。</summary>
         public event Action ExitRequested;
-        /// <summary>点击“配置/调试”。</summary>
+        /// <summary>点击调试入口（只有调试构建才会创建这个按钮）。</summary>
         public event Action DebugRequested;
         /// <summary>点击“离场”：请求让当前选中的己方单位离开棋盘。</summary>
         public event Action WithdrawRequested;
@@ -157,7 +157,7 @@ namespace Spotlight
         VisualElement _masterVolumeFill, _musicVolumeFill, _soundVolumeFill;
         Label _masterVolumeValue, _musicVolumeValue, _soundVolumeValue;
         Toggle _fullscreenToggle;
-        Button _settingsResetButton, _settingsCloseButton, _settingsXButton, _settingsDebugButton;
+        Button _settingsResetButton, _settingsCloseButton, _settingsXButton;
         /// <summary>规则帮助面板及其关闭按钮。</summary>
         VisualElement _helpOverlay;
         Button _helpCloseButton;
@@ -257,7 +257,6 @@ namespace Spotlight
             _settingsResetButton = _root.Q<Button>("settings-reset-button");
             _settingsCloseButton = _root.Q<Button>("settings-close-button");
             _settingsXButton = _root.Q<Button>("settings-x-button");
-            _settingsDebugButton = _root.Q<Button>("settings-debug-button");
             _helpOverlay = _root.Q<VisualElement>("help-overlay");
             _helpCloseButton = _root.Q<Button>("help-close-button");
 
@@ -279,7 +278,6 @@ namespace Spotlight
             if (_settingsResetButton != null) { _settingsResetButton.clicked -= ResetPlayerSettings; _settingsResetButton.clicked += ResetPlayerSettings; }
             if (_settingsCloseButton != null) { _settingsCloseButton.clicked -= ApplyAndCloseSettingsPanel; _settingsCloseButton.clicked += ApplyAndCloseSettingsPanel; }
             if (_settingsXButton != null) { _settingsXButton.clicked -= ApplyAndCloseSettingsPanel; _settingsXButton.clicked += ApplyAndCloseSettingsPanel; }
-            if (_settingsDebugButton != null) { _settingsDebugButton.clicked -= OpenDebugFromSettings; _settingsDebugButton.clicked += OpenDebugFromSettings; }
             if (_helpCloseButton != null) { _helpCloseButton.clicked -= CloseHelpPanel; _helpCloseButton.clicked += CloseHelpPanel; }
             if (_masterVolumeSlider != null)
             {
@@ -308,8 +306,11 @@ namespace Spotlight
             // 退出游戏是宿主环境行为（关播放模式 / 结束进程），HUD 只上报点击，具体怎么做由 GameBootstrap 决定。
             var menuQuit = _root.Q<Button>("menu-quit-button");
             if (menuQuit != null) menuQuit.clicked += () => QuitRequested?.Invoke();
-            var debug = _root.Q<Button>("debug-button");
-            if (debug != null) debug.clicked += () => DebugRequested?.Invoke();
+            // 调试入口不再写在 UXML 里：正式包连这两个按钮的文案都不能有，
+            // 因此只在调试构建里由代码插入（见 CreateDebugEntryButtons）。
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            CreateDebugEntryButtons();
+#endif
             var victoryRestart = _root.Q<Button>("victory-restart-button");
             if (victoryRestart != null) victoryRestart.clicked += () => RestartRequested?.Invoke();
             if (_victoryOverlay != null) _victoryOverlay.style.display = DisplayStyle.None;
@@ -323,11 +324,43 @@ namespace Spotlight
             if (_withdrawButton != null) _withdrawButton.style.display = DisplayStyle.None;
             // 战斗界面是默认视图：原有面板（日志、Boss 状态与选中详情）先隐藏，只在齿轮菜单里显示。
             SetMenuVisible(false);
-
-            // 调试入口只在编辑器或 Development Build 提供。
-            if (debug != null && !DebugSupport.IsDebugAvailable) debug.style.display = DisplayStyle.None;
-            if (_settingsDebugButton != null && !DebugSupport.IsDebugAvailable) _settingsDebugButton.style.display = DisplayStyle.None;
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        /// <summary>
+        /// 在调试构建里插入两个调试入口按钮：“顶部工具条的快捷入口”与“设置页底部的「开发者配置」”。
+        /// 输入：无（用 Bind 已查到的 _root / _settingsOverlay）；输出：无。
+        /// 为什么用代码而不是 UXML：正式包必须连按钮文案（例如“开发者配置”）都找不到，
+        /// 而 UXML 是被无条件打包的资源；放在条件编译里才能保证字符串不出现在正式包中。
+        /// 幂等：Bind 可能被重复调用，已存在同名按钮时直接返回，避免叠出两个入口。
+        /// </summary>
+        void CreateDebugEntryButtons()
+        {
+            var toolbar = _root.Q<VisualElement>(className: "entry-toolbar");
+            if (toolbar != null && _root.Q<Button>("quick-debug-button") == null)
+            {
+                var quickDebug = new Button { name = "quick-debug-button", tooltip = "配置 / 调试", text = string.Empty };
+                quickDebug.AddToClassList("icon-button");
+                quickDebug.AddToClassList("settings-button");
+                // 顶部顺序是：暂停、设置、快捷调试、日志、帮助；插到第 3 个位置保证外观不变。
+                toolbar.Insert(Mathf.Min(2, toolbar.childCount), quickDebug);
+                quickDebug.clicked += () => DebugRequested?.Invoke();
+            }
+
+            // 设置页的底部操作区（utility-actions）是玩家可达到的位置，第二个入口放在这里：
+            // 旧菜单遮罩（menu-overlay）已经没有任何入口，挂在那里等于把调试入口藏死。
+            var settingsActions = _settingsOverlay?.Q<VisualElement>(className: "utility-actions");
+            if (settingsActions != null && _root.Q<Button>("settings-debug-button") == null)
+            {
+                var debug = new Button { name = "settings-debug-button", text = "开发者配置" };
+                debug.AddToClassList("action-button");
+                debug.AddToClassList("secondary-action");
+                debug.AddToClassList("settings-debug-button");
+                settingsActions.Insert(0, debug);
+                debug.clicked += OpenDebugFromSettings;
+            }
+        }
+#endif
 
         /// <summary>
         /// 渲染一帧界面。

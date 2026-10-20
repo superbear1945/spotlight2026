@@ -282,6 +282,15 @@ namespace Spotlight.Tests
             Assert.That(settingsOverlay, Is.Not.Null, "UXML 缺少 settings-overlay");
             Assert.That(settingsOverlay.style.display.value, Is.EqualTo(DisplayStyle.None), "默认不该显示设置遮罩");
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // 调试入口不进皮肤 UXML：HudView 在调试构建里用代码把它插到顶部工具条与设置页底部操作区，
+            // 正式包连按钮都不存在。这里验证编辑器里确实插进来了，避免“开发时也找不到入口”。
+            Assert.That(root.Q<Button>("quick-debug-button"), Is.Not.Null, "编辑器里应由 HudView 插入 quick-debug-button");
+            var settingsDebug = root.Q<Button>("settings-debug-button");
+            Assert.That(settingsDebug, Is.Not.Null, "编辑器里应由 HudView 插入设置页的调试入口");
+            Assert.That(settingsOverlay.Contains(settingsDebug), Is.True, "设置页的调试入口必须落在设置遮罩内");
+#endif
+
             Invoke(hud, "OpenSettingsPanel");
             yield return WaitSeconds(SettleSeconds);
             Assert.That(settingsOverlay.style.display.value, Is.EqualTo(DisplayStyle.Flex), "打开设置后应显示设置遮罩");

@@ -13,8 +13,8 @@ namespace Spotlight
     /// 为什么需要单独一层：规则内核只认识纯 C# 的文档与接口，不引用 UnityEngine；
     /// 本资产负责把“场景中的 SO 引用”翻译成“内核可用的配置”，并复用同一套业务校验。
     /// </summary>
-    [GeneratedConfig("Assets/Spotlight/Config/Spotlight.xlsx")]
-    public sealed class SpotlightConfigAsset : ScriptableObject, IConfigSourceInfo
+    [GeneratedConfig]
+    public sealed class SpotlightConfigAsset : ScriptableObject
     {
         /// <summary>Rules 表唯一行。</summary>
         [SerializeField] RulesRow _rules = new RulesRow();
@@ -26,12 +26,6 @@ namespace Spotlight
         [SerializeField] PresentationRow _presentation = new PresentationRow();
         /// <summary>卡种定义清单，顺序与 Cards 表一致。</summary>
         [SerializeField] CardDefinitionSO[] _cards;
-        /// <summary>源工作簿文件名，用于 Inspector 提示与过期检测。</summary>
-        [SerializeField] string _sourceWorkbook;
-        /// <summary>编译时源工作簿的内容摘要，用于进入 Play/构建前的过期检测。</summary>
-        [SerializeField] string _sourceHash;
-        /// <summary>编译时间（UTC ISO 文本），仅用于展示。</summary>
-        [SerializeField] string _compiledAtUtc;
 
         /// <summary>规则行（只读）。</summary>
         public RulesRow RulesRow => _rules;
@@ -43,14 +37,11 @@ namespace Spotlight
         public PresentationRow PresentationRow => _presentation;
         /// <summary>卡种定义清单（只读）。</summary>
         public IReadOnlyList<CardDefinitionSO> Cards => _cards ?? System.Array.Empty<CardDefinitionSO>();
-        /// <inheritdoc />
-        public string SourceWorkbook => _sourceWorkbook;
-        /// <inheritdoc />
-        public string SourceSheet => "(全部表)";
-        /// <summary>编译时源摘要，用于构建门禁比对。</summary>
-        public string SourceHash => _sourceHash;
-        /// <summary>编译时间文本。</summary>
-        public string CompiledAtUtc => _compiledAtUtc;
+
+        // 注意：这里刻意不再保存源工作簿路径、SHA256 与编译时间。
+        // 本资产位于 Resources/，会被无条件下进正式包；这些字段会让拆包者直接读到
+        // “Assets/Spotlight/Config/Spotlight.xlsx”这样的开发期路径与编译时间。
+        // 门禁需要的溯源信息只保留在不进包的 Generated/ConfigManifest.asset 里。
 
         /// <summary>
         /// 按卡种 ID 查找定义。
@@ -102,19 +93,17 @@ namespace Spotlight
 
         /// <summary>
         /// 编译期整体写入。
-        /// 输入：已校验的文档、卡种定义与源摘要；输出：无。
+        /// 输入：已校验的文档与卡种定义；输出：无。
         /// 说明：只允许编辑器编译器调用；成功后资产立即代表一套有效配置。
+        /// 源工作簿路径/摘要/编译时间不属于本资产（它们只写入 ConfigManifest），避免进包泄露开发期信息。
         /// </summary>
-        public void EditorApply(ConfigDocument document, IEnumerable<CardDefinitionSO> cards, string sourceWorkbook, string sourceHash, string compiledAtUtc)
+        public void EditorApply(ConfigDocument document, IEnumerable<CardDefinitionSO> cards)
         {
             _rules = document.rules[0];
             _homes = document.homes;
             _bossSlots = document.bossSlots;
             _presentation = document.presentation[0];
             _cards = cards.ToArray();
-            _sourceWorkbook = sourceWorkbook;
-            _sourceHash = sourceHash;
-            _compiledAtUtc = compiledAtUtc;
         }
     }
 }

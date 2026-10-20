@@ -558,7 +558,7 @@ namespace Spotlight.Tests
                 resource.EditorApply(3, 0);
                 penalty.EditorApply(2);
                 var row = new CardRow { tier = "basic", id = "kyoto", name = "京都壹号", category = "resource", viewKey = "default", hp = 1, produce = 3, resourceComponent = true, deploymentPenaltyComponent = true, deploymentAttackReduction = 2 };
-                definition.EditorApply(row, combat, resource, null, penalty, null, "w.xlsx", "Cards");
+                definition.EditorApply(row, combat, resource, null, penalty, null);
 
                 var restored = definition.ToCardRow();
                 Assert.That(restored.deploymentPenaltyComponent, Is.True);
@@ -567,7 +567,7 @@ namespace Spotlight.Tests
                 Assert.That(archetype.DeploymentPenalty, Is.Not.Null);
                 Assert.That(archetype.DeploymentPenalty.AttackReduction, Is.EqualTo(2));
 
-                definition.EditorApply(row, combat, resource, null, null, null, "w.xlsx", "Cards");
+                definition.EditorApply(row, combat, resource, null, null, null);
                 Assert.That(definition.ToCardRow().deploymentPenaltyComponent, Is.False);
                 Assert.That(definition.ToCardRow().deploymentAttackReduction, Is.Zero);
                 Assert.That(definition.ToArchetype().DeploymentPenalty, Is.Null);

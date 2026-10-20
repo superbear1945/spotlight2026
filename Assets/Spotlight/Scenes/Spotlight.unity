@@ -1097,7 +1097,6 @@ GameObject:
   - component: {fileID: 962578440}
   - component: {fileID: 962578439}
   - component: {fileID: 962578438}
-  - component: {fileID: 962578437}
   - component: {fileID: 962578436}
   m_Layer: 0
   m_Name: Spotlight
@@ -1122,20 +1121,6 @@ MonoBehaviour:
   m_ParentUI: {fileID: 0}
   sourceAsset: {fileID: 9197481963319205126, guid: 821eafd9619d00943ac20ebcc0f8e17b, type: 3}
   m_SortingOrder: 10
---- !u!114 &962578437
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 962578435}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: faf9905cb2ad5024c97572a1b13b8a20, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _document: {fileID: 0}
-  _bootstrap: {fileID: 0}
 --- !u!114 &962578438
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1184,7 +1169,6 @@ MonoBehaviour:
   _cardZonesView: {fileID: 919165286}
   _hudView: {fileID: 962578438}
   _feedback: {fileID: 962578439}
-  _debugPanel: {fileID: 962578437}
 --- !u!4 &962578441
 Transform:
   m_ObjectHideFlags: 0

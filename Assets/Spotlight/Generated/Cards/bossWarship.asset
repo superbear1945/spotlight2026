@@ -57,8 +57,6 @@ MonoBehaviour:
   _prefab: {fileID: 7375170161478212966, guid: 962318f7f439e4c45ac66a4e12ca34e9, type: 3}
   _art: {fileID: 0}
   _artPath: 
-  _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceSheet: Cards
 --- !u!114 &5527787680818654948
 MonoBehaviour:
   m_ObjectHideFlags: 1

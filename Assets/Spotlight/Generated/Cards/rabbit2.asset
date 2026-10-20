@@ -57,8 +57,6 @@ MonoBehaviour:
   _prefab: {fileID: 4120874686476434148, guid: b52673757889084458844d7129b693e8, type: 3}
   _art: {fileID: 21300000, guid: 51937a7dbde35cf408590616e63d9727, type: 3}
   _artPath: Assets/Imported/SpotlightArt/CardArt/rabbit2.png
-  _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceSheet: Cards
 --- !u!114 &8870785878615904322
 MonoBehaviour:
   m_ObjectHideFlags: 1

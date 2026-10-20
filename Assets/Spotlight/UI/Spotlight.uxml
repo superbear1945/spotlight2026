@@ -250,7 +250,6 @@
         <ui:Button name="menu-deck-select-button" text="选卡" class="action-button" />
         <ui:Button name="menu-restart-button" text="重开" class="action-button" />
         <ui:Button name="menu-quit-button" text="退出游戏" class="action-button menu-quit-button" />
-        <ui:Button name="debug-button" text="配置/调试" class="action-button menu-debug-button" />
       </ui:VisualElement>
     </ui:VisualElement>
     <ui:Label name="error-label" picking-mode="Ignore" class="error-label" style="display: none;" />
@@ -357,7 +356,6 @@
           <ui:Toggle name="fullscreen-toggle" value="true" class="settings-toggle" />
         </ui:VisualElement>
         <ui:VisualElement class="utility-actions">
-          <ui:Button name="settings-debug-button" text="开发者配置" class="action-button secondary-action settings-debug-button" />
           <ui:Button name="settings-reset-button" text="恢复默认" class="action-button secondary-action" />
           <ui:Button name="settings-close-button" text="返回" class="action-button primary-action" />
         </ui:VisualElement>
@@ -381,42 +379,6 @@
           <ui:Label text="完成操作后点击顶部中央按钮结束回合。若手牌超过上限，需要先弃牌。" class="help-copy" />
         </ui:ScrollView>
         <ui:Button name="help-close-button" text="明白了" class="action-button primary-action utility-close-button" />
-      </ui:VisualElement>
-    </ui:VisualElement>
-    <ui:VisualElement name="debug-panel" class="cfg-mask">
-      <ui:VisualElement class="cfg-panel">
-        <ui:VisualElement class="cfg-head">
-          <ui:VisualElement class="cfg-head-top">
-            <ui:Label text="⚙ 对局配置" class="cfg-title" />
-            <ui:VisualElement class="cfg-head-actions">
-              <ui:Button name="debug-reset-button" text="恢复默认" />
-              <ui:Button name="debug-close-button" text="关闭" />
-              <ui:Button name="debug-apply-button" text="应用并重开" class="primary" />
-            </ui:VisualElement>
-          </ui:VisualElement>
-          <ui:Label name="debug-error" class="cfg-error" />
-        </ui:VisualElement>
-        <ui:VisualElement class="cfg-body">
-          <ui:ScrollView name="debug-scroll" mode="Vertical" class="cfg-scroll">
-            <ui:Label text="修改仅在“应用并重开”后生效。关闭后保留草稿，重新打开可继续编辑。" class="cfg-note" />
-            <ui:VisualElement name="debug-board" />
-            <ui:VisualElement name="debug-home" />
-            <ui:VisualElement name="debug-deck" />
-            <ui:VisualElement name="debug-cards" />
-            <ui:VisualElement name="debug-boss" />
-            <ui:VisualElement name="debug-turn" />
-            <ui:VisualElement name="debug-toggles" />
-            <ui:VisualElement class="cfg-section">
-              <ui:Label text="JSON 导入 / 导出" class="cfg-section-title" />
-              <ui:Label text="复制完整配置 JSON 后可粘贴到文本文件保存。导入前请先复制文件中的全部 JSON；导入只修改草稿，应用并重开后生效。" class="cfg-note" />
-              <ui:VisualElement class="cfg-json-actions">
-                <ui:Button name="debug-export-button" text="复制 JSON" />
-                <ui:Button name="debug-import-button" text="从剪贴板导入" />
-              </ui:VisualElement>
-              <ui:Label name="debug-json-status" class="cfg-note" />
-            </ui:VisualElement>
-          </ui:ScrollView>
-        </ui:VisualElement>
       </ui:VisualElement>
     </ui:VisualElement>
   </ui:VisualElement>

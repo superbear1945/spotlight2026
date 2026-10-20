@@ -64,8 +64,8 @@ Assets/Spotlight/
 
 - `Generated/Cards/<id>.asset`：卡种定义 SO，能力组件配置作为子资产保存（`<id>_Combat` / `_Resource` / `_Teleport` / `_DeploymentPenalty` / `_MarkOnEnter` / `_DeathGrowth` / `_Instant` / `_Spawn` / `_AdjacentClearance` / `_KillAction` / `_DamageMark`，未启用的能力不生成子资产）。
 - `Generated/Cards/<id>.prefab`：卡种 Prefab，只保存组件组合与 SO 引用，不重复存储数值。
-- `Generated/Resources/SpotlightConfig.asset`：主配置资产，运行时通过 `Resources/SpotlightConfig` 加载。
-- `Generated/ConfigManifest.asset`：编译清单，记录源工作簿路径、SHA256 摘要、编译时间与全部产出路径。
+- `Generated/Resources/SpotlightConfig.asset`：主配置资产，运行时通过 `Resources/SpotlightConfig` 加载。**不存源工作簿路径/摘要/编译时间**（它会被打进正式包），卡种资产同理。
+- `Generated/ConfigManifest.asset`：编译清单，记录源工作簿路径、SHA256 摘要、编译时间与全部产出路径；不在 `Resources/` 下、运行时不被引用，因此只存在于编辑器侧。
 
 约束：
 
@@ -118,11 +118,11 @@ Assets/Spotlight/
 ### 4.2 运行层（`Spotlight.Runtime`）
 
 - 卡牌视图：`Card : MonoBehaviour`，配合 `CombatComponent` / `ResourceComponent` / `TeleportComponent` / `DeploymentPenaltyComponent` / `SpawnComponent` 五个能力组件；**同一个 `Card` 承载所有卡种，不为卡种建子类**。四邻空格限制、击杀恢复行动与伤害标记是纯规则能力，只有 SO 子资产、没有 MonoBehaviour，视图读取快照与卡种定义显示。
-- 配置资产：`CardDefinitionSO` / `CombatConfigSO` / `ResourceConfigSO` / `TeleportConfigSO` / `SpawnConfigSO` / `AdjacentClearanceConfigSO` / `KillActionConfigSO` / `DamageMarkConfigSO` / `SpotlightConfigAsset` / `ConfigManifest`，均实现只读接口；`GeneratedConfigAttribute` 标记生成产物。
+- 配置资产（运行层）：`CardDefinitionSO` / `CombatConfigSO` / `ResourceConfigSO` / `TeleportConfigSO` / `SpawnConfigSO` / `AdjacentClearanceConfigSO` / `KillActionConfigSO` / `DamageMarkConfigSO` / `SpotlightConfigAsset`，均实现只读接口；`GeneratedConfigAttribute` 是**无参标记**（特性参数会被编译进正式包程序集，不得携带工作簿路径）。**`ConfigManifest` 不在运行层**：它是纯编辑器侧的校验依据，类型放在 `Editor/ConfigManifest.cs`（`Spotlight.EditorTools`），否则它的 `_sourceWorkbookPath` / `_sourceHash` 字段名会跟着进 `Spotlight.Runtime.dll`。
 - 加载入口：`ConfigLoader`（`DefaultResourcePath = "SpotlightConfig"`，`TryCreateConfiguration(...)` 失败返回错误文本，不抛异常）。
 - 视图：`BoardView` / `BoardCellView`（UGUI 棋盘）、`HandView`（UGUI 手牌）、`HudView`（UI Toolkit / UXML）、`DeckSelectionPanel`（UI Toolkit 携带选择面板）、`CardFactory` / `CardText`。
 - 引导与支持：`GameBootstrap`（加载配置 → 创建对局 → 绑定视图）、`DebugSupport.IsDebugAvailable`（调试能力唯一判定点）、`CardFeedback`（DOTween 表现）。
-- 调试面板（仅编辑器与 Development Build）：`ConfigDebugPanel` / `ConfigFieldBuilder` / `DebugConfigDraft`（含 `LegacyJsonMigration` / `JsonShapeValidator`），**调试改动只存在于本次运行会话**。面板里不再有“逐卡种卡组数量”：抽牌堆一侧改为抽牌堆规则 7 项数值 + “调试用强制牌堆”（任一卡种填 > 0 即整体覆盖抽牌堆，全 0 表示按选卡结果生成）。
+- 调试面板（**仅编辑器与 Development Build，且是编译期剥离**）：`ConfigDebugPanel` / `ConfigFieldBuilder` / `DebugConfigDraft`（含 `LegacyJsonMigration` / `JsonShapeValidator`）三个文件整文件包在 `#if UNITY_EDITOR || DEVELOPMENT_BUILD` 里；面板骨架由 `ConfigDebugPanel.EnsurePanelSkeleton` **用代码搭建**（不得做成 UXML/任何资产：场景组件一旦持有资产引用，构建依赖收集就会把它打进 `sharedassets`），组件由 `GameBootstrap.EnsureDebugPanel` 运行时创建（**不得挂在场景上**，否则 `globalgamemanagers` 会留下 MonoScript 类名），两个入口按钮由 `HudView` 在调试构建里用代码插入。正式包里这些类型、按钮文案与面板节点都不存在（不是“隐藏”，是“不编译/不打包”）。**调试改动只存在于本次运行会话**。面板里不再有“逐卡种卡组数量”：抽牌堆一侧改为抽牌堆规则 7 项数值 + “调试用强制牌堆”（任一卡种填 > 0 即整体覆盖抽牌堆，全 0 表示按选卡结果生成）。
 
 表现层硬性约定：
 
@@ -138,7 +138,9 @@ Assets/Spotlight/
 
 - Excel 管线：`WorkbookReader` / `XlsxInspector`（读取与原始标记扫描）、`TableSchema` / `TableMapper`（表结构与行映射）、`ConfigIssue` / `CompileReport`（问题与报告）、`ConfigCompiler`（校验 + 编译）、`ConfigAssetPublisher`（发布 + 回滚）、`DefaultWorkbookWriter`（默认工作簿）。
 - 资产与模板：`ViewTemplateBuilder`（外观模板与 Prefab）、`CjkFontSetup`（中文字体资产）。
-- 入口与门禁：`SpotlightMenu`（`Tools/Spotlight/*` 菜单）、`ConfigBuildGate` + `ConfigBuildProcessor`（`IPreprocessBuildWithReport` + Play 前检查）。
+- 入口与门禁：`SpotlightMenu`（`Tools/Spotlight/*` 菜单）、`ConfigManifest`（编译清单 SO，记录源工作簿路径/摘要/编译时间与产出清单，只供编辑器侧的 `ConfigBuildGate` 与测试使用）、`ConfigBuildGate` + `ConfigBuildProcessor`（`IPreprocessBuildWithReport` + Play 前检查）。
+- 构建产物：`BuildArtifactCleanup`（`IPostprocessBuildWithReport`）删除输出目录下的 `*_BurstDebugInformation_DoNotShip` 与残留的 `lib_burst_generated.pdb`；必须挂接口而不能只改 `BuildEntry`，否则 CI 的构建脚本不会执行清理。打完包用 `scripts/check-build-hygiene.sh` 复核（详见第 7 节）。
+- **发布包体约束（已实测）**：Unity 会在 `globalgamemanagers.assets` 里给每个“引用引擎的程序集”写一份 MonoScript 类名目录，即使类型被 `#if` 挡在正式包程序集之外，**顶层类名仍会入表**（嵌套类型不会）。因此调试/开发专用代码除了条件编译，还必须做到“不挂场景、不持有会被打包的资产引用”：否则场景组件会把类名（甚至整个 UXML）带进包。`check-build-hygiene.sh` 对这 3 个类名在该文件中的命中按“已知残留”提示（不静默、不计失败），一旦出现在其它文件即失败。
 
 ## 5. 关键名词表
 
@@ -197,7 +199,7 @@ Excel 配置编译（菜单 `Tools/Spotlight/*`，按顺序）：
   - `.github/workflows/unity-tests.yml`：`game-ci/unity-test-runner`，EditMode + PlayMode 矩阵。
   - **Unity 席位互斥：** `unity-tests.yml` 的 `concurrency.group` 固定为仓库级 `unity-seat`（不按 ref 分组），因此两个 PR 的测试不会同时启动去抢同一个个人版授权席位；也不得设 `cancel-in-progress: true`（中途杀 Unity 会泄漏席位）。代价是仓库内同一时刻只留 1 个 running + 1 个 pending 运行，排队中的旧运行会被新的顶掉（PR 检查可能显示 cancelled，重跑即可）。这项由 `scripts/check-ci-config.sh` 校验——`max-parallel: 1` 只管矩阵内串行，跨 run 的互斥靠这一条；彻底不排队需浮动授权（`unityLicensingServer`）或 self-hosted runner。
   - **CI 自动打包：未接入。** 曾经尝试用 `game-ci/unity-builder` + `schedule` 夜间发 Release，已在 PR #29 整体移除：builder 的前置校验只认 `UNITY_LICENSE`(.ulf) 或 `UNITY_SERIAL`，不接受个人版的邮箱+密码激活（两次实测均在步骤启动后 0.3 秒报 `Missing Unity License File and no Serial was found`），而 .ulf 对 Personal 机器绑定、serial 需付费订阅。恢复时需先换成带 `cliVersion` 的 builder（v5.0.1 / v6.0.0）并验证，再重新引入触发与发布步骤；目前发版靠手动流程（见 `docs/使用说明.md` 8.2）。
-  - `.github/workflows/repo-hygiene.yml`：大文件与 Git-LFS 一致性检查（`scripts/check-repo-hygiene.sh`）与 CI 触发配置守卫（`scripts/check-ci-config.sh`），大二进制必须以 LFS 指针入库。
+  - `.github/workflows/repo-hygiene.yml`：大文件与 Git-LFS 一致性检查（`scripts/check-repo-hygiene.sh`）、CI 触发配置守卫（`scripts/check-ci-config.sh`）与发布包体去调试化检查（`scripts/check-build-hygiene.sh`，无 `Build/` 时自动跳过但自检步骤始终跑），大二进制必须以 LFS 指针入库。
   - `.github/workflows/diagrams-check.yml`：校验 `docs/diagrams` 图源 JSON 仍能生成结构完整的 drawio。
 - `main` 由分支规则集「main」保护，**只能通过 PR 新增提交**：`pull_request` 规则要求所有变更都关联一个 PR，直推（含普通快进推送）会被拒；`non_fast_forward` 另行禁掉 force push；`deletion` 禁删分支；`bypass_actors` 为空且 `current_user_can_bypass` 为 `never`，连仓库所有者也不能绕过。
 - **不要求任何人工审阅**：`required_approving_review_count` 为 0、`require_code_owner_review` 关闭、`required_reviewers` 为空，仓库也不使用 CODEOWNERS。合并条件只有两条——全部必需检查通过、分支已与最新 main 同步（`strict_required_status_checks_policy` 开启）；两条同时满足后 PR 作者即可自行手动合并（不启用 auto-merge）。

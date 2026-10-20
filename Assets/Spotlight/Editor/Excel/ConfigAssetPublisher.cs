@@ -79,7 +79,7 @@ namespace Spotlight.EditorTools
                 }
 
                 var compiledAt = DateTime.UtcNow.ToString("o");
-                config.EditorApply(document, definitions, sourceWorkbook, sourceHash, compiledAt);
+                config.EditorApply(document, definitions);
                 EditorUtility.SetDirty(config);
                 result.Paths.Add(ConfigAssetPath);
 
@@ -305,7 +305,7 @@ namespace Spotlight.EditorTools
                 return null;
             }
 
-            definition.EditorApply(row, combat, row.resourceComponent ? resource : null, row.teleportComponent ? teleport : null, row.deploymentPenaltyComponent ? penalty : null, prefabCard, sourceWorkbook, "Cards", row.markOnEnterComponent ? mark : null, row.deathGrowthComponent ? growth : null, row.leaveAfterDeploy ? instant : null,
+            definition.EditorApply(row, combat, row.resourceComponent ? resource : null, row.teleportComponent ? teleport : null, row.deploymentPenaltyComponent ? penalty : null, prefabCard, row.markOnEnterComponent ? mark : null, row.deathGrowthComponent ? growth : null, row.leaveAfterDeploy ? instant : null,
                 row.spawnComponent ? spawn : null, row.adjacentClearanceComponent ? clearance : null, row.killActionComponent ? killAction : null, row.damageMarkComponent ? damageMark : null,
                 artSprite, artPath);
             EditorUtility.SetDirty(definition);

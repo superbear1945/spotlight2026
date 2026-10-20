@@ -57,8 +57,6 @@ MonoBehaviour:
   _prefab: {fileID: 6040349664891306591, guid: cc6999830a40b854ab0008018767b847, type: 3}
   _art: {fileID: 21300000, guid: 5358e519ca9e0e344945fa2a0f224ea1, type: 3}
   _artPath: Assets/Imported/SpotlightArt/CardArt/flounder1.png
-  _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
-  _sourceSheet: Cards
 --- !u!114 &5123715775633487336
 MonoBehaviour:
   m_ObjectHideFlags: 1
