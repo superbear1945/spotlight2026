@@ -182,9 +182,6 @@ namespace Spotlight.EditorTools
                 new ColumnDefinition("moveSeconds", ColumnType.Float, true),
                 new ColumnDefinition("feedbackSeconds", ColumnType.Float, true),
                 new ColumnDefinition("selectedScale", ColumnType.Float, true),
-                new ColumnDefinition("musicLoopGapSeconds", ColumnType.Float, false, "音乐自然结束后等待的秒数，默认 10；非负有限数。旧表缺列使用默认值。"),
-                new ColumnDefinition("musicFadeOutSeconds", ColumnType.Float, false, "切阶段或结算淡出秒数，默认 5；非负有限数。"),
-                new ColumnDefinition("musicPhaseGapSeconds", ColumnType.Float, false, "淡出完成后等待新阶段音乐的秒数，默认 5；非负有限数。"),
                 new ColumnDefinition("playerColor", ColumnType.Text, true),
                 new ColumnDefinition("bossColor", ColumnType.Text, true),
                 new ColumnDefinition("resourceColor", ColumnType.Text, true),
@@ -193,7 +190,10 @@ namespace Spotlight.EditorTools
                 new ColumnDefinition("moveColor", ColumnType.Text, true),
                 new ColumnDefinition("attackTargetColor", ColumnType.Text, true),
                 new ColumnDefinition("swapColor", ColumnType.Text, true),
-                new ColumnDefinition("deployColor", ColumnType.Text, true)
+                new ColumnDefinition("deployColor", ColumnType.Text, true),
+                new ColumnDefinition("musicLoopGapSeconds", ColumnType.Float, false, "音乐自然结束后等待的秒数，默认 10；非负有限数。旧表缺列使用默认值。"),
+                new ColumnDefinition("musicFadeOutSeconds", ColumnType.Float, false, "切阶段或结算淡出秒数，默认 5；非负有限数。"),
+                new ColumnDefinition("musicPhaseGapSeconds", ColumnType.Float, false, "淡出完成后等待新阶段音乐的秒数，默认 5；非负有限数。")
             })
         };
 

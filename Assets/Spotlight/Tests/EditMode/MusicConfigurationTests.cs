@@ -135,12 +135,13 @@ namespace Spotlight.Tests
             finally { if (!alreadyLoaded) EditorSceneManager.CloseScene(scene, true); }
         }
 
-        /// <summary>空场景首次安装及重复安装均建立完整引用，并复用禁用的监听器，不改动已有布局。</summary>
+        /// <summary>独立预览场景内首次及重复安装均建立完整引用；兼容 CI 未保存的当前场景，不改动已有布局。</summary>
         [Test]
         public void InstallerIsIdempotentAndPreservesSceneLayout()
         {
-            var previous = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
-            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+            // CI 的测试起始场景可能尚未保存，Unity 禁止在其旁边新建叠加场景。
+            // 预览场景不受此限制，也不需要保存、替换或切换当前编辑场景。
+            var scene = EditorSceneManager.NewPreviewScene();
             try
             {
                 var host = new GameObject("AudioInstallTest");
@@ -162,8 +163,7 @@ namespace Spotlight.Tests
             }
             finally
             {
-                EditorSceneManager.CloseScene(scene, true);
-                UnityEngine.SceneManagement.SceneManager.SetActiveScene(previous);
+                EditorSceneManager.ClosePreviewScene(scene);
             }
         }
 
