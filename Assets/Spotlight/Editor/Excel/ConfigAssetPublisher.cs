@@ -251,24 +251,11 @@ namespace Spotlight.EditorTools
             var prefabPath = CardPrefabPath(row.id);
             // 卡图在发布阶段就解析成 Sprite 写进 SO：运行时只读 SO，不再按路径查资源，
             // 这样打包后卡图是普通资产引用，不会因为路径或打包裁剪而丢失。
-            Sprite artSprite = null;
-            var artPath = string.Empty;
-            if (CardArtResolver.TryResolve(row.cardArt, out var resolvedArtPath, out var artError))
-            {
-                artPath = resolvedArtPath;
-                artSprite = AssetDatabase.LoadAssetAtPath<Sprite>(resolvedArtPath);
-                if (artSprite == null)
-                {
-                    result.Issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0,
-                        $"卡种 {row.id} 的 cardArt 找不到 Sprite：{resolvedArtPath}（PNG 必须以 Sprite (2D and UI) 导入）"));
-                    return null;
-                }
-            }
-            else if (artError != null)
-            {
-                result.Issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0, $"卡种 {row.id} 的 cardArt 写法非法：{artError}"));
-                return null;
-            }
+            // 手牌与场地各解析一列：两列都留空是合法状态（卡面回退纯色矩形）；
+            // “场地列留空沿用 cardArt” 由 CardDefinitionSO.BoardArt 在运行时决定，
+            // 这里不能提前把场地图写成 cardArt，否则 SO→行对象的往返会把两列混成一个来源。
+            if (!TryResolveArt(row, "cardArt", CardArtResolver.DefaultFolder, row.cardArt, sourceWorkbook, result, out var artSprite, out var artPath)) return null;
+            if (!TryResolveArt(row, "cardArtUnit", CardArtResolver.UnitFolder, row.cardArtUnit, sourceWorkbook, result, out var unitArtSprite, out var unitArtPath)) return null;
 
             var instance = template != null ? (GameObject)PrefabUtility.InstantiatePrefab(template) : ViewTemplateBuilder.BuildTemplateObject();
             instance.name = row.id;
@@ -307,9 +294,42 @@ namespace Spotlight.EditorTools
 
             definition.EditorApply(row, combat, row.resourceComponent ? resource : null, row.teleportComponent ? teleport : null, row.deploymentPenaltyComponent ? penalty : null, prefabCard, row.markOnEnterComponent ? mark : null, row.deathGrowthComponent ? growth : null, row.leaveAfterDeploy ? instant : null,
                 row.spawnComponent ? spawn : null, row.adjacentClearanceComponent ? clearance : null, row.killActionComponent ? killAction : null, row.damageMarkComponent ? damageMark : null,
-                artSprite, artPath);
+                artSprite, artPath, unitArtSprite, unitArtPath);
             EditorUtility.SetDirty(definition);
             return definition;
+        }
+
+        /// <summary>
+        /// 解析一列卡图并加载成 Sprite。
+        /// 输入：卡种行、列名（cardArt / cardArtUnit）、该列的默认目录、源工作簿名与发布报告；
+        /// 输出：成功时 sprite / resolvedPath 给出结果（列留空时分别为 null / 空串，属合法状态）；
+        ///       列值写法非法、或图片没有按 Sprite 导入时，追加一条问题并返回 false，调用方必须中止该卡种的发布。
+        /// 为什么抽成方法：两列的解析与报错完全同构，复制一份最容易出现“错误信息里写错列名”，
+        /// 让策划照着提示去改了另一列、却依旧编译失败。
+        /// </summary>
+        static bool TryResolveArt(CardRow row, string column, string defaultFolder, string value, string sourceWorkbook, PublishResult result, out Sprite sprite, out string resolvedPath)
+        {
+            sprite = null;
+            resolvedPath = string.Empty;
+            if (!CardArtResolver.TryResolve(value, defaultFolder, out var path, out var error))
+            {
+                // TryResolve 返回 false 且 error 为 null 只有一种情况：这一列留空，没有卡图，属合法状态。
+                if (error == null) return true;
+                result.Issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0, $"卡种 {row.id} 的 {column} 写法非法：{error}"));
+                return false;
+            }
+
+            var loaded = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (loaded == null)
+            {
+                result.Issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0,
+                    $"卡种 {row.id} 的 {column} 找不到 Sprite：{path}（PNG 必须以 Sprite (2D and UI) 导入）"));
+                return false;
+            }
+
+            sprite = loaded;
+            resolvedPath = path;
+            return true;
         }
 
         /// <summary>

@@ -45,7 +45,7 @@ namespace Spotlight.EditorTools
 
         /// <summary>Cards 表内容（首行为表头，其余为数据行，列以逗号分隔）。</summary>
         private const string CardsSheetText =
-            "id,name,category,viewKey,hp,atk,range,moveDistance,produce,upkeep,resourceComponent,teleportComponent,permitsAttackDeploy,deployHomeOnly,avoidAdjacentSameType,requiresUpgrade,upgradeFrom,deploymentPenaltyComponent,deploymentAttackReduction,deployCost,deployRequireAdjacentCategory,deployRequireAdjacentCount,markOnEnterComponent,markOnEnterRadius,markRewardResource,deathGrowthComponent,deathGrowthPerKill,deathGrowthLimit,attacksAlliesAsHeal,leaveAfterDeploy,deployGainResource,tier,adjacentClearanceComponent,adjacentClearanceMinEmpty,killActionComponent,damageMarkComponent,damageMarkDamagePerStack,canAttackResources,canSwap,spawnComponent,spawnCardType,cardArt\n" +
+            "id,name,category,viewKey,hp,atk,range,moveDistance,produce,upkeep,resourceComponent,teleportComponent,permitsAttackDeploy,deployHomeOnly,avoidAdjacentSameType,requiresUpgrade,upgradeFrom,deploymentPenaltyComponent,deploymentAttackReduction,deployCost,deployRequireAdjacentCategory,deployRequireAdjacentCount,markOnEnterComponent,markOnEnterRadius,markRewardResource,deathGrowthComponent,deathGrowthPerKill,deathGrowthLimit,attacksAlliesAsHeal,leaveAfterDeploy,deployGainResource,tier,adjacentClearanceComponent,adjacentClearanceMinEmpty,killActionComponent,damageMarkComponent,damageMarkDamagePerStack,canAttackResources,canSwap,spawnComponent,spawnCardType,cardArt,cardArtUnit\n" +
             "ge1,GE-1开采机,resource,default,1,0,0,0,1,0,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,,\n" +
             "ge12,GE-12开采机,resource,default,1,1,1,0,1,0,true,false,false,false,false,true,ge1,false,0,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,,\n" +
             "kyoto_01,京都壹号,resource,default,1,0,0,0,3,0,true,false,false,false,false,false,,true,2,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,,\n" +
@@ -400,13 +400,16 @@ namespace Spotlight.EditorTools
             writer.WriteStartElement("row", SpreadsheetNamespace);
             writer.WriteAttributeString("r", ToInvariant(rowNumber));
 
-            var columnCount = values?.Count ?? 0;
+            var valueCount = values?.Count ?? 0;
+            // 列数以表头为准：数据行允许少写末尾的空列（新增一列后不必逐行补逗号），
+            // 这里统一补成空字符串，保证每行宽度与表头一致，Excel 里不会出现半截行。
+            var columnCount = Math.Max(valueCount, columns?.Count ?? 0);
             for (var column = 0; column < columnCount; column++)
             {
                 writer.WriteStartElement("c", SpreadsheetNamespace);
                 writer.WriteAttributeString("r", GetColumnName(column) + ToInvariant(rowNumber));
                 var type = columns != null && column < columns.Count ? columns[column]?.Type ?? ColumnType.Text : ColumnType.Text;
-                WriteCellValue(writer, values[column], type);
+                WriteCellValue(writer, column < valueCount ? values[column] : string.Empty, type);
                 writer.WriteEndElement();
             }
 

@@ -57,3 +57,5 @@ MonoBehaviour:
   _prefab: {fileID: 1747437928795265983, guid: bfa5f559c3f3b5e46bea0ab690da8ec0, type: 3}
   _art: {fileID: 0}
   _artPath: 
+  _unitArt: {fileID: 21300000, guid: 4b65b28af41a3454f853b86e602d6dcb, type: 3}
+  _unitArtPath: Assets/Imported/SpotlightArt/Units/bossGuardType2.png

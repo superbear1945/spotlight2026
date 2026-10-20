@@ -103,9 +103,9 @@ namespace Spotlight.Tests
                             Assert.That(notes.All(n => n.Value.Contains("默认") || n.Value.Contains("卡牌阶级")), Is.True);
                         }
                     // 原有 40 条说明加上三阶段前列、当前列护卫舰的两项 Rules 引用说明，共 42 条；
-                    // 再加上 Cards.cardArt 的卡图说明及三项音乐计时说明，共 46 条。
+                    // 再加上 Cards.cardArt（手牌）/ Cards.cardArtUnit（场地）两条卡图说明与三项音乐计时说明，共 47 条。
                     // 保留精确数量检查，避免遗漏批注；额外检查新字段内容，防止错误批注恰好凑足数量。
-                    Assert.That(count, Is.EqualTo(46));
+                    Assert.That(count, Is.EqualTo(47));
                     using (var stream = zip.GetEntry("xl/comments2.xml").Open())
                     {
                         var notes = XDocument.Load(stream).Descendants(ns + "comment").Select(n => n.Value).ToArray();
