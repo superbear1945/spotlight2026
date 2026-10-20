@@ -88,6 +88,8 @@ namespace Spotlight.Tests
                 "menu-overlay", "menu-resume-button", "menu-deck-select-button",
                 "menu-restart-button", "menu-quit-button",
                 "deck-select-confirm-overlay", "deck-select-mask", "deck-select-apply-button",
+                "deck-select-detail", "deck-select-detail-title", "deck-select-detail-meta",
+                "deck-select-detail-stats", "deck-select-detail-traits", "deck-select-detail-body",
                 "pause-title-icon",
                 "pause-header-left-line", "pause-header-right-line"
             };

@@ -173,17 +173,18 @@ namespace Spotlight.Tests
                 Assert.That(row.damageMarkDamagePerStack, Is.EqualTo(perStack));
             }
 
+            // 数值跟随 2026-10 的正式数值调整：texasRanger 移动 1 → 2、snpEu 维持费 3 → 4。
             Expect("houyi2", "后羿-II综合舰", 6, 2, 2, 1, 4, true, 2, false, false, 0);
-            Expect("texasRanger", "德克萨斯游骑兵", 3, 3, 2, 1, 3, false, 0, false, false, 0);
+            Expect("texasRanger", "德克萨斯游骑兵", 3, 3, 2, 2, 3, false, 0, false, false, 0);
             Expect("viking2056", "维京长船-2056", 2, 3, 2, 1, 4, false, 0, true, false, 0);
-            Expect("snpEu", "SNP-EU", 1, 1, 3, 1, 3, false, 0, false, true, 1);
+            Expect("snpEu", "SNP-EU", 1, 1, 3, 1, 4, false, 0, false, true, 1);
             Expect("napoleon1769", "拿破仑-1769", 8, 3, 2, 1, 6, false, 0, false, false, 0);
 
-            // 星门保持正式配置现状：不因为新增高级卡而被覆盖成参考表数值。
+            // 星门保持正式配置现状：不因为新增高级卡而被覆盖成参考表数值；维持费已按 2026-10 调整为 6。
             var gate = cards["gate"];
             Assert.That(gate.category, Is.EqualTo("special"));
             Assert.That(new[] { gate.hp, gate.atk, gate.range, gate.moveDistance, gate.upkeep },
-                Is.EqualTo(new[] { 2, 0, 0, 1, 4 }));
+                Is.EqualTo(new[] { 2, 0, 0, 1, 6 }));
             Assert.That(gate.teleportComponent, Is.True);
             Assert.That(gate.permitsAttackDeploy, Is.True);
             Assert.That(gate.deployHomeOnly, Is.True);
@@ -210,7 +211,7 @@ namespace Spotlight.Tests
             Assert.That(report.Success, Is.True, string.Join("\n", report.Issues));
             var expectedUpkeep = new System.Collections.Generic.Dictionary<string, int>
             {
-                ["houyi2"] = 4, ["texasRanger"] = 3, ["viking2056"] = 4, ["snpEu"] = 3, ["napoleon1769"] = 6
+                ["houyi2"] = 4, ["texasRanger"] = 3, ["viking2056"] = 4, ["snpEu"] = 4, ["napoleon1769"] = 6
             };
             foreach (var pair in expectedUpkeep)
             {

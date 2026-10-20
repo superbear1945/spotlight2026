@@ -273,11 +273,20 @@
           </ui:VisualElement>
           <ui:Label name="deck-select-error" class="cfg-error" />
         </ui:VisualElement>
-        <ui:VisualElement class="cfg-body">
-          <ui:ScrollView name="deck-select-scroll" mode="Vertical" class="cfg-scroll">
+        <ui:VisualElement class="cfg-body deck-select-body">
+          <ui:ScrollView name="deck-select-scroll" mode="Vertical" class="cfg-scroll deck-select-list">
             <ui:Label name="deck-select-hint" class="cfg-note" />
             <ui:VisualElement name="deck-select-cards" />
           </ui:ScrollView>
+          <ui:VisualElement name="deck-select-detail" class="deck-select-detail empty">
+            <ui:Label name="deck-select-detail-title" text="卡牌详情" class="deck-select-detail-title" />
+            <ui:Label name="deck-select-detail-meta" class="deck-select-detail-meta" />
+            <ui:Label name="deck-select-detail-stats" class="deck-select-detail-stats" />
+            <ui:VisualElement name="deck-select-detail-traits" class="deck-select-detail-traits" />
+            <ui:ScrollView name="deck-select-detail-scroll" mode="Vertical" class="deck-select-detail-scroll">
+              <ui:Label name="deck-select-detail-body" class="deck-select-detail-body" />
+            </ui:ScrollView>
+          </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement class="deck-select-foot">
           <ui:Label name="deck-select-preview" class="deck-select-preview" />

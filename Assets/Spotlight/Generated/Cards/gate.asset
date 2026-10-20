@@ -85,4 +85,4 @@ MonoBehaviour:
   m_Name: gate_Resource
   m_EditorClassIdentifier: 
   _produce: 0
-  _upkeep: 4
+  _upkeep: 6
