@@ -235,7 +235,7 @@ namespace Spotlight.Tests
         }
 
         [UnityTest]
-        public IEnumerator DrawPileShowsRemainingCardsByTier()
+        public IEnumerator DrawPileShowsTotalAndTierBreakdown()
         {
             var context = new Context();
             yield return Load(context);
@@ -247,19 +247,18 @@ namespace Spotlight.Tests
             var configuration = session.Configuration;
             var snapshot = session.GetSnapshot();
 
-            var basic = hud.Root.Q<Label>("draw-count-basic");
-            var intermediate = hud.Root.Q<Label>("draw-count-intermediate");
-            var advanced = hud.Root.Q<Label>("draw-count-advanced");
-            Assert.That(basic, Is.Not.Null, "UXML 缺少 draw-count-basic");
-            Assert.That(intermediate, Is.Not.Null, "UXML 缺少 draw-count-intermediate");
-            Assert.That(advanced, Is.Not.Null, "UXML 缺少 draw-count-advanced");
+            var total = hud.Root.Q<Label>("draw-count");
+            var tiers = hud.Root.Q<Label>("draw-count-tiers");
+            Assert.That(total, Is.Not.Null, "UXML 缺少 draw-count");
+            Assert.That(tiers, Is.Not.Null, "UXML 缺少 draw-count-tiers");
 
             var expected = new[] { CardTier.Basic, CardTier.Intermediate, CardTier.Advanced }
                 .ToDictionary(tier => tier, tier => snapshot.DrawPile.Count(card => configuration.FindCard(card.TypeId)?.Tier == tier));
-            Assert.That(basic.text, Is.EqualTo($"初级 {expected[CardTier.Basic]}"), "初级剩余张数应与快照一致");
-            Assert.That(intermediate.text, Is.EqualTo($"中级 {expected[CardTier.Intermediate]}"), "中级剩余张数应与快照一致");
-            Assert.That(advanced.text, Is.EqualTo($"高级 {expected[CardTier.Advanced]}"), "高级剩余张数应与快照一致");
-            Assert.That(expected.Values.Sum(), Is.EqualTo(snapshot.DrawPile.Count), "三行之和应等于抽牌堆剩余张数");
+            Assert.That(total.text, Is.EqualTo(snapshot.DrawPile.Count.ToString()), "牌堆正中应显示剩余总张数");
+            Assert.That(tiers.text,
+                Is.EqualTo($"高 {expected[CardTier.Advanced]} · 中 {expected[CardTier.Intermediate]} · 初 {expected[CardTier.Basic]}"),
+                "底部阶级小字应与快照一致");
+            Assert.That(expected.Values.Sum(), Is.EqualTo(snapshot.DrawPile.Count), "三个阶级之和应等于抽牌堆剩余张数");
         }
     }
 }

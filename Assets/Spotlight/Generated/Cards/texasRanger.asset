@@ -69,5 +69,7 @@ MonoBehaviour:
   _killAction: {fileID: 0}
   _damageMark: {fileID: 0}
   _prefab: {fileID: 6870192998174914191, guid: bdf112f9d303f2a44be6ef126349f3af, type: 3}
+  _art: {fileID: 21300000, guid: 3baf5629afe283240995aae3825d4dc7, type: 3}
+  _artPath: Assets/Imported/SpotlightArt/CardArt/texasRanger.png
   _sourceWorkbook: Assets/Spotlight/Config/Spotlight.xlsx
   _sourceSheet: Cards

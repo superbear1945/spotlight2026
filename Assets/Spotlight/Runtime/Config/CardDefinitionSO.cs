@@ -65,6 +65,10 @@ namespace Spotlight
         [SerializeField] DamageMarkConfigSO _damageMark;
         /// <summary>卡牌 Prefab，由外观模板生成；手牌与棋盘共用同一模板。</summary>
         [SerializeField] Card _prefab;
+        /// <summary>卡图 Sprite；为 null 表示没有卡图，卡面回退到纯色矩形。</summary>
+        [SerializeField] Sprite _art;
+        /// <summary>卡图来源文本（Cards.cardArt 的原值），用于 Inspector 回显与 SO→行对象的往返。</summary>
+        [SerializeField] string _artPath;
         /// <summary>源工作簿文件名，用于 Inspector 提示与校验报告。</summary>
         [SerializeField] string _sourceWorkbook;
         /// <summary>源工作表名。</summary>
@@ -120,6 +124,10 @@ namespace Spotlight
         public DamageMarkConfigSO DamageMark => _damageMark;
         /// <summary>卡牌 Prefab，UI 实例化手牌与棋盘单位时使用。</summary>
         public Card Prefab => _prefab;
+        /// <summary>卡图 Sprite（可能为 null）；卡视图据此决定显示立绘还是纯色矩形。</summary>
+        public Sprite Art => _art;
+        /// <summary>卡图来源文本（Cards.cardArt 原值），供调试与往返核对。</summary>
+        public string ArtPath => _artPath;
         /// <inheritdoc />
         public string SourceWorkbook => _sourceWorkbook;
         /// <inheritdoc />
@@ -175,7 +183,8 @@ namespace Spotlight
                 adjacentClearanceMinEmpty = _adjacentClearance != null ? _adjacentClearance.MinEmptyNeighbors : 0,
                 killActionComponent = _killAction != null,
                 damageMarkComponent = _damageMark != null,
-                damageMarkDamagePerStack = _damageMark != null ? _damageMark.DamagePerStack : 0
+                damageMarkDamagePerStack = _damageMark != null ? _damageMark.DamagePerStack : 0,
+                cardArt = _artPath ?? string.Empty
             };
         }
 
@@ -196,7 +205,8 @@ namespace Spotlight
         /// 一次性减攻配置为 null 时引用被清空，因此 SO 与 Excel 行始终一致（禁用即无能力）。
         /// </summary>
         public void EditorApply(CardRow row, CombatConfigSO combat, ResourceConfigSO resource, TeleportConfigSO teleport, DeploymentPenaltyConfigSO deploymentPenalty, Card prefab, string sourceWorkbook, string sourceSheet, MarkOnEnterConfigSO markOnEnter = null, DeathGrowthConfigSO deathGrowth = null, InstantEffectConfigSO instant = null,
-            SpawnConfigSO spawn = null, AdjacentClearanceConfigSO adjacentClearance = null, KillActionConfigSO killAction = null, DamageMarkConfigSO damageMark = null)
+            SpawnConfigSO spawn = null, AdjacentClearanceConfigSO adjacentClearance = null, KillActionConfigSO killAction = null, DamageMarkConfigSO damageMark = null,
+            Sprite art = null, string artPath = null)
         {
             _id = row.id;
             _name = row.name.Trim();
@@ -223,6 +233,11 @@ namespace Spotlight
             _killAction = killAction;
             _damageMark = damageMark;
             _prefab = prefab;
+            // 卡图与来源文本必须一起写：只写 Sprite 会让 SO→行对象的往返丢掉 Cards.cardArt，
+            // 重新编译时就会被当成“没有卡图”而静默回退成纯色矩形。
+            // 没有显式给 artPath 时回退用行里的 cardArt，保证任何调用路径都不会丢来源文本。
+            _art = art;
+            _artPath = !string.IsNullOrEmpty(artPath) ? artPath : (row.cardArt ?? string.Empty);
             _sourceWorkbook = sourceWorkbook;
             _sourceSheet = sourceSheet;
         }

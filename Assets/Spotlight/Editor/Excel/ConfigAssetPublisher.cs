@@ -63,6 +63,10 @@ namespace Spotlight.EditorTools
             {
                 EnsureFolders();
                 var template = ViewTemplateBuilder.EnsureTemplate();
+                // 模板缺卡图节点时，所有卡的卡图都会静默不显示（看起来和“没配卡图”一模一样）。
+                // 这里直接失败，让问题在编译阶段暴露，而不是等到运行时才发现界面不对。
+                if (!ViewTemplateBuilder.HasArtNode(template))
+                    throw new InvalidOperationException("外观模板缺少卡图节点 _art，请执行 Tools/Spotlight/升级卡牌外观模板 后重试");
                 var config = LoadOrCreate<SpotlightConfigAsset>(ConfigAssetPath);
                 var definitions = new List<CardDefinitionSO>();
                 foreach (var row in document.cards)
@@ -245,6 +249,27 @@ namespace Spotlight.EditorTools
             else RemoveSubAsset(assetPath, damageMark);
 
             var prefabPath = CardPrefabPath(row.id);
+            // 卡图在发布阶段就解析成 Sprite 写进 SO：运行时只读 SO，不再按路径查资源，
+            // 这样打包后卡图是普通资产引用，不会因为路径或打包裁剪而丢失。
+            Sprite artSprite = null;
+            var artPath = string.Empty;
+            if (CardArtResolver.TryResolve(row.cardArt, out var resolvedArtPath, out var artError))
+            {
+                artPath = resolvedArtPath;
+                artSprite = AssetDatabase.LoadAssetAtPath<Sprite>(resolvedArtPath);
+                if (artSprite == null)
+                {
+                    result.Issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0,
+                        $"卡种 {row.id} 的 cardArt 找不到 Sprite：{resolvedArtPath}（PNG 必须以 Sprite (2D and UI) 导入）"));
+                    return null;
+                }
+            }
+            else if (artError != null)
+            {
+                result.Issues.Add(new ConfigIssue(sourceWorkbook, "Cards", 0, 0, $"卡种 {row.id} 的 cardArt 写法非法：{artError}"));
+                return null;
+            }
+
             var instance = template != null ? (GameObject)PrefabUtility.InstantiatePrefab(template) : ViewTemplateBuilder.BuildTemplateObject();
             instance.name = row.id;
             var card = instance.GetComponent<Card>() ?? instance.AddComponent<Card>();
@@ -281,7 +306,8 @@ namespace Spotlight.EditorTools
             }
 
             definition.EditorApply(row, combat, row.resourceComponent ? resource : null, row.teleportComponent ? teleport : null, row.deploymentPenaltyComponent ? penalty : null, prefabCard, sourceWorkbook, "Cards", row.markOnEnterComponent ? mark : null, row.deathGrowthComponent ? growth : null, row.leaveAfterDeploy ? instant : null,
-                row.spawnComponent ? spawn : null, row.adjacentClearanceComponent ? clearance : null, row.killActionComponent ? killAction : null, row.damageMarkComponent ? damageMark : null);
+                row.spawnComponent ? spawn : null, row.adjacentClearanceComponent ? clearance : null, row.killActionComponent ? killAction : null, row.damageMarkComponent ? damageMark : null,
+                artSprite, artPath);
             EditorUtility.SetDirty(definition);
             return definition;
         }

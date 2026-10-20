@@ -1122,36 +1122,75 @@
     margin-top: 6px;
 }
 
-/* 手牌同一行的卡牌计数区 */
+/* ── 牌堆 / 墓地计数：同一张卡背底图 + 正中数字 + 上方标题 + 下方阶级小字 ──
+   底图是 Assets/Imported/SpotlightArt/CardArt/backside.png（124×183，2:3 的卡背），
+   因此面板做成卡形（132×195，等比 1.06 倍），而不是圆形徽章。
+   换图只改这一条 background-image；若新图不是 2:3，同步改 width/height。
+   ⚠️ 换图后如果界面没变化，右键本文件 → Reimport：
+   USS 会把图片路径解析成 GUID 缓存进导入产物，图片 GUID 变了必须重导本文件。 */
 .pile-panel {
     position: absolute;
     bottom: 16px;
-    height: 190px;
+    width: 132px;
+    height: 195px;
+    padding: 0;
     align-items: center;
     justify-content: center;
+    background-image: url("project://database/Assets/Imported/SpotlightArt/CardArt/backside.png");
+    -unity-background-scale-mode: scale-to-fill;
 }
 
 .pile-left {
-    left: 12px;
-    width: 240px;
+    left: 16px;
 }
 
 .pile-right {
-    right: 12px;
-    width: 380px;
+    right: 16px;
 }
 
+/* 标题贴数字上方：绝对定位，避免牌堆多一行阶级小字把数字顶偏。
+   卡背是彩色插画，标题与阶级小字各带一条半透明底带（Label 自身背景），
+   这样文字不依赖插画底色也能读清，同时卡面花纹仍然可见。 */
 .pile-title {
+    position: absolute;
+    top: 22px;
+    left: 10px;
+    right: 10px;
+    padding: 2px 0;
     font-size: 15px;
-    color: rgb(160, 200, 255);
+    color: rgb(255, 255, 255);
+    background-color: rgba(4, 12, 26, 0.75);
+    border-radius: 4px;
     -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(2, 6, 14, 0.95);
 }
 
-.pile-count {
-    font-size: 36px;
-    color: rgb(240, 245, 255);
+/* 数字始终居中于卡面正中：两块面板因此对齐。
+   卡背是彩色插画，所以字号放大到 54px 并加 4px 深色描边，保证任何底色上都可读。 */
+.pile-value {
+    font-size: 54px;
+    color: rgb(255, 255, 255);
     -unity-font-style: bold;
-    margin-bottom: 10px;
+    -unity-text-outline-width: 4px;
+    -unity-text-outline-color: rgba(2, 6, 14, 0.95);
+}
+
+/* 阶级小字贴底部，不参与垂直居中，所以不会影响数字位置。 */
+.pile-tiers {
+    position: absolute;
+    bottom: 18px;
+    left: 10px;
+    right: 10px;
+    padding: 3px 0;
+    font-size: 12px;
+    color: rgb(255, 255, 255);
+    background-color: rgba(4, 12, 26, 0.75);
+    border-radius: 4px;
+    -unity-text-align: middle-center;
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(2, 6, 14, 0.95);
 }
 
 /* 齿轮菜单的遮罩：沿用 .overlay / .overlay-card，只加深底色以突出中间两个按钮。 */
@@ -1178,14 +1217,7 @@
     background-color: rgb(126, 52, 62);
 }
 
-/* ── 抽牌堆分阶级显示与携带选择面板 ────────────────────────────────────── */
-
-/* 抽牌堆从“一个大数字”改成三行阶级张数，字号相应缩小，避免撑破右侧面板。 */
-.pile-tier-count {
-    font-size: 20px;
-    color: rgb(240, 245, 255);
-    -unity-font-style: bold;
-}
+/* ── 携带选择面板 ──────────────────────────────────────────────────────── */
 
 .deck-select-mask {
     align-items: center;

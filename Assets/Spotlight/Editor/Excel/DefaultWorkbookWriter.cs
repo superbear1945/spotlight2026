@@ -45,32 +45,32 @@ namespace Spotlight.EditorTools
 
         /// <summary>Cards 表内容（首行为表头，其余为数据行，列以逗号分隔）。</summary>
         private const string CardsSheetText =
-            "id,name,category,viewKey,hp,atk,range,moveDistance,produce,upkeep,resourceComponent,teleportComponent,permitsAttackDeploy,deployHomeOnly,avoidAdjacentSameType,requiresUpgrade,upgradeFrom,deploymentPenaltyComponent,deploymentAttackReduction,deployCost,deployRequireAdjacentCategory,deployRequireAdjacentCount,markOnEnterComponent,markOnEnterRadius,markRewardResource,deathGrowthComponent,deathGrowthPerKill,deathGrowthLimit,attacksAlliesAsHeal,leaveAfterDeploy,deployGainResource,tier,adjacentClearanceComponent,adjacentClearanceMinEmpty,killActionComponent,damageMarkComponent,damageMarkDamagePerStack,canAttackResources,canSwap,spawnComponent,spawnCardType\n" +
-            "ge1,GE-1开采机,resource,default,1,0,0,0,1,0,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,\n" +
-            "ge12,GE-12开采机,resource,default,1,1,1,0,1,0,true,false,false,false,false,true,ge1,false,0,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,\n" +
-            "kyoto_01,京都壹号,resource,default,1,0,0,0,3,0,true,false,false,false,false,false,,true,2,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,\n" +
-            "blade1,尖刀1,attack,default,2,1,1,1,0,2,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,\n" +
-            "rabbit2,灵兔2,attack,default,1,1,2,1,0,2,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,\n" +
-            "odysseus1,奥德修斯-1,special,default,2,0,0,1,0,1,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,\n" +
-            "gate,星门,special,default,2,0,0,1,0,4,true,true,true,true,true,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,false,false,0,true,true,false,\n" +
-            "bossCombat,Boss敌兵,attack,default,3,1,1,1,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,none,false,0,false,false,0,true,true,false,\n" +
-            "bossGuardType2,二式护卫舰,attack,default,3,3,2,1,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,none,false,0,false,false,0,true,true,false,\n" +
-            "bossGuardType1,一式护卫舰,attack,default,7,1,2,1,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,none,false,0,false,false,0,true,true,false,\n" +
-            "bossSpawner,刷怪卡,special,default,1,0,0,0,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,none,false,0,false,false,0,true,false,true,bossCombat\n" +
-            "kepler1,开普勒-I,resource,default,2,0,0,0,3,0,true,false,false,false,false,false,,false,0,10,resource,2,false,0,0,false,0,0,false,false,0,intermediate,false,0,false,false,0,true,true,false,\n" +
-            "kepler2,开普勒-II,resource,default,1,0,0,0,3,0,true,false,false,false,false,false,,false,0,10,attack,1,false,0,0,false,0,0,false,false,0,intermediate,false,0,false,false,0,true,true,false,\n" +
-            "landing1,星铆-1复合着陆机,attack,default,2,1,1,0,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,intermediate,false,0,false,false,0,true,true,false,\n" +
-            "houyi1,后羿综合舰,attack,default,3,2,2,1,0,4,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,intermediate,false,0,false,false,0,true,true,false,\n" +
-            "collector1,星棹-1收集系统,resource,default,1,0,0,0,1,0,true,false,false,false,false,false,,false,0,0,,0,true,1,1,false,0,0,false,false,0,intermediate,false,0,false,false,0,true,true,false,\n" +
-            "force1,力场-I,attack,default,3,0,1,1,0,4,true,false,false,false,false,false,,false,0,0,,0,false,0,0,true,1,4,false,false,0,intermediate,false,0,false,false,0,true,true,false,\n" +
-            "flounder1,比目鱼,attack,default,2,1,1,1,0,3,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,true,false,0,intermediate,false,0,false,false,0,true,true,false,\n" +
-            "reserve1,战时储备,special,default,1,0,0,0,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,true,3,intermediate,false,0,false,false,0,true,true,false,\n" +
-            "bossWarship,战舰,attack,default,15,2,1,1,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,none,false,0,false,false,0,false,true,true,bossCombat\n" +
-            "houyi2,后羿-II综合舰,attack,default,6,2,2,1,0,4,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,true,2,false,false,0,true,true,false,\n" +
-            "texasRanger,德克萨斯游骑兵,attack,default,3,3,2,1,0,3,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,false,false,0,true,true,false,\n" +
-            "viking2056,维京长船-2056,attack,default,2,3,2,1,0,4,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,true,false,0,true,true,false,\n" +
-            "snpEu,SNP-EU,attack,default,1,1,3,1,0,3,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,false,true,1,true,true,false,\n" +
-            "napoleon1769,拿破仑-1769,attack,default,8,3,2,1,0,6,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,false,false,0,true,true,false,";
+            "id,name,category,viewKey,hp,atk,range,moveDistance,produce,upkeep,resourceComponent,teleportComponent,permitsAttackDeploy,deployHomeOnly,avoidAdjacentSameType,requiresUpgrade,upgradeFrom,deploymentPenaltyComponent,deploymentAttackReduction,deployCost,deployRequireAdjacentCategory,deployRequireAdjacentCount,markOnEnterComponent,markOnEnterRadius,markRewardResource,deathGrowthComponent,deathGrowthPerKill,deathGrowthLimit,attacksAlliesAsHeal,leaveAfterDeploy,deployGainResource,tier,adjacentClearanceComponent,adjacentClearanceMinEmpty,killActionComponent,damageMarkComponent,damageMarkDamagePerStack,canAttackResources,canSwap,spawnComponent,spawnCardType,cardArt\n" +
+            "ge1,GE-1开采机,resource,default,1,0,0,0,1,0,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,,\n" +
+            "ge12,GE-12开采机,resource,default,1,1,1,0,1,0,true,false,false,false,false,true,ge1,false,0,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,,\n" +
+            "kyoto_01,京都壹号,resource,default,1,0,0,0,3,0,true,false,false,false,false,false,,true,2,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,,\n" +
+            "blade1,尖刀1,attack,default,2,1,1,1,0,2,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,,\n" +
+            "rabbit2,灵兔2,attack,default,1,1,2,1,0,2,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,,\n" +
+            "odysseus1,奥德修斯-1,special,default,2,0,0,1,0,1,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,basic,false,0,false,false,0,true,true,false,,\n" +
+            "gate,星门,special,default,2,0,0,1,0,4,true,true,true,true,true,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,false,false,0,true,true,false,,\n" +
+            "bossCombat,Boss敌兵,attack,default,3,1,1,1,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,none,false,0,false,false,0,true,true,false,,\n" +
+            "bossGuardType2,二式护卫舰,attack,default,3,3,2,1,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,none,false,0,false,false,0,true,true,false,,\n" +
+            "bossGuardType1,一式护卫舰,attack,default,7,1,2,1,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,none,false,0,false,false,0,true,true,false,,\n" +
+            "bossSpawner,刷怪卡,special,default,1,0,0,0,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,none,false,0,false,false,0,true,false,true,bossCombat,\n" +
+            "kepler1,开普勒-I,resource,default,2,0,0,0,3,0,true,false,false,false,false,false,,false,0,10,resource,2,false,0,0,false,0,0,false,false,0,intermediate,false,0,false,false,0,true,true,false,,\n" +
+            "kepler2,开普勒-II,resource,default,1,0,0,0,3,0,true,false,false,false,false,false,,false,0,10,attack,1,false,0,0,false,0,0,false,false,0,intermediate,false,0,false,false,0,true,true,false,,\n" +
+            "landing1,星铆-1复合着陆机,attack,default,2,1,1,0,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,intermediate,false,0,false,false,0,true,true,false,,\n" +
+            "houyi1,后羿综合舰,attack,default,3,2,2,1,0,4,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,intermediate,false,0,false,false,0,true,true,false,,\n" +
+            "collector1,星棹-1收集系统,resource,default,1,0,0,0,1,0,true,false,false,false,false,false,,false,0,0,,0,true,1,1,false,0,0,false,false,0,intermediate,false,0,false,false,0,true,true,false,,\n" +
+            "force1,力场-I,attack,default,3,0,1,1,0,4,true,false,false,false,false,false,,false,0,0,,0,false,0,0,true,1,4,false,false,0,intermediate,false,0,false,false,0,true,true,false,,\n" +
+            "flounder1,比目鱼,attack,default,2,1,1,1,0,3,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,true,false,0,intermediate,false,0,false,false,0,true,true,false,,\n" +
+            "reserve1,战时储备,special,default,1,0,0,0,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,true,3,intermediate,false,0,false,false,0,true,true,false,,\n" +
+            "bossWarship,战舰,attack,default,15,2,1,1,0,0,false,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,none,false,0,false,false,0,false,true,true,bossCombat,\n" +
+            "houyi2,后羿-II综合舰,attack,default,6,2,2,1,0,4,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,true,2,false,false,0,true,true,false,,\n" +
+            "texasRanger,德克萨斯游骑兵,attack,default,3,3,2,1,0,3,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,false,false,0,true,true,false,,\n" +
+            "viking2056,维京长船-2056,attack,default,2,3,2,1,0,4,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,true,false,0,true,true,false,,\n" +
+            "snpEu,SNP-EU,attack,default,1,1,3,1,0,3,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,false,true,1,true,true,false,,\n" +
+            "napoleon1769,拿破仑-1769,attack,default,8,3,2,1,0,6,true,false,false,false,false,false,,false,0,0,,0,false,0,0,false,0,0,false,false,0,advanced,false,0,false,false,0,true,true,false,,";
 
         /// <summary>Rules 表内容（首行为表头，第二行为唯一数据行，列以逗号分隔）。</summary>
         private const string RulesSheetText =

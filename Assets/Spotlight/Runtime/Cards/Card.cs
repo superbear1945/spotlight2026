@@ -31,6 +31,8 @@ namespace Spotlight
         [SerializeField] SpawnComponent _spawn;
         /// <summary>卡面底色 Image，用于表示阵营与分类。</summary>
         [SerializeField] Image _body;
+        /// <summary>卡图 Image；卡种没有配卡图时被禁用，卡面回退成纯色矩形。</summary>
+        [SerializeField] Image _art;
         /// <summary>高亮框 Image，用于表示可部署/可移动/可攻击/可互换。</summary>
         [SerializeField] Image _highlight;
         /// <summary>选中标记根节点，用于放大或描边；可为空。</summary>
@@ -102,6 +104,9 @@ namespace Spotlight
         public void Configure(CardDefinitionSO definition)
         {
             _definition = definition;
+            // 卡图先于能力配置应用：definition 为 null（回退模板/未注册卡种）时这里会关掉卡图，
+            // 避免复用同一个 Card 实例时残留上一张卡的立绘。
+            ApplyArt(definition);
             if (definition == null) return;
             if (_combat != null) _combat.Configure(definition.Combat);
             if (_resource != null) _resource.Configure(definition.Resource);
@@ -157,6 +162,9 @@ namespace Spotlight
         public void BindHome(Side owner, HomeState home, Color color)
         {
             _customText = true;
+            // 家不是卡牌、没有 CardDefinitionSO，必须显式清掉卡图；
+            // 否则手牌/单位实例被复用去当家时会残留上一张卡的立绘。
+            ApplyArt(null);
             _record = null;
             _unit = null;
             if (_combat != null) _combat.Bind(null);
@@ -177,6 +185,7 @@ namespace Spotlight
         public void Unbind()
         {
             _customText = false;
+            ApplyArt(null);
             _record = null;
             _unit = null;
             if (_combat != null) _combat.Bind(null);
@@ -234,6 +243,21 @@ namespace Spotlight
                 if (color.HasValue) _highlight.color = color.Value;
             }
             if (_body != null) _body.color = color ?? _baseColor;
+        }
+
+        /// <summary>
+        /// 应用卡图。
+        /// 输入：卡种定义（可为 null，表示没有卡图）；输出：无。
+        /// 为什么需要：卡图是每张卡的展示数据，来自配置（CardDefinitionSO.Art）而不是 Prefab——
+        /// 「编译全部配置」会用模板覆盖生成 Prefab，把卡图写在那里等于每次编译都丢图。
+        /// 没有卡图时禁用整个节点而不是留一张白图，才能保持原来的纯色矩形外观。
+        /// </summary>
+        void ApplyArt(CardDefinitionSO definition)
+        {
+            if (_art == null) return;
+            var sprite = definition != null ? definition.Art : null;
+            _art.sprite = sprite;
+            _art.enabled = sprite != null;
         }
 
         /// <summary>

@@ -69,15 +69,17 @@
       <ui:Button name="restart-button" text="重开" class="action-button secondary-action" style="display: none;" />
     </ui:VisualElement>
 
-    <ui:VisualElement name="pile-left" picking-mode="Ignore" class="panel pile-panel pile-left">
+    <!-- 牌堆与墓地共用同一套计数面板：底图 + 正中数字 + 上方标题 + 下方阶级小字。
+         标题与数字都绝对定位（见 USS 的 .pile-title / .pile-value），
+         所以牌堆多一行阶级小字也不会把数字顶偏，两块面板的数字始终在同一高度。 -->
+    <ui:VisualElement name="pile-left" picking-mode="Ignore" class="pile-panel pile-left">
       <ui:Label text="墓地" picking-mode="Ignore" class="pile-title" />
-      <ui:Label name="grave-count" text="0" picking-mode="Ignore" class="pile-count" />
+      <ui:Label name="grave-count" text="0" picking-mode="Ignore" class="pile-value" />
     </ui:VisualElement>
-    <ui:VisualElement name="pile-right" picking-mode="Ignore" class="panel pile-panel pile-right">
-      <ui:Label text="抽牌堆" picking-mode="Ignore" class="pile-title" />
-      <ui:Label name="draw-count-advanced" text="高级 0" picking-mode="Ignore" class="pile-tier-count" />
-      <ui:Label name="draw-count-intermediate" text="中级 0" picking-mode="Ignore" class="pile-tier-count" />
-      <ui:Label name="draw-count-basic" text="初级 0" picking-mode="Ignore" class="pile-tier-count" />
+    <ui:VisualElement name="pile-right" picking-mode="Ignore" class="pile-panel pile-right">
+      <ui:Label text="牌堆" picking-mode="Ignore" class="pile-title" />
+      <ui:Label name="draw-count" text="0" picking-mode="Ignore" class="pile-value" />
+      <ui:Label name="draw-count-tiers" text="高 0 · 中 0 · 初 0" picking-mode="Ignore" class="pile-tiers" />
     </ui:VisualElement>
 
     <ui:VisualElement name="menu-overlay" class="overlay menu-overlay" style="display: none;">
