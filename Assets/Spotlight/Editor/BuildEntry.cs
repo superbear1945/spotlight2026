@@ -317,8 +317,9 @@ namespace Spotlight.EditorTools
                     return false;
                 }
 
-                Debug.Log($"打包 {platform} 成功：{executablePath}" +
-                          $"（{summary.totalSize / 1024f / 1024f:F1} MB，耗时 {summary.totalTime.TotalSeconds:F1} 秒）" +
+                // 成功时必须打印 game-ci 认识的标记，否则 CLI 会把成功当失败（详见方法注释）。
+                Debug.Log(FormatCiSuccessLine(platform, executablePath, summary.totalTime,
+                             summary.totalWarnings, summary.totalErrors, summary.totalSize) +
                           $"，原始日志：{summary.outputPath}");
                 return true;
             }
@@ -329,6 +330,33 @@ namespace Spotlight.EditorTools
                 Debug.LogError($"打包 {platform} 过程中出现异常：{detail}");
                 return false;
             }
+        }
+
+        /// <summary>
+        /// 组装“构建成功”日志行，其中必包含 game-ci 认的英文标记 <c>Build succeeded!</c>。
+        /// 输入：平台、产物路径、耗时、警告/错误计数、产物字节数；输出：单行日志文本。
+        /// <para>
+        /// 为什么必须带这个标记：CI 走 game-ci/cli 的 <c>build</c> 命令，它在 Unity 以 0 退出之后
+        /// 还会再扫一遍 stdout（见 game-ci/cli 的
+        /// <c>src/model/unity/build-validation/unity-build-validation.ts</c>）：
+        /// 只认 <c>Build succeeded!</c> 或者 <c># Build results #</c> 段里的 <c>Errors: 0</c>，两者都没有就一律
+        /// 报 “There was an error building the project.”。而这两段文字本来是由 game-ci 默认构建脚本
+        /// 打印的，我们用 <c>buildMethod</c> 指向自己的入口时那个脚本不会被拷进工程，于是
+        /// “Unity 打包成功、CLI 却判定失败”（2026-10-20 首次发版就是因此失败）。
+        /// </para>
+        /// <para>
+        /// 为什么只印 <c>Build succeeded!</c> 而不印 <c>Errors: N</c> 段：Unity 的
+        /// <c>summary.totalErrors</c> 在成功构建下也可能大于 0（非致命错误也会计数），
+        /// 印成 <c># Build results #</c> 反而会造出 CLI 官方已经专门绕开的那种假失败；
+        /// 失败路径不依赖这段文本，而是靠批处理模式的退出码 1。
+        /// </para>
+        /// </summary>
+        public static string FormatCiSuccessLine(Platform platform, string executablePath, TimeSpan duration,
+            int warnings, int errors, long sizeBytes)
+        {
+            return $"Build succeeded! 打包 {platform} 成功：{executablePath}" +
+                   $"（{sizeBytes / 1024f / 1024f:F1} MB，耗时 {duration.TotalSeconds:F1} 秒，" +
+                   $"警告 {warnings} 条，错误 {errors} 条）";
         }
 
         /// <summary>

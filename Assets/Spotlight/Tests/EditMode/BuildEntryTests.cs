@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using NUnit.Framework;
 using Spotlight.EditorTools;
@@ -107,6 +108,28 @@ namespace Spotlight.Tests
             Assert.That(BuildEntry.GetBuildTarget(BuildEntry.Platform.Android), Is.EqualTo(BuildTarget.Android));
             Assert.That(BuildEntry.Target, Is.EqualTo(BuildTarget.StandaloneWindows64), "旧常量 Target 必须保持 Windows");
             Assert.That(BuildEntry.AndroidTarget, Is.EqualTo(BuildTarget.Android));
+        }
+
+        /// <summary>
+        /// 成功日志必须带 game-ci 认的英文标记，否则 CLI 会把成功的构建判成失败。
+        /// 为什么这一条必须有测试：这个标记只在 CI 里起作用，本地菜单打包与所有单元测试都遇不到它；
+        /// 一旦被后人改写文案（看起来只是改日志），就会重现“Unity 打包成功、CLI 报
+        /// There was an error building the project.”的故障。
+        /// </summary>
+        [Test]
+        public void FormatCiSuccessLine_CarriesGameCiSuccessMarker()
+        {
+            var line = BuildEntry.FormatCiSuccessLine(BuildEntry.Platform.Android,
+                "/github/workspace/Build/android/Spotlight.apk",
+                TimeSpan.FromSeconds(97.5), 2, 0, 600000000L);
+
+            Assert.That(line, Does.Contain("Build succeeded!"),
+                "game-ci/cli 的构建校验只认这个标记（或 Build results 段里的 Errors: 0）");
+            Assert.That(line, Does.Contain("Android"));
+            Assert.That(line, Does.Contain("Spotlight.apk"));
+            Assert.That(line, Does.Contain("572.2 MB"), "应把人可读的产物体积写进同一行");
+            Assert.That(line, Does.Contain("97.5 秒"));
+            Assert.That(line, Does.Not.Contain("\n"), "必须是单行，否则 CI 日志里被截断后难排查");
         }
 
         // ---------------------------------------------------------------------
