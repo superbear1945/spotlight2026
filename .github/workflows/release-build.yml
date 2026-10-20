@@ -185,7 +185,9 @@ jobs:
           ( cd Build/windows && zip -r -q "$GITHUB_WORKSPACE/$ZIP" . )
           cp "$(find Build/android -maxdepth 1 -name '*.apk' -print -quit)" "$APK_OUT"
           # 校验和让人拿到包后能确认没被中间环节改过。
-          ( cd dist && sha256sum ./* > SHA256SUMS.txt )
+          # 只算两个交付物：`sha256sum ./*` 会把刚被重定向创建的空 SHA256SUMS.txt 也算进去，
+          # 于是清单里多一行“自己哈希空文件”的噪声。
+          ( cd dist && sha256sum "$(basename "$ZIP")" "$(basename "$APK_OUT")" > SHA256SUMS.txt )
           ls -lh dist
           echo "zip=$ZIP" >>"$GITHUB_OUTPUT"
           echo "apk=$APK_OUT" >>"$GITHUB_OUTPUT"
