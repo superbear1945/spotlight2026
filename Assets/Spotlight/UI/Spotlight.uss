@@ -1638,17 +1638,17 @@
 
 .detail-backdrop-blur {
     position: absolute;
-    left: -56px;
-    right: -56px;
-    top: -56px;
-    bottom: -56px;
+    left: -112px;
+    right: -112px;
+    top: -112px;
+    bottom: -112px;
     background-color: rgba(0, 0, 0, 0);
     background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Loose/detail_backdrop_blur.png");
     -unity-background-scale-mode: stretch-to-fill;
-    -unity-slice-left: 56;
-    -unity-slice-right: 56;
-    -unity-slice-top: 56;
-    -unity-slice-bottom: 56;
+    -unity-slice-left: 112;
+    -unity-slice-right: 112;
+    -unity-slice-top: 112;
+    -unity-slice-bottom: 112;
 }
 
 .detail-edge-accent {

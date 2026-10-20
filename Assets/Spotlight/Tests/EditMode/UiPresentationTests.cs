@@ -447,7 +447,7 @@ namespace Spotlight.Tests
                 "左右详情区必须各自只使用一张真实高斯透明度衬底");
             Assert.That(uxml, Does.Not.Contain("detail-backdrop-outer"));
             Assert.That(uxml, Does.Not.Contain("detail-backdrop-core"));
-            Assert.That(uss, Does.Match(@"(?s)\.detail-backdrop-blur\s*\{[^}]*detail_backdrop_blur\.png[^}]*-unity-slice-left:\s*56;[^}]*-unity-slice-right:\s*56;[^}]*-unity-slice-top:\s*56;[^}]*-unity-slice-bottom:\s*56;"),
+            Assert.That(uss, Does.Match(@"(?s)\.detail-backdrop-blur\s*\{[^}]*detail_backdrop_blur\.png[^}]*-unity-slice-left:\s*112;[^}]*-unity-slice-right:\s*112;[^}]*-unity-slice-top:\s*112;[^}]*-unity-slice-bottom:\s*112;"),
                 "深色衬底必须使用高斯透明度纹理并通过九宫格保持连续柔边，不能再用分层硬边矩形近似");
             Assert.That(uss, Does.Not.Contain(".detail-backdrop-outer"));
             Assert.That(uss, Does.Contain("font-size: 40px;"), "卡名必须使用更重的大标题层级");
