@@ -1,7 +1,7 @@
 // 发布包体卫生的回归测试（EditMode）。
 // 背景：对外交付的 Windows 包不允许“拆包可见”开发期信息（调试配置面板的代码与界面骨架、
 // Excel 路径/摘要/编译时间、Burst 调试目录）。这类问题不会让游戏跑不起来，所以只能靠静态断言守住。
-// 覆盖：①调试源码整体处于 UNITY_EDITOR || DEVELOPMENT_BUILD 守卫内；②皮肤 UXML 不再含调试节点；
+// 覆盖：①调试源码只存在于编辑器程序集（运行层不再引用任何调试类型）；②皮肤 UXML 不再含调试节点；
 //      ③随包发布的配置资产不落工作簿元数据；④构建后清理器会删除 Burst 调试目录与符号文件。
 // 输入：仓库内的源码/UXML/生成资产文本与临时目录；输出：NUnit 断言结果。
 using System.Collections.Generic;
@@ -21,21 +21,31 @@ namespace Spotlight.Tests
         const string SkinUxmlPath = "Assets/Spotlight/UI/Spotlight.uxml";
 
         /// <summary>配置面板控制器（校验它用代码搭骨架，且不依赖任何会被打包的资产）。</summary>
-        const string DebugPanelSourcePath = "Assets/Spotlight/Runtime/Debug/ConfigDebugPanel.cs";
+        const string DebugPanelSourcePath = "Assets/Spotlight/Editor/Debug/ConfigDebugPanel.cs";
 
         /// <summary>演示场景（正式包唯一的场景）。</summary>
         const string DemoScenePath = "Assets/Spotlight/Scenes/Spotlight.unity";
 
-        /// <summary>编辑器与 Development Build 才编译的调试源码。</summary>
+        /// <summary>只在编辑器程序集（Spotlight.Editor）里编译的调试源码。</summary>
         static readonly string[] DebugSourcePaths =
         {
-            "Assets/Spotlight/Runtime/Debug/ConfigDebugPanel.cs",
-            "Assets/Spotlight/Runtime/Debug/ConfigFieldBuilder.cs",
-            "Assets/Spotlight/Runtime/Debug/DebugConfigDraft.cs"
+            "Assets/Spotlight/Editor/Debug/ConfigDebugPanel.cs",
+            "Assets/Spotlight/Editor/Debug/ConfigFieldBuilder.cs",
+            "Assets/Spotlight/Editor/Debug/DebugConfigDraft.cs",
+            "Assets/Spotlight/Editor/Debug/ConfigPanelInstaller.cs"
         };
 
-        /// <summary>调试守卫用的编译宏表达式，全仓库必须只有这一种写法。</summary>
-        const string DebugGuard = "#if UNITY_EDITOR || DEVELOPMENT_BUILD";
+        /// <summary>调试源码必须待的目录：这里编进 Spotlight.Editor（仅编辑器平台），不会被打进包。</summary>
+        const string EditorSourceRoot = "Assets/Spotlight/Editor/";
+
+        /// <summary>运行层源码目录：这里不允许出现任何调试类型引用。</summary>
+        const string RuntimeSourceRoot = "Assets/Spotlight/Runtime/";
+
+        /// <summary>运行层不得出现的调试类型名（出现即说明类型会被编进玩家程序集）。</summary>
+        static readonly string[] DebugTypeNames = { "ConfigDebugPanel", "DebugConfigDraft", "ConfigFieldBuilder" };
+
+        /// <summary>调试入口文案与按钮名必须待在这条守卫内（运行层源码里只允许编辑器编译的部分出现）。</summary>
+        const string DebugGuard = "#if UNITY_EDITOR";
 
         /// <summary>
         /// 皮肤 UXML 里不得再出现任何调试节点。
@@ -106,37 +116,42 @@ namespace Spotlight.Tests
         }
 
         /// <summary>
-        /// 三个调试源文件必须整文件处于调试守卫内（而不是“只隐藏界面”）。
+        /// 调试源码必须全部待在编辑器程序集目录里，运行层源码不得引用任何调试类型。
         /// 输入：无；输出：断言结果。
-        /// 为什么：正式包对 Managed/*.dll 的字符串扫描会命中类型名与中文提示，
-        /// 只有条件编译才能真正让它们不出现在程序集里。
+        /// 为什么不用“条件编译守卫”来判断：实测 `#if` 只能把类型从 Spotlight.Runtime.dll 里去掉，
+        /// Unity 仍会在 globalgamemanagers.assets 里写出这些类名（它按编辑器编译结果生成类型目录）。
+        /// 只有把整套代码搬进仅编辑器编译的 Spotlight.Editor 程序集，类名才会连目录一起消失。
         /// </summary>
         [Test]
-        public void DebugSourcesAreEntirelyInsideDebugGuard()
+        public void DebugSourcesLiveOnlyInEditorAssembly()
         {
             foreach (var path in DebugSourcePaths)
             {
-                var text = File.ReadAllText(path);
-                var guardIndex = text.IndexOf(DebugGuard, System.StringComparison.Ordinal);
-                Assert.That(guardIndex, Is.GreaterThanOrEqualTo(0), path + " 缺少调试守卫 " + DebugGuard);
-                Assert.That(text.IndexOf(DebugGuard, guardIndex + 1, System.StringComparison.Ordinal), Is.EqualTo(-1),
-                    path + " 出现了多段调试守卫，必须整文件包住");
-                Assert.That(guardIndex, Is.LessThan(text.IndexOf("namespace ", System.StringComparison.Ordinal)),
-                    path + " 的调试守卫必须写在 namespace 之前");
-                Assert.That(text.TrimEnd(), Does.EndWith("#endif // UNITY_EDITOR || DEVELOPMENT_BUILD"),
-                    path + " 的调试守卫必须闭合在文件末尾（否则只包住了半截类型）");
+                Assert.That(File.Exists(path), Is.True, "缺少调试源码：" + path);
+                Assert.That(path.StartsWith(EditorSourceRoot, System.StringComparison.Ordinal), Is.True,
+                    path + " 必须放在 " + EditorSourceRoot + " 下（编进仅编辑器编译的 Spotlight.Editor 程序集）");
+            }
+
+            foreach (var file in Directory.GetFiles(RuntimeSourceRoot, "*.cs", SearchOption.AllDirectories))
+            {
+                var text = File.ReadAllText(file);
+                foreach (var name in DebugTypeNames)
+                    Assert.That(text, Does.Not.Contain(name),
+                        file + " 引用了调试类型 " + name + "：运行层一旦引用它，类型就会随包发布");
             }
         }
 
         /// <summary>
-        /// 运行层对调试类型的引用必须都落在守卫里。
+        /// 运行层只保留“面板是否打开”的状态位和编辑器侧回调点，不得出现调试入口按钮之外的耦合。
         /// 输入：无；输出：断言结果。
-        /// 为什么：只要漏一处（例如 GameBootstrap 的序列化字段），正式包编译就会失败或把类型强行带进包。
+        /// 为什么：运行层与编辑器程序集的唯一通道应当是 DebugSupport.PanelInstaller；
+        /// 有人改回直接引用会在玩家程序集编译期失败（依赖方向单向），但更可能先改成反射字符串，
+        /// 那会把类型名写进正式包，所以这里直接断言运行层不出现这些名字（见上一个用例）。
+        /// 另外确认 HUD 的调试入口按钮文案仍在 #if UNITY_EDITOR 内。
         /// </summary>
         [Test]
-        public void RuntimeReferencesToDebugTypesStayInsideDebugGuard()
+        public void DebugEntryTextsStayInsideEditorOnlyCode()
         {
-            AssertEveryOccurrenceGuarded("Assets/Spotlight/Runtime/Game/GameBootstrap.cs", "ConfigDebugPanel");
             AssertEveryOccurrenceGuarded("Assets/Spotlight/Runtime/UI/HudView.cs", "配置/调试");
             AssertEveryOccurrenceGuarded("Assets/Spotlight/Runtime/UI/HudView.cs", "配置 / 调试");
             AssertEveryOccurrenceGuarded("Assets/Spotlight/Runtime/UI/HudView.cs", "quick-debug-button");

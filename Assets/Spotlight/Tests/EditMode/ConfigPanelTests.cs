@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using Spotlight;
+using Spotlight.EditorTools;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -22,8 +23,6 @@ namespace Spotlight.Tests
         VisualElement _root;
         /// <summary>被测试的配置面板。</summary>
         ConfigDebugPanel _panel;
-        /// <summary>承载面板组件的临时对象。</summary>
-        GameObject _host;
         /// <summary>保存测试前的剪贴板文本，避免导入导出测试覆盖用户内容。</summary>
         string _previousClipboard;
 
@@ -36,8 +35,8 @@ namespace Spotlight.Tests
             Assert.That(asset, Is.Not.Null, "找不到界面文件 " + UxmlPath);
             _root = asset.Instantiate();
             // 面板骨架不在皮肤 UXML 里（正式包不能带上它），由 BindTo 在根节点下用代码搭建。
-            _host = new GameObject("ConfigPanelTestHost");
-            _panel = _host.AddComponent<ConfigDebugPanel>();
+            // 面板是普通类（编辑器程序集的脚本不能 AddComponent），测试直接实例化。
+            _panel = new ConfigDebugPanel();
             _panel.BindTo(_root, null);
         }
 
@@ -46,7 +45,6 @@ namespace Spotlight.Tests
         public void TearDown()
         {
             GUIUtility.systemCopyBuffer = _previousClipboard;
-            if (_host != null) Object.DestroyImmediate(_host);
             _root = null;
             _panel = null;
         }

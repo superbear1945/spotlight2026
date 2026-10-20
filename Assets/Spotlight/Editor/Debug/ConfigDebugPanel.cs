@@ -1,8 +1,8 @@
-// 【仅调试构建编译】整个文件被 UNITY_EDITOR || DEVELOPMENT_BUILD 包住。
-// 为什么：正式包（BuildOptions.None）里这些类型必须完全不存在，否则拆包能看到
-// “这游戏有一套可改棋盘/卡表/Boss 参数的配置编辑器”，等于把半张设计稿交给玩家。
-// 约束：本文件不得被运行层无条件引用；GameBootstrap / HudView 里对它的使用同样包着条件编译。
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
+// 【位置约定】本文件编进 Spotlight.Editor 程序集（仅编辑器编译）。
+// 正式包与 Development Build 都不包含它的代码、界面骨架或类名——这也是本仓库唯一
+// 能让调试面板彻底不进包的做法：Unity 会在构建时给运行层程序集写一份类型目录，
+// 只靠 #if 只能把代码从 DLL 里去掉，类名仍会留在包内的类型目录里。
+// 面板由 ConfigPanelInstaller 在进入 Play 时挂到引导器上（运行层通过 DebugSupport.PanelInstaller 回调）。
 // 对局配置面板（表单式）：按分区逐项编辑棋盘、家、卡组、逐卡种属性、Boss 卡、回合规则与开关。
 // 设计依据是既有的网页版配置界面：字段分组与文案保持一致，但已确认删除的“反击”“斜移”开关不再出现。
 // 编辑直接写回内存草稿；“应用并重开”会先校验并创建候选对局，失败时保留原对局与草稿。
@@ -12,21 +12,27 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Spotlight
+using Spotlight;
+
+namespace Spotlight.EditorTools
 {
     /// <summary>
     /// 配置面板控制器。
-    /// 输入：HUD 根元素（来自 UIDocument）与 GameBootstrap；
+    /// 输入：HUD 根元素与 GameBootstrap；
     /// 输出：写回草稿的字段编辑、实时校验结果，以及在成功“应用并重开”时请求替换对局。
     /// 为什么用表单而不是 JSON 文本框：策划需要快速调整数值，
     /// JSON 只能作为“导入导出通道”保留；面板打开期间由规则层输入闸门屏蔽棋盘操作。
+    /// 为什么是普通类而不是 MonoBehaviour：本文件在 Editor 目录下（仅编辑器程序集），
+    /// Unity 不允许给 GameObject 添加来自编辑器程序集的脚本（AddComponent 会报
+    /// “it is an editor script”）。面板本身也不需要 Unity 的生命周期回调，
+    /// 由 ConfigPanelInstaller 直接 `new` 出来并把 HUD 根节点传进来即可。
     /// </summary>
-    public sealed class ConfigDebugPanel : MonoBehaviour
+    public sealed class ConfigDebugPanel
     {
-        /// <summary>界面文档，提供 HUD 根节点（面板骨架挂在它下面）。</summary>
-        [SerializeField] UIDocument _document;
         /// <summary>对局引导器，用于取当前配置资产与请求重开。</summary>
-        [SerializeField] GameBootstrap _bootstrap;
+        GameBootstrap _bootstrap;
+        /// <summary>面板挂载的 HUD 根节点；重新绑定到新的根节点时会重建骨架。</summary>
+        VisualElement _root;
 
         /// <summary>本次运行会话内保留的草稿；关闭面板不会清空。</summary>
         DebugConfigDraft _draft;
@@ -63,17 +69,21 @@ namespace Spotlight
         /// <summary>面板当前是否打开。输入：无；输出：打开状态。</summary>
         public bool IsOpen => _open;
 
+        /// <summary>面板所在的 HUD 根节点（安装器据此判断是否需要重新绑定）。</summary>
+        internal VisualElement Root => _root;
+
         /// <summary>
         /// 绑定界面元素与事件。
-        /// 输入：Bootstrap；输出：无。
-        /// 非编辑器/非 Development Build 时整个面板会被移除，保证正式运行包没有调试入口。
+        /// 输入：对局引导器与 HUD 根节点；输出：无。
+        /// 由 ConfigPanelInstaller 在进入 Play 时调用；正式包不存在这段代码。
         /// </summary>
-        public void Bind(GameBootstrap bootstrap)
+        public void Bind(GameBootstrap bootstrap, VisualElement root)
         {
-            _bootstrap = bootstrap != null ? bootstrap : _bootstrap;
-            if (_document == null) _document = GetComponent<UIDocument>();
-            if (_document == null) { Debug.LogWarning("ConfigDebugPanel：未找到 UIDocument"); return; }
-            BindTo(_document.rootVisualElement, bootstrap);
+            if (bootstrap != null) _bootstrap = bootstrap;
+            if (root == null) { Debug.LogWarning("ConfigDebugPanel：界面根元素为空"); return; }
+            if (!ReferenceEquals(_root, root)) _panel = null;
+            _root = root;
+            BindTo(root, bootstrap);
         }
 
         /// <summary>
@@ -81,7 +91,7 @@ namespace Spotlight
         /// 输入：HUD 根元素；输出：无。
         /// 为什么用代码搭骨架而不是 UXML 资产：只要骨架是个资产，就可能被某个序列化引用拉进
         /// 正式包（实测场景里挂着的调试面板组件就会把 UXML 一起打进去，拆包能读到整张表单）。
-        /// 本方法连同整个文件都处于 UNITY_EDITOR || DEVELOPMENT_BUILD 守卫内，
+        /// 本方法连同整个文件都编在仅编辑器编译的 Spotlight.Editor 程序集里，
         /// 因此正式包里既没有资产也没有这些节点与文案。
         /// 幂等：GameBootstrap 重开局时可能再次调用 Bind，不能叠出两套面板。
         /// </summary>
@@ -172,13 +182,13 @@ namespace Spotlight
         {
             if (bootstrap != null) _bootstrap = bootstrap;
             if (root == null) { Debug.LogWarning("ConfigDebugPanel：界面根元素为空"); return; }
+            _root = root;
             EnsurePanelSkeleton(root);
             _panel = root.Q<VisualElement>("debug-panel");
             if (_panel == null) { Debug.LogWarning("ConfigDebugPanel：界面缺少 debug-panel"); return; }
             // 双重保险：USS 已默认 display:none，这里再显式设一次。
             _panel.style.display = DisplayStyle.None;
             _open = false;
-            if (!DebugSupport.IsDebugAvailable) { _panel.RemoveFromHierarchy(); return; }
 
             _boardContainer = root.Q<VisualElement>("debug-board");
             _homeContainer = root.Q<VisualElement>("debug-home");
@@ -213,7 +223,7 @@ namespace Spotlight
         /// </summary>
         public void Open()
         {
-            if (!DebugSupport.IsDebugAvailable || _panel == null) return;
+            if (_panel == null) return;
             if (_draft == null) _draft = new DebugConfigDraft(_bootstrap != null ? _bootstrap.CurrentAsset : null);
             ShowPanel();
         }
@@ -234,7 +244,9 @@ namespace Spotlight
         {
             _open = true;
             if (_panel != null) _panel.style.display = DisplayStyle.Flex;
-            _bootstrap?.SetModalOpen(true);
+            // 走 SetDebugPanelOpen 而不是 SetModalOpen：运行层据此记住“还有面板开着”，
+            // 关闭暂停面板时才不会顺带解除这里的输入屏蔽。
+            _bootstrap?.SetDebugPanelOpen(true);
             Rebuild();
         }
 
@@ -243,7 +255,7 @@ namespace Spotlight
         {
             _open = false;
             if (_panel != null) _panel.style.display = DisplayStyle.None;
-            _bootstrap?.SetModalOpen(false);
+            _bootstrap?.SetDebugPanelOpen(false);
         }
 
         /// <summary>
@@ -851,5 +863,3 @@ namespace Spotlight
         }
     }
 }
-
-#endif // UNITY_EDITOR || DEVELOPMENT_BUILD

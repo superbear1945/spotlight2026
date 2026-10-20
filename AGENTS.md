@@ -121,8 +121,8 @@ Assets/Spotlight/
 - 配置资产（运行层）：`CardDefinitionSO` / `CombatConfigSO` / `ResourceConfigSO` / `TeleportConfigSO` / `SpawnConfigSO` / `AdjacentClearanceConfigSO` / `KillActionConfigSO` / `DamageMarkConfigSO` / `SpotlightConfigAsset`，均实现只读接口；`GeneratedConfigAttribute` 是**无参标记**（特性参数会被编译进正式包程序集，不得携带工作簿路径）。**`ConfigManifest` 不在运行层**：它是纯编辑器侧的校验依据，类型放在 `Editor/ConfigManifest.cs`（`Spotlight.EditorTools`），否则它的 `_sourceWorkbookPath` / `_sourceHash` 字段名会跟着进 `Spotlight.Runtime.dll`。
 - 加载入口：`ConfigLoader`（`DefaultResourcePath = "SpotlightConfig"`，`TryCreateConfiguration(...)` 失败返回错误文本，不抛异常）。
 - 视图：`BoardView` / `BoardCellView`（UGUI 棋盘）、`HandView`（UGUI 手牌）、`HudView`（UI Toolkit / UXML）、`DeckSelectionPanel`（UI Toolkit 携带选择面板）、`CardFactory` / `CardText`。
-- 引导与支持：`GameBootstrap`（加载配置 → 创建对局 → 绑定视图）、`DebugSupport.IsDebugAvailable`（调试能力唯一判定点）、`CardFeedback`（DOTween 表现）。
-- 调试面板（**仅编辑器与 Development Build，且是编译期剥离**）：`ConfigDebugPanel` / `ConfigFieldBuilder` / `DebugConfigDraft`（含 `LegacyJsonMigration` / `JsonShapeValidator`）三个文件整文件包在 `#if UNITY_EDITOR || DEVELOPMENT_BUILD` 里；面板骨架由 `ConfigDebugPanel.EnsurePanelSkeleton` **用代码搭建**（不得做成 UXML/任何资产：场景组件一旦持有资产引用，构建依赖收集就会把它打进 `sharedassets`），组件由 `GameBootstrap.EnsureDebugPanel` 运行时创建（**不得挂在场景上**，否则 `globalgamemanagers` 会留下 MonoScript 类名），两个入口按钮由 `HudView` 在调试构建里用代码插入。正式包里这些类型、按钮文案与面板节点都不存在（不是“隐藏”，是“不编译/不打包”）。**调试改动只存在于本次运行会话**。面板里不再有“逐卡种卡组数量”：抽牌堆一侧改为抽牌堆规则 7 项数值 + “调试用强制牌堆”（任一卡种填 > 0 即整体覆盖抽牌堆，全 0 表示按选卡结果生成）。
+- 引导与支持：`GameBootstrap`（加载配置 → 创建对局 → 绑定视图）、`DebugSupport`（`IsDebugAvailable` 判定 + `PanelInstaller` 编辑器侧回调点，面板类型不在运行层）、`CardFeedback`（DOTween 表现）。
+- 调试面板（**只在编辑器内存在**）：`ConfigDebugPanel` / `ConfigFieldBuilder` / `DebugConfigDraft`（含 `LegacyJsonMigration` / `JsonShapeValidator`）与安装器 `ConfigPanelInstaller` 全部放在 `Editor/Debug/`（编进 `Spotlight.Editor`，仅编辑器平台）；面板是**普通类不是 MonoBehaviour**（编辑器程序集的脚本禁止 `AddComponent`），由 `ConfigPanelInstaller`（`[InitializeOnLoad]` 注册到 `DebugSupport.PanelInstaller`）在进入 Play 时 `new` 出来并绑定 `HudView.Root`；面板骨架由 `EnsurePanelSkeleton` **用代码搭建**（不得做成 UXML/任何资产），两个入口按钮由 `HudView` 在 `#if UNITY_EDITOR` 里用代码插入。运行层只保留一个 `_debugPanelOpen` 状态位与编辑器侧回调点。**为什么必须搬到 Editor 下**：`#if` 能把类型从 DLL 去掉，但 Unity 仍会按编辑器编译结果在 `globalgamemanagers.assets` 写出顶层类名；放进仅编辑器程序集后连类名都不进包。**调试改动只存在于本次运行会话**。面板里不再有“逐卡种卡组数量”：抽牌堆一侧改为抽牌堆规则 7 项数值 + “调试用强制牌堆”（任一卡种填 > 0 即整体覆盖抽牌堆，全 0 表示按选卡结果生成）。
 
 表现层硬性约定：
 
@@ -140,7 +140,7 @@ Assets/Spotlight/
 - 资产与模板：`ViewTemplateBuilder`（外观模板与 Prefab）、`CjkFontSetup`（中文字体资产）。
 - 入口与门禁：`SpotlightMenu`（`Tools/Spotlight/*` 菜单）、`ConfigManifest`（编译清单 SO，记录源工作簿路径/摘要/编译时间与产出清单，只供编辑器侧的 `ConfigBuildGate` 与测试使用）、`ConfigBuildGate` + `ConfigBuildProcessor`（`IPreprocessBuildWithReport` + Play 前检查）。
 - 构建产物：`BuildArtifactCleanup`（`IPostprocessBuildWithReport`）删除输出目录下的 `*_BurstDebugInformation_DoNotShip` 与残留的 `lib_burst_generated.pdb`；必须挂接口而不能只改 `BuildEntry`，否则 CI 的构建脚本不会执行清理。打完包用 `scripts/check-build-hygiene.sh` 复核（详见第 7 节）。
-- **发布包体约束（已实测）**：Unity 会在 `globalgamemanagers.assets` 里给每个“引用引擎的程序集”写一份 MonoScript 类名目录，即使类型被 `#if` 挡在正式包程序集之外，**顶层类名仍会入表**（嵌套类型不会）。因此调试/开发专用代码除了条件编译，还必须做到“不挂场景、不持有会被打包的资产引用”：否则场景组件会把类名（甚至整个 UXML）带进包。`check-build-hygiene.sh` 对这 3 个类名在该文件中的命中按“已知残留”提示（不静默、不计失败），一旦出现在其它文件即失败。
+- **发布包体约束（已实测）**：Unity 会在 `globalgamemanagers.assets` 里给每个“引用引擎的程序集”写一份 MonoScript 类名目录，即使类型被 `#if` 挡在正式包程序集之外，**顶层类名仍会入表**（嵌套类型不会、`noEngineReferences` 的 Core 不在表内）。结论：调试/开发专用代码**不能只靠条件编译**，必须放进仅编辑器编译的程序集（`Editor/` 或 `includePlatforms: ["Editor"]` 的 asmdef）；另外“场景上挂过组件”“持有 UXML 等资产引用”都会把内容拉进包。`scripts/check-build-hygiene.sh` 对上述泄露是硬失败。
 
 ## 5. 关键名词表
 
