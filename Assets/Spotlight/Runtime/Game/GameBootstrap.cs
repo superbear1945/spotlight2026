@@ -32,6 +32,8 @@ namespace Spotlight
         [SerializeField] BoardView _boardView;
         /// <summary>手牌视图。</summary>
         [SerializeField] HandView _handView;
+        /// <summary>玩家抽牌堆与墓地视图（UGUI）。</summary>
+        [SerializeField] CardZonesView _cardZonesView;
         /// <summary>HUD 视图（UI Toolkit）。</summary>
         [SerializeField] HudView _hudView;
         /// <summary>动效播放器。</summary>
@@ -839,7 +841,7 @@ namespace Spotlight
         /// <summary>
         /// 刷新全部视图与选中表现。
         /// 输入：无；输出：无。
-        /// 顺序：先渲染三个视图（保证新选中的卡牌视图已存在、被移除的卡牌视图已销毁），
+        /// 顺序：先渲染四个视图（保证新选中的卡牌视图已存在、被移除的卡牌视图已销毁），
         /// 最后统一同步选中表现，因此“上一张牌恢复原状”只在这一处发生。
         /// </summary>
         void Refresh()
@@ -850,6 +852,7 @@ namespace Spotlight
             var actions = _presentingTurn ? new LegalActions() : _session.GetLegalActions(_selection);
             _boardView?.Render(snapshot, actions, _selection);
             _handView?.Render(snapshot, _selection);
+            _cardZonesView?.Render(snapshot);
             _hudView?.Render(snapshot, _configuration, _selection, actions, _presentingTurn || _modalOpen);
             SyncSelectionFeedback();
         }

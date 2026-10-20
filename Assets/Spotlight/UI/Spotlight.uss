@@ -29,12 +29,12 @@
 
 .player-status {
     left: 4px;
-    width: 330px;
+    width: 300px;
 }
 
 .enemy-status {
     right: 4px;
-    width: 330px;
+    width: 300px;
     align-items: flex-end;
 }
 
@@ -308,7 +308,7 @@
     color: rgb(240, 236, 219);
     background-color: rgba(0, 0, 0, 0);
     background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/primary/primary_normal.png");
-    -unity-background-scale-mode: stretch-to-fill;
+    -unity-background-scale-mode: scale-to-fit;
     border-width: 0;
     -unity-font-style: bold;
     -unity-text-align: middle-center;
@@ -492,7 +492,7 @@
 }
 
 .cfg-head-actions Button {
-    margin-left: 4px;
+    margin-left: -9px;
 }
 
 .cfg-error {
@@ -704,14 +704,14 @@
 .hud-root .player-status {
     top: 275px;
     left: 10px;
-    width: 330px;
+    width: 300px;
     align-items: flex-start;
 }
 
 .hud-root .enemy-status {
     top: 275px;
     right: 10px;
-    width: 330px;
+    width: 300px;
     align-items: flex-end;
 }
 
@@ -720,7 +720,7 @@
     right: 0;
     top: 0;
     width: auto;
-    height: 220px;
+    height: 170px;
     translate: 0 0;
     align-items: stretch;
 }
@@ -728,12 +728,13 @@
 .hud-root .life-frame {
     width: 290px;
     height: 112px;
+    margin-top: 38px;
 }
 
 .hud-root .life-value {
-    top: 38px;
-    height: 38px;
-    font-size: 30px;
+    top: 31px;
+    height: 44px;
+    font-size: 34px;
 }
 
 .hud-root .player-life-value {
@@ -750,19 +751,19 @@
     position: relative;
     width: 320px;
     height: 106px;
-    margin-top: -38px;
-    margin-left: -15px;
+    margin-top: -50px;
+    margin-left: -7px;
     background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/02_player_info/player_energy/player_energy_static.png");
 }
 
 .hud-root .resource-label {
     position: absolute;
-    right: 52px;
-    top: 37px;
+    right: 38px;
+    top: 32px;
     width: 70px;
-    height: 34px;
+    height: 42px;
     margin-top: 0;
-    font-size: 25px;
+    font-size: 30px;
     color: rgb(244, 239, 220);
     -unity-text-align: middle-center;
 }
@@ -770,21 +771,21 @@
 .hud-root .round-counter {
     position: absolute;
     left: 50%;
-    top: -14px;
+    top: 0;
     translate: -50% 0;
-    width: 220px;
-    height: 220px;
+    width: 150px;
+    height: 150px;
 }
 
 .hud-root .round-number-label {
     position: absolute;
     left: 50%;
-    top: 91px;
+    top: 59px;
     translate: -50% 0;
-    width: 108px;
-    height: 68px;
+    width: 78px;
+    height: 50px;
     margin-top: 0;
-    font-size: 46px;
+    font-size: 36px;
 }
 
 .hud-root .boss-phase-label {
@@ -828,9 +829,12 @@
 
 .hud-root .log-panel {
     left: 18px;
-    bottom: 80px;
-    width: 348px;
-    height: 240px;
+    bottom: 214px;
+    width: 300px;
+    height: 150px;
+    padding: 32px 26px 16px 26px;
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/06_panels_notices/dialog/dialog_static.png");
+    -unity-background-scale-mode: scale-and-crop;
 }
 
 .hud-root .side-panel {
@@ -862,12 +866,12 @@
 .hud-root .end-turn-button {
     position: absolute;
     left: 50%;
-    top: 0;
+    top: 23px;
     translate: -100% 0;
-    margin-left: -40px;
-    width: 460px;
-    min-width: 460px;
-    height: 190px;
+    margin-left: 2px;
+    width: 240px;
+    min-width: 240px;
+    height: 100px;
     padding: 0;
     border-width: 0;
     background-color: rgba(0, 0, 0, 0);
@@ -895,15 +899,62 @@
 .hud-root .opponent-turn-indicator {
     position: absolute;
     left: 50%;
-    top: 0;
-    margin-left: 42px;
-    width: 460px;
-    height: 190px;
+    top: 23px;
+    margin-left: 3px;
+    width: 240px;
+    height: 100px;
     background-color: rgba(0, 0, 0, 0);
     background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/01_turn/opponent_turn/opponent_turn_static.png");
     -unity-background-scale-mode: scale-to-fit;
 }
 
+.hud-root .side-insignia-dots {
+    position: absolute;
+}
+
+.hud-root .halftone-dot {
+    position: absolute;
+    background-color: rgba(2, 15, 30, 0.88);
+}
+
+.hud-root .player-insignia-dots {
+    left: -14px;
+    top: 20px;
+    width: 190px;
+    height: 190px;
+}
+
+.hud-root .enemy-insignia-dots {
+    right: -14px;
+    top: 24px;
+    width: 150px;
+    height: 150px;
+}
+.hud-root .side-insignia {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.hud-root .player-insignia {
+    left: -14px;
+    top: 24px;
+    width: 180px;
+    height: 180px;
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/02_player_info/player_insignia/player_insignia_static.png");
+}
+
+.hud-root .enemy-insignia {
+    right: -14px;
+    top: 30px;
+    width: 128px;
+    height: 128px;
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/02_player_info/enemy_insignia/enemy_insignia_static.png");
+}
 .hud-root .side-label {
     height: 38px;
     font-size: 30px;
@@ -915,11 +966,11 @@
 }
 
 .hud-root .player-side-label {
-    margin-left: 22px;
+    margin-left: 110px;
 }
 
 .hud-root .enemy-side-label {
-    margin-right: 22px;
+    margin-right: 110px;
 }
 
 .hud-root .entry-first {
@@ -1003,34 +1054,63 @@
 }
 
 .hud-root .pause-overlay {
-    background-color: rgba(0, 0, 0, 0);
+    background-color: rgba(0, 0, 0, 0.64);
+    align-items: center;
+    justify-content: center;
 }
 
 .hud-root .pause-panel {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    translate: -50% -50%;
+    position: relative;
     width: 700px;
     height: 640px;
+    flex-shrink: 0;
     background-color: rgba(0, 0, 0, 0);
-    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Loose/pause.png");
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Loose/pause_panel.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.hud-root .pause-header-line {
+    position: absolute;
+    top: 133px;
+    height: 4px;
+    background-color: rgb(13, 143, 232);
+    border-radius: 2px;
+}
+
+.hud-root .pause-header-left-line {
+    left: 182px;
+    width: 98px;
+}
+
+.hud-root .pause-header-right-line {
+    left: 420px;
+    width: 98px;
+}
+
+.hud-root .pause-title-icon {
+    position: absolute;
+    left: 50%;
+    top: 81px;
+    translate: -50% 0;
+    width: 118px;
+    height: 108px;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Loose/pause_icon.png");
     -unity-background-scale-mode: scale-to-fit;
 }
 
 .hud-root .pause-menu-button {
     position: absolute;
     left: 50%;
-    top: 50%;
-    translate: -50% -50%;
-    width: 530px;
-    min-width: 530px;
-    height: 170px;
+    translate: -50% 0;
+    width: 480px;
+    min-width: 480px;
+    height: 90px;
     padding: 0;
     border-width: 0;
     background-color: rgba(0, 0, 0, 0);
     background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/04_action_buttons/primary/primary_normal.png");
-    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-scale-mode: scale-and-crop;
     color: rgb(250, 246, 226);
     font-size: 34px;
     -unity-font-style: bold;
@@ -1052,74 +1132,682 @@
 }
 
 .hud-root .pause-continue-button {
-    margin-top: -62px;
+    top: 185px;
 }
 
 .hud-root .pause-restart-button {
-    margin-top: 58px;
+    top: 305px;
 }
 
 .hud-root .pause-exit-button {
-    margin-top: 174px;
+    top: 425px;
 }
 
 .hud-root .pause-close-button {
     position: absolute;
-    left: 50%;
-    top: 50%;
-    margin-left: 238px;
-    margin-top: -252px;
-    translate: -50% -50%;
-    width: 90px;
-    min-width: 90px;
-    height: 90px;
+    left: 556px;
+    top: 106px;
+    width: 52px;
+    min-width: 52px;
+    height: 52px;
     padding: 0;
     border-width: 0;
     background-color: rgba(0, 0, 0, 0);
-    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/03_entry_buttons/close/close_normal.png");
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Loose/close_icon.png");
     -unity-background-scale-mode: scale-to-fit;
+    opacity: 0.96;
+    transition-property: scale, opacity;
+    transition-duration: 0.08s;
 }
 
 .hud-root .pause-close-button:hover {
-    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/03_entry_buttons/close/close_hover.png");
+    scale: 1.08 1.08;
+    opacity: 1;
 }
 
 .hud-root .pause-close-button:active {
-    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/03_entry_buttons/close/close_pressed.png");
+    scale: 0.94 0.94;
+    opacity: 0.78;
 }
 
 .hud-root .pause-close-button:disabled {
     background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/03_entry_buttons/close/close_disabled.png");
+    opacity: 0.38;
 }
 
-.detail-panel {
+/* 设置与帮助共用的模态外观：与暂停页保持同一深色遮罩和蓝色信息层级。 */
+.hud-root .utility-overlay {
+    background-color: rgba(0, 0, 0, 0.72);
+}
+
+.hud-root .utility-panel {
+    position: relative;
+    width: 920px;
+    height: 613px;
+    padding: 0;
+    align-items: stretch;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Loose/set_panel.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.hud-root .settings-title-row {
     position: absolute;
-    top: 300px;
-    height: 400px;
+    left: 165px;
+    right: 165px;
+    top: 70px;
+    height: 54px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
 }
 
-.detail-panel-left {
-    left: 12px;
-    width: 420px;
+.hud-root .settings-panel > .settings-title-row {
+    left: 175px;
+    right: 175px;
+    top: 72px;
+    height: 58px;
 }
 
-.detail-panel-right {
-    right: 12px;
-    width: 380px;
+.hud-root .settings-title-line {
+    width: 66px;
+    height: 3px;
+    margin: 0 15px;
+    background-color: rgb(26, 181, 247);
+}
+
+.hud-root .utility-title {
+    margin: 0;
+    font-size: 42px;
+    color: rgb(242, 235, 211);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(1, 11, 24, 0.9);
+}
+
+.hud-root .settings-title {
+    min-width: 118px;
+}
+
+.hud-root .settings-x-button {
+    position: absolute;
+    right: 90px;
+    top: 72px;
+    width: 50px;
+    min-width: 50px;
+    height: 50px;
+    padding: 0;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    font-size: 50px;
+    color: rgb(250, 246, 226);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(1, 11, 24, 0.9);
+}
+
+.hud-root .settings-x-button:hover {
+    color: rgb(255, 170, 40);
+    scale: 1.08 1.08;
+}
+
+.hud-root .settings-x-button:active {
+    scale: 0.92 0.92;
+}
+
+.hud-root .settings-section-row {
+    position: absolute;
+    left: 110px;
+    right: 110px;
+    height: 34px;
+    flex-direction: row;
+    align-items: center;
+    margin: 0;
+}
+
+.hud-root .settings-sound-section {
+    top: 145px;
+}
+
+.hud-root .settings-section-title {
+    width: 104px;
+    font-size: 26px;
+    color: rgb(108, 201, 255);
+    -unity-font-style: bold;
+}
+
+.hud-root .settings-section-line {
+    flex-grow: 1;
+    height: 2px;
+    margin-left: 10px;
+    background-color: rgba(129, 207, 244, 0.88);
+}
+
+.hud-root .settings-control-row {
+    position: absolute;
+    left: 118px;
+    right: 104px;
+    height: 56px;
+    min-height: 56px;
+    flex-direction: row;
+    align-items: center;
+    margin: 0;
+}
+
+.hud-root .settings-master-row {
+    top: 182px;
+}
+
+.hud-root .settings-music-row {
+    top: 246px;
+}
+
+.hud-root .settings-sound-row {
+    top: 310px;
+}
+
+.hud-root .settings-control-label {
+    width: 140px;
+    min-width: 140px;
+    font-size: 22px;
+    color: rgb(246, 244, 228);
+    -unity-font-style: bold;
+}
+
+.hud-root .settings-slider-shell {
+    position: relative;
+    width: 440px;
+    min-width: 440px;
+    height: 56px;
+    overflow: visible;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/slider_track/slider_track_static.png");
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+.hud-root .settings-slider-fill-clip {
+    position: absolute;
+    left: 34px;
+    top: 0;
+    height: 56px;
+    overflow: hidden;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.hud-root .settings-slider-fill-art {
+    position: absolute;
+    left: -34px;
+    top: 0;
+    width: 440px;
+    height: 56px;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/slider_fill/slider_fill_static.png");
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+.hud-root .settings-slider {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 0 34px;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.hud-root .settings-slider .unity-base-field__input,
+.hud-root .settings-slider .unity-base-slider__input {
+    height: 56px;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.hud-root .settings-slider .unity-base-slider__tracker {
+    height: 34px;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.hud-root .settings-slider .unity-base-slider__dragger-border {
+    width: 0;
+    height: 0;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.hud-root .settings-slider .unity-base-slider__dragger {
+    width: 56px;
+    height: 56px;
+    margin-top: -28px;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/slider_handle/slider_handle_normal.png");
+    -unity-background-scale-mode: scale-to-fit;
+    scale: 2 2;
+}
+
+.hud-root .settings-slider:hover .unity-base-slider__dragger {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/slider_handle/slider_handle_hover.png");
+}
+
+.hud-root .settings-slider:active .unity-base-slider__dragger {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/slider_handle/slider_handle_pressed.png");
+}
+
+.hud-root .settings-slider:disabled .unity-base-slider__dragger {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/slider_handle/slider_handle_disabled.png");
+}
+
+.hud-root .settings-volume-value {
+    width: 72px;
+    min-width: 72px;
+    margin-left: 12px;
+    font-size: 22px;
+    color: rgb(246, 244, 228);
+    -unity-font-style: bold;
+    -unity-text-align: middle-right;
+}
+
+.hud-root .settings-display-section {
+    top: 365px;
+}
+
+.hud-root .settings-toggle-row {
+    top: 400px;
+    height: 46px;
+}
+
+.hud-root .settings-toggle {
+    width: 170px;
+    height: 46px;
+    margin-left: auto;
+    margin-right: 0;
+    padding: 0;
+}
+
+.hud-root .settings-toggle .unity-toggle__input {
+    width: 170px;
+    height: 46px;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.hud-root .settings-toggle .unity-toggle__checkmark {
+    width: 170px;
+    height: 46px;
+    margin: 0;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/toggle_off/toggle_off_normal.png");
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+.hud-root .settings-toggle:hover .unity-toggle__checkmark {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/toggle_off/toggle_off_hover.png");
+}
+
+.hud-root .settings-toggle:active .unity-toggle__checkmark {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/toggle_off/toggle_off_pressed.png");
+}
+
+.hud-root .settings-toggle:checked .unity-toggle__checkmark {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/toggle_on/toggle_on_normal.png");
+}
+
+.hud-root .settings-toggle:checked:hover .unity-toggle__checkmark {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/toggle_on/toggle_on_hover.png");
+}
+
+.hud-root .settings-toggle:checked:active .unity-toggle__checkmark {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/toggle_on/toggle_on_pressed.png");
+}
+
+.hud-root .settings-toggle:disabled .unity-toggle__checkmark {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/toggle_off/toggle_off_disabled.png");
+}
+
+.hud-root .settings-toggle:checked:disabled .unity-toggle__checkmark {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/toggle_on/toggle_on_disabled.png");
+}
+
+.hud-root .settings-debug-button {
+    font-size: 18px;
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+.hud-root .utility-actions {
+    position: absolute;
+    left: 78px;
+    right: 78px;
+    top: 462px;
+    height: 60px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.hud-root .utility-actions .action-button {
+    width: 225px;
+    height: 60px;
+    margin: 0 6px;
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+.hud-root .help-panel {
+    width: 920px;
+    height: 613px;
+    padding: 0;
+}
+
+.hud-root .help-title-row {
+    margin: 0;
+}
+
+.hud-root .help-panel > .settings-title-row {
+    left: 175px;
+    right: 175px;
+    top: 72px;
+    height: 58px;
+}
+
+.hud-root .help-title {
+    min-width: 190px;
+}
+
+.hud-root .help-scroll {
+    position: absolute;
+    left: 110px;
+    right: 104px;
+    top: 148px;
+    height: 306px;
+    margin: 0;
+    padding: 0 2px 0 8px;
+}
+
+.hud-root .help-scroll .unity-scroll-view__vertical-scroller {
+    width: 44px;
+    margin-left: 14px;
+    translate: -6px 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.hud-root .help-scroll .unity-scroller__low-button,
+.hud-root .help-scroll .unity-scroller__high-button {
+    display: none;
+}
+
+.hud-root .help-scroll .unity-scroller__slider {
+    width: 44px;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/scroll_track/scroll_track_static.png");
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+.hud-root .help-scroll .unity-base-slider__tracker {
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.hud-root .help-scroll .unity-base-slider__dragger-border {
+    width: 0;
+    height: 0;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.hud-root .help-scroll .unity-base-slider__dragger {
+    width: 44px;
+    min-height: 108px;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/scroll_handle/scroll_handle_normal.png");
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+.hud-root .help-scroll .unity-base-slider__dragger:hover {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/scroll_handle/scroll_handle_hover.png");
+}
+
+.hud-root .help-scroll .unity-base-slider__dragger:active {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/scroll_handle/scroll_handle_pressed.png");
+}
+
+.hud-root .help-scroll .unity-base-slider__dragger:disabled {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Components/05_settings_controls/scroll_handle/scroll_handle_disabled.png");
+}
+
+.hud-root .help-heading {
+    margin-top: 10px;
+    margin-bottom: 6px;
+    font-size: 22px;
+    color: rgb(108, 201, 255);
+    -unity-font-style: bold;
+}
+
+.hud-root .help-copy {
+    margin-bottom: 8px;
+    font-size: 17px;
+    color: rgb(230, 236, 244);
+    white-space: normal;
+}
+
+.hud-root .utility-close-button {
+    position: absolute;
+    left: 50%;
+    top: 462px;
+    translate: -50% 0;
+    width: 300px;
+    min-width: 300px;
+    height: 60px;
+    margin: 0;
+    margin-right: 0;
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+/* 选中详情复用实体卡面的文字层级：竖向构图，单张高斯透明度纹理以九宫格保持连续柔边。 */
+.detail-card-info {
+    position: absolute;
+    bottom: 230px;
+    width: 430px;
+    height: 340px;
+    padding: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: none;
+    overflow: visible;
+}
+
+.detail-card-info-left {
+    left: 28px;
+}
+
+.detail-card-info-right {
+    right: 28px;
+}
+
+.detail-backdrop-blur {
+    position: absolute;
+    left: -112px;
+    right: -112px;
+    top: -112px;
+    bottom: -112px;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("project://database/Assets/Imported/SpotlightArt/UI/Loose/detail_backdrop_blur.png");
+    -unity-background-scale-mode: stretch-to-fill;
+    -unity-slice-left: 112;
+    -unity-slice-right: 112;
+    -unity-slice-top: 112;
+    -unity-slice-bottom: 112;
+}
+
+.detail-edge-accent {
+    position: absolute;
+    left: 0;
+    top: 10px;
+    width: 4px;
+    height: 150px;
+    border-radius: 2px;
+    background-color: rgb(236, 62, 43);
+}
+
+.detail-card-info-right .detail-edge-accent {
+    background-color: rgb(55, 139, 255);
+}
+
+.detail-title,
+.detail-meta,
+.detail-stat-value,
+.detail-trait-tag,
+.detail-body {
+    color: rgb(250, 247, 235);
+    -unity-font-style: bold;
+    -unity-text-outline-width: 3px;
+    -unity-text-outline-color: rgb(0, 5, 12);
+    text-shadow: 3px 3px 3px rgba(0, 0, 0, 1);
 }
 
 .detail-title {
-    font-size: 16px;
-    color: rgb(160, 200, 255);
-    -unity-font-style: bold;
-    white-space: normal;
+    position: absolute;
+    left: 18px;
+    right: 4px;
+    top: 4px;
+    height: 52px;
+    margin: 0;
+    font-size: 40px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.detail-meta {
+    position: absolute;
+    left: 18px;
+    top: 55px;
+    width: 360px;
+    height: 32px;
+    margin: 0;
+    font-size: 24px;
+    color: rgb(239, 238, 230);
+    white-space: nowrap;
+}
+
+.detail-rule {
+    position: absolute;
+    left: 18px;
+    top: 91px;
+    width: 286px;
+    height: 6px;
+    flex-direction: row;
+}
+
+.detail-rule-light {
+    width: 46%;
+    height: 6px;
+    background-color: rgb(246, 242, 224);
+    border-radius: 3px;
+}
+
+.detail-rule-accent {
+    flex-grow: 1;
+    height: 6px;
+    background-color: rgb(236, 62, 43);
+    border-radius: 3px;
+}
+
+.detail-card-info-right .detail-rule-accent {
+    background-color: rgb(55, 139, 255);
+}
+
+.detail-stats {
+    position: absolute;
+    left: 12px;
+    top: 106px;
+    width: 300px;
+    height: 128px;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.detail-stat {
+    width: 88px;
+    height: 126px;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.detail-stat-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0;
+    background-color: rgba(0, 0, 0, 0);
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.detail-icon-attack {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/Cards/atp.png");
+}
+
+.detail-icon-health {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/Cards/hp.png");
+}
+
+.detail-icon-move {
+    background-image: url("project://database/Assets/Imported/SpotlightArt/Cards/mtp.png");
+}
+
+.detail-stat-value {
+    height: 62px;
+    margin: -2px 0 0 0;
+    font-size: 50px;
+    -unity-text-align: middle-center;
+    white-space: nowrap;
+}
+
+.detail-trait-row {
+    position: absolute;
+    left: 16px;
+    right: 8px;
+    top: 238px;
+    min-height: 94px;
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.detail-trait-tag {
+    width: 68px;
+    margin: 0 8px 0 0;
+    font-size: 25px;
+    color: rgb(255, 67, 49);
+    white-space: nowrap;
 }
 
 .detail-body {
-    font-size: 14px;
-    color: rgb(225, 232, 245);
+    flex-grow: 1;
+    margin: 1px 0 0 0;
+    font-size: 19px;
+    color: rgb(250, 247, 235);
     white-space: normal;
-    margin-top: 6px;
+}
+
+.hud-root .detail-card-info-left .withdraw-button {
+    position: absolute;
+    left: 322px;
+    top: 166px;
+    width: 108px;
+    min-width: 108px;
+    height: 42px;
+    margin: 0;
 }
 
 /* ── 牌堆 / 墓地计数：同一张卡背底图 + 正中数字 + 上方标题 + 下方阶级小字 ──

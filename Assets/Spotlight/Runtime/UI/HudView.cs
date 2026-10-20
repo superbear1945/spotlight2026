@@ -19,6 +19,15 @@ namespace Spotlight
     /// </summary>
     public sealed class HudView : MonoBehaviour
     {
+        /// <summary>主音量在 PlayerPrefs 中的持久化键；值域为 0 到 1。</summary>
+        const string _masterVolumePreferenceKey = "Spotlight.MasterVolume";
+        /// <summary>音乐音量在 PlayerPrefs 中的持久化键；为后续音乐总线保留独立值域。</summary>
+        const string _musicVolumePreferenceKey = "Spotlight.MusicVolume";
+        /// <summary>音效音量在 PlayerPrefs 中的持久化键；为后续音效总线保留独立值域。</summary>
+        const string _soundVolumePreferenceKey = "Spotlight.SoundVolume";
+        /// <summary>全屏开关在 PlayerPrefs 中的持久化键；1 表示全屏，0 表示窗口。</summary>
+        const string _fullscreenPreferenceKey = "Spotlight.Fullscreen";
+
         /// <summary>承载界面标记的 UIDocument（面板与游戏界面共用一个文档）。</summary>
         [SerializeField] UIDocument _document;
 
@@ -93,6 +102,8 @@ namespace Spotlight
         Button _historyButton;
         /// <summary>右上角暂停入口。</summary>
         Button _pauseButton;
+        /// <summary>右上角设置与规则帮助入口；两者都打开会冻结对局的模态面板。</summary>
+        Button _settingsButton, _helpButton;
         /// <summary>结束回合按钮。</summary>
         Button _endTurnButton;
         /// <summary>跳过放牌按钮。</summary>
@@ -111,9 +122,13 @@ namespace Spotlight
         bool _menuVisible;
         /// <summary>战斗界面的左右详情区：左为我方选中，右为敌方选中。</summary>
         VisualElement _detailLeft, _detailRight;
-        /// <summary>左右详情区的标题与正文。</summary>
-        Label _detailLeftTitle, _detailLeftBody, _detailRightTitle, _detailRightBody;
-        /// <summary>手牌同一行两侧的计数面板与墓地 / 牌堆数字。</summary>
+        /// <summary>左右详情信息区的卡名、卡面式英文阶级、特性标签与规则说明。</summary>
+        Label _detailLeftTitle, _detailLeftMeta, _detailLeftTrait, _detailLeftBody;
+        Label _detailRightTitle, _detailRightMeta, _detailRightTrait, _detailRightBody;
+        /// <summary>左右详情信息区的三项卡面属性值：攻击、生命、移动。</summary>
+        Label _detailLeftAttack, _detailLeftHealth, _detailLeftMove;
+        Label _detailRightAttack, _detailRightHealth, _detailRightMove;
+        /// <summary>手牌同一行两侧的计数区与墓地 / 抽牌堆数字。</summary>
         VisualElement _pileLeft, _pileRight;
         Label _graveCount;
         /// <summary>牌堆正中显示的剩余总张数。</summary>
@@ -134,8 +149,18 @@ namespace Spotlight
         VisualElement _modalOverlay;
         /// <summary>暂停面板根节点；显示时位于通用模态遮罩之上。</summary>
         VisualElement _pauseOverlay;
-        /// <summary>暂停面板中的关闭、继续、重开与退出按钮。</summary>
+        /// <summary>暂停面板中的关闭、继续、重新选卡、重开与退出按钮。</summary>
         Button _pauseCloseButton, _pauseContinueButton, _pauseRestartButton, _pauseExitButton;
+        /// <summary>玩家设置面板及其中可实际修改的声音、全屏控件。</summary>
+        VisualElement _settingsOverlay;
+        Slider _masterVolumeSlider, _musicVolumeSlider, _soundVolumeSlider;
+        VisualElement _masterVolumeFill, _musicVolumeFill, _soundVolumeFill;
+        Label _masterVolumeValue, _musicVolumeValue, _soundVolumeValue;
+        Toggle _fullscreenToggle;
+        Button _settingsResetButton, _settingsCloseButton, _settingsXButton;
+        /// <summary>规则帮助面板及其关闭按钮。</summary>
+        VisualElement _helpOverlay;
+        Button _helpCloseButton;
         /// <summary>已渲染的日志条数，用于增量追加。</summary>
         int _renderedLogCount;
         /// <summary>已展示的末条事件，用于识别日志容量满后的滚动更新及阶段切换。</summary>
@@ -174,6 +199,8 @@ namespace Spotlight
             _logContent = _root.Q<VisualElement>("log-content");
             _historyButton = _root.Q<Button>("history-button");
             _pauseButton = _root.Q<Button>("pause-button");
+            _settingsButton = _root.Q<Button>("settings-button");
+            _helpButton = _root.Q<Button>("help-button");
             _endTurnButton = _root.Q<Button>("end-turn-button");
             _skipButton = _root.Q<Button>("skip-deploy-button");
             _withdrawButton = _root.Q<Button>("withdraw-button");
@@ -186,9 +213,19 @@ namespace Spotlight
             _detailLeft = _root.Q<VisualElement>("detail-left");
             _detailRight = _root.Q<VisualElement>("detail-right");
             _detailLeftTitle = _root.Q<Label>("detail-left-title");
+            _detailLeftMeta = _root.Q<Label>("detail-left-meta");
+            _detailLeftTrait = _root.Q<Label>("detail-left-trait");
             _detailLeftBody = _root.Q<Label>("detail-left-body");
+            _detailLeftAttack = _root.Q<Label>("detail-left-attack");
+            _detailLeftHealth = _root.Q<Label>("detail-left-health");
+            _detailLeftMove = _root.Q<Label>("detail-left-move");
             _detailRightTitle = _root.Q<Label>("detail-right-title");
+            _detailRightMeta = _root.Q<Label>("detail-right-meta");
+            _detailRightTrait = _root.Q<Label>("detail-right-trait");
             _detailRightBody = _root.Q<Label>("detail-right-body");
+            _detailRightAttack = _root.Q<Label>("detail-right-attack");
+            _detailRightHealth = _root.Q<Label>("detail-right-health");
+            _detailRightMove = _root.Q<Label>("detail-right-move");
             _pileLeft = _root.Q<VisualElement>("pile-left");
             _pileRight = _root.Q<VisualElement>("pile-right");
             _graveCount = _root.Q<Label>("grave-count");
@@ -206,6 +243,22 @@ namespace Spotlight
             _pauseContinueButton = _root.Q<Button>("pause-continue-button");
             _pauseRestartButton = _root.Q<Button>("pause-restart-button");
             _pauseExitButton = _root.Q<Button>("pause-exit-button");
+            _settingsOverlay = _root.Q<VisualElement>("settings-overlay");
+            _masterVolumeSlider = _root.Q<Slider>("master-volume-slider");
+            _musicVolumeSlider = _root.Q<Slider>("music-volume-slider");
+            _soundVolumeSlider = _root.Q<Slider>("sound-volume-slider");
+            _masterVolumeFill = _root.Q<VisualElement>("master-volume-fill");
+            _musicVolumeFill = _root.Q<VisualElement>("music-volume-fill");
+            _soundVolumeFill = _root.Q<VisualElement>("sound-volume-fill");
+            _masterVolumeValue = _root.Q<Label>("master-volume-value");
+            _musicVolumeValue = _root.Q<Label>("music-volume-value");
+            _soundVolumeValue = _root.Q<Label>("sound-volume-value");
+            _fullscreenToggle = _root.Q<Toggle>("fullscreen-toggle");
+            _settingsResetButton = _root.Q<Button>("settings-reset-button");
+            _settingsCloseButton = _root.Q<Button>("settings-close-button");
+            _settingsXButton = _root.Q<Button>("settings-x-button");
+            _helpOverlay = _root.Q<VisualElement>("help-overlay");
+            _helpCloseButton = _root.Q<Button>("help-close-button");
 
             if (_endTurnButton != null) _endTurnButton.clicked += () => EndTurnRequested?.Invoke();
             if (_skipButton != null) _skipButton.clicked += () => SkipDeployRequested?.Invoke();
@@ -216,10 +269,31 @@ namespace Spotlight
             if (_spawnerSkipButton != null) _spawnerSkipButton.clicked += () => SpawnerSkipRequested?.Invoke();
             if (_historyButton != null) _historyButton.clicked += ToggleLogPanel;
             if (_pauseButton != null) { _pauseButton.clicked -= OpenPausePanel; _pauseButton.clicked += OpenPausePanel; }
+            if (_settingsButton != null) { _settingsButton.clicked -= OpenSettingsPanel; _settingsButton.clicked += OpenSettingsPanel; }
+            if (_helpButton != null) { _helpButton.clicked -= OpenHelpPanel; _helpButton.clicked += OpenHelpPanel; }
             if (_pauseCloseButton != null) { _pauseCloseButton.clicked -= ClosePausePanel; _pauseCloseButton.clicked += ClosePausePanel; }
             if (_pauseContinueButton != null) { _pauseContinueButton.clicked -= ClosePausePanel; _pauseContinueButton.clicked += ClosePausePanel; }
             if (_pauseRestartButton != null) { _pauseRestartButton.clicked -= RestartFromPause; _pauseRestartButton.clicked += RestartFromPause; }
             if (_pauseExitButton != null) { _pauseExitButton.clicked -= ExitFromPause; _pauseExitButton.clicked += ExitFromPause; }
+            if (_settingsResetButton != null) { _settingsResetButton.clicked -= ResetPlayerSettings; _settingsResetButton.clicked += ResetPlayerSettings; }
+            if (_settingsCloseButton != null) { _settingsCloseButton.clicked -= ApplyAndCloseSettingsPanel; _settingsCloseButton.clicked += ApplyAndCloseSettingsPanel; }
+            if (_settingsXButton != null) { _settingsXButton.clicked -= ApplyAndCloseSettingsPanel; _settingsXButton.clicked += ApplyAndCloseSettingsPanel; }
+            if (_helpCloseButton != null) { _helpCloseButton.clicked -= CloseHelpPanel; _helpCloseButton.clicked += CloseHelpPanel; }
+            if (_masterVolumeSlider != null)
+            {
+                _masterVolumeSlider.UnregisterValueChangedCallback(OnMasterVolumeChanged);
+                _masterVolumeSlider.RegisterValueChangedCallback(OnMasterVolumeChanged);
+            }
+            if (_musicVolumeSlider != null)
+            {
+                _musicVolumeSlider.UnregisterValueChangedCallback(OnMusicVolumeChanged);
+                _musicVolumeSlider.RegisterValueChangedCallback(OnMusicVolumeChanged);
+            }
+            if (_soundVolumeSlider != null)
+            {
+                _soundVolumeSlider.UnregisterValueChangedCallback(OnSoundVolumeChanged);
+                _soundVolumeSlider.RegisterValueChangedCallback(OnSoundVolumeChanged);
+            }
             var restart = _root.Q<Button>("restart-button");
             if (restart != null) restart.clicked += () => RestartRequested?.Invoke();
             if (_menuButton != null) _menuButton.clicked += () => MenuRequested?.Invoke();
@@ -244,6 +318,8 @@ namespace Spotlight
             if (_defeatArt != null) _defeatArt.style.display = DisplayStyle.None;
             if (_modalOverlay != null) _modalOverlay.style.display = DisplayStyle.None;
             if (_pauseOverlay != null) _pauseOverlay.style.display = DisplayStyle.None;
+            if (_settingsOverlay != null) _settingsOverlay.style.display = DisplayStyle.None;
+            if (_helpOverlay != null) _helpOverlay.style.display = DisplayStyle.None;
             if (_errorLabel != null) _errorLabel.style.display = DisplayStyle.None;
             if (_withdrawButton != null) _withdrawButton.style.display = DisplayStyle.None;
             // 战斗界面是默认视图：原有面板（日志、Boss 状态与选中详情）先隐藏，只在齿轮菜单里显示。
@@ -252,9 +328,9 @@ namespace Spotlight
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         /// <summary>
-        /// 在调试构建里插入两个调试入口按钮：“顶部工具条的快捷入口”与“齿轮菜单里的「配置/调试」”。
-        /// 输入：无（用 Bind 已查到的 _root 与 _menuOverlay）；输出：无。
-        /// 为什么用代码而不是 UXML：正式包必须连按钮文案（例如“配置/调试”）都找不到，
+        /// 在调试构建里插入两个调试入口按钮：“顶部工具条的快捷入口”与“设置页底部的「开发者配置」”。
+        /// 输入：无（用 Bind 已查到的 _root / _settingsOverlay）；输出：无。
+        /// 为什么用代码而不是 UXML：正式包必须连按钮文案（例如“开发者配置”）都找不到，
         /// 而 UXML 是被无条件打包的资源；放在条件编译里才能保证字符串不出现在正式包中。
         /// 幂等：Bind 可能被重复调用，已存在同名按钮时直接返回，避免叠出两个入口。
         /// </summary>
@@ -266,20 +342,22 @@ namespace Spotlight
                 var quickDebug = new Button { name = "quick-debug-button", tooltip = "配置 / 调试", text = string.Empty };
                 quickDebug.AddToClassList("icon-button");
                 quickDebug.AddToClassList("settings-button");
-                // 原 UXML 的顺序是：暂停、菜单、快捷调试、日志、帮助；插到第 3 个位置保持外观不变。
+                // 顶部顺序是：暂停、设置、快捷调试、日志、帮助；插到第 3 个位置保证外观不变。
                 toolbar.Insert(Mathf.Min(2, toolbar.childCount), quickDebug);
                 quickDebug.clicked += () => DebugRequested?.Invoke();
             }
 
-            var card = _menuOverlay?.Q<VisualElement>(className: "overlay-card");
-            if (card != null && _root.Q<Button>("debug-button") == null)
+            // 设置页的底部操作区（utility-actions）是玩家可达到的位置，第二个入口放在这里：
+            // 旧菜单遮罩（menu-overlay）已经没有任何入口，挂在那里等于把调试入口藏死。
+            var settingsActions = _settingsOverlay?.Q<VisualElement>(className: "utility-actions");
+            if (settingsActions != null && _root.Q<Button>("settings-debug-button") == null)
             {
-                var debug = new Button { name = "debug-button", text = "配置/调试" };
+                var debug = new Button { name = "settings-debug-button", text = "开发者配置" };
                 debug.AddToClassList("action-button");
-                debug.AddToClassList("menu-debug-button");
-                // 与拆分前的 UXML 一致：“配置/调试”排在菜单最后一个按钮之后。
-                card.Add(debug);
-                debug.clicked += () => DebugRequested?.Invoke();
+                debug.AddToClassList("secondary-action");
+                debug.AddToClassList("settings-debug-button");
+                settingsActions.Insert(0, debug);
+                debug.clicked += OpenDebugFromSettings;
             }
         }
 #endif
@@ -406,6 +484,148 @@ namespace Spotlight
         {
             if (_pauseOverlay == null) return;
             _pauseOverlay.style.display = DisplayStyle.None;
+            PauseChanged?.Invoke(false);
+        }
+
+        /// <summary>
+        /// 打开玩家设置面板并读取当前已保存的设备设置。
+        /// 输入：无；输出：显示设置遮罩并通过 PauseChanged(true) 冻结对局。
+        /// 为什么每次打开都重新读取：调试或平台代码可能在面板关闭期间改动声音或全屏状态，控件必须反映最新值。
+        /// </summary>
+        void OpenSettingsPanel()
+        {
+            if (_settingsOverlay == null) return;
+            if (_masterVolumeSlider != null)
+                _masterVolumeSlider.value = PlayerPrefs.GetFloat(_masterVolumePreferenceKey, 0.8f) * 100f;
+            if (_musicVolumeSlider != null)
+                _musicVolumeSlider.value = PlayerPrefs.GetFloat(_musicVolumePreferenceKey, 0.6f) * 100f;
+            if (_soundVolumeSlider != null)
+                _soundVolumeSlider.value = PlayerPrefs.GetFloat(_soundVolumePreferenceKey, 0.8f) * 100f;
+            if (_fullscreenToggle != null)
+                _fullscreenToggle.value = PlayerPrefs.GetInt(_fullscreenPreferenceKey, Screen.fullScreen ? 1 : 0) != 0;
+            RefreshVolumePreview(_masterVolumeSlider, _masterVolumeValue, _masterVolumeFill);
+            RefreshVolumePreview(_musicVolumeSlider, _musicVolumeValue, _musicVolumeFill);
+            RefreshVolumePreview(_soundVolumeSlider, _soundVolumeValue, _soundVolumeFill);
+            _settingsOverlay.style.display = DisplayStyle.Flex;
+            PauseChanged?.Invoke(true);
+        }
+
+        /// <summary>
+        /// 保存玩家设置并关闭设置面板。
+        /// 输入：设置面板中的主音量百分比与全屏开关；输出：立即更新 Unity 设备状态并写入 PlayerPrefs。
+        /// 为什么在关闭时统一应用：避免拖动滑块或试切全屏时反复写盘和切换窗口模式。
+        /// </summary>
+        void ApplyAndCloseSettingsPanel()
+        {
+            if (_masterVolumeSlider != null)
+            {
+                var volume = Mathf.Clamp01(_masterVolumeSlider.value / 100f);
+                AudioListener.volume = volume;
+                PlayerPrefs.SetFloat(_masterVolumePreferenceKey, volume);
+            }
+            if (_musicVolumeSlider != null)
+                PlayerPrefs.SetFloat(_musicVolumePreferenceKey, Mathf.Clamp01(_musicVolumeSlider.value / 100f));
+            if (_soundVolumeSlider != null)
+                PlayerPrefs.SetFloat(_soundVolumePreferenceKey, Mathf.Clamp01(_soundVolumeSlider.value / 100f));
+            if (_fullscreenToggle != null)
+            {
+                Screen.fullScreen = _fullscreenToggle.value;
+                PlayerPrefs.SetInt(_fullscreenPreferenceKey, _fullscreenToggle.value ? 1 : 0);
+            }
+            PlayerPrefs.Save();
+            CloseSettingsPanel();
+        }
+
+        /// <summary>
+        /// 把设置表单恢复为默认值，但在玩家点击“保存并关闭”前不改变设备状态。
+        /// 输入：无；输出：主音量回到 100%，显示模式回到全屏。
+        /// 为什么只改表单：玩家仍有机会查看或改变选择，避免一次误点立即切换窗口。
+        /// </summary>
+        void ResetPlayerSettings()
+        {
+            if (_masterVolumeSlider != null) _masterVolumeSlider.value = 100f;
+            if (_musicVolumeSlider != null) _musicVolumeSlider.value = 100f;
+            if (_soundVolumeSlider != null) _soundVolumeSlider.value = 100f;
+            if (_fullscreenToggle != null) _fullscreenToggle.value = true;
+        }
+
+        /// <summary>
+        /// 响应主音量滑条变化并同步百分比与橙色填充长度。
+        /// 输入：UI Toolkit 的浮点变更事件；输出：只更新设置面板预览，不在拖动过程中写磁盘。
+        /// </summary>
+        void OnMasterVolumeChanged(ChangeEvent<float> changeEvent) =>
+            RefreshVolumePreview(_masterVolumeSlider, _masterVolumeValue, _masterVolumeFill);
+
+        /// <summary>
+        /// 响应音乐音量滑条变化并同步百分比与橙色填充长度。
+        /// 输入：UI Toolkit 的浮点变更事件；输出：只更新设置面板预览，最终值在返回时保存。
+        /// </summary>
+        void OnMusicVolumeChanged(ChangeEvent<float> changeEvent) =>
+            RefreshVolumePreview(_musicVolumeSlider, _musicVolumeValue, _musicVolumeFill);
+
+        /// <summary>
+        /// 响应音效音量滑条变化并同步百分比与橙色填充长度。
+        /// 输入：UI Toolkit 的浮点变更事件；输出：只更新设置面板预览，最终值在返回时保存。
+        /// </summary>
+        void OnSoundVolumeChanged(ChangeEvent<float> changeEvent) =>
+            RefreshVolumePreview(_soundVolumeSlider, _soundVolumeValue, _soundVolumeFill);
+
+        /// <summary>
+        /// 把一个音量滑条的数值同步到独立百分比文本和美术填充条。
+        /// 输入：滑条、百分比标签、填充裁切窗口；输出：标签显示 0% 到 100%，裁切窗口覆盖轨道 85% 的有效内宽。
+        /// 为什么乘以 0.85：轨道端盖与源图透明边合计约占 15%，填充只能覆盖中间内槽，否则会穿出白色端盖。
+        /// </summary>
+        static void RefreshVolumePreview(Slider slider, Label valueLabel, VisualElement fill)
+        {
+            if (slider == null) return;
+            var percent = Mathf.Clamp(slider.value, 0f, 100f);
+            if (valueLabel != null) valueLabel.text = $"{Mathf.RoundToInt(percent)}%";
+            if (fill != null) fill.style.width = Length.Percent(percent * 0.85f);
+        }
+
+        /// <summary>
+        /// 关闭设置面板并恢复对局。
+        /// 输入：无；输出：隐藏设置遮罩并通过 PauseChanged(false) 恢复输入与时间。
+        /// 该方法由保存流程与开发者配置跳转共用，确保恢复路径一致。
+        /// </summary>
+        void CloseSettingsPanel()
+        {
+            if (_settingsOverlay == null) return;
+            _settingsOverlay.style.display = DisplayStyle.None;
+            PauseChanged?.Invoke(false);
+        }
+
+        /// <summary>
+        /// 从设置页打开开发者配置面板。
+        /// 输入：无；输出：先关闭普通设置，再触发 DebugRequested。
+        /// 为什么不把调试项放在顶部：它只属于编辑器/开发包，并且应与玩家常用入口明确分层。
+        /// </summary>
+        void OpenDebugFromSettings()
+        {
+            CloseSettingsPanel();
+            DebugRequested?.Invoke();
+        }
+
+        /// <summary>
+        /// 打开规则帮助面板。
+        /// 输入：无；输出：显示规则摘要并通过 PauseChanged(true) 冻结对局。
+        /// 为什么帮助也暂停：阅读时不能让 Boss 动画或计时继续推进，也要阻止点击穿透到棋盘。
+        /// </summary>
+        void OpenHelpPanel()
+        {
+            if (_helpOverlay == null) return;
+            _helpOverlay.style.display = DisplayStyle.Flex;
+            PauseChanged?.Invoke(true);
+        }
+
+        /// <summary>
+        /// 关闭规则帮助面板。
+        /// 输入：无；输出：隐藏帮助遮罩并通过 PauseChanged(false) 恢复对局。
+        /// </summary>
+        void CloseHelpPanel()
+        {
+            if (_helpOverlay == null) return;
+            _helpOverlay.style.display = DisplayStyle.None;
             PauseChanged?.Invoke(false);
         }
 
@@ -570,8 +790,8 @@ namespace Spotlight
         public void SetMenuVisible(bool visible)
         {
             _menuVisible = visible;
-            ShowElement(_detailLeft, !visible);
-            ShowElement(_detailRight, !visible);
+            ShowElement(_detailLeft, !visible && HasDetailContent(_detailLeftTitle, _detailLeftBody));
+            ShowElement(_detailRight, !visible && HasDetailContent(_detailRightTitle, _detailRightBody));
             ShowElement(_pileLeft, !visible);
             ShowElement(_pileRight, !visible);
             ShowElement(_menuButton, !visible);
@@ -587,47 +807,141 @@ namespace Spotlight
         }
 
         /// <summary>
-        /// 填充左右详情区（单选中槽）。
+        /// 判断详情面板是否含有可展示内容。
+        /// 输入：详情标题与正文标签；输出：任一标签含非空文本时为 true。
+        /// 为什么需要：菜单关闭或无选择时不能仅按“处于战斗界面”就显示空面板，否则大面板会覆盖生命与能量组件。
+        /// </summary>
+        static bool HasDetailContent(Label title, Label body)
+        {
+            return !string.IsNullOrEmpty(title?.text) || !string.IsNullOrEmpty(body?.text);
+        }
+
+        /// <summary>
+        /// 填充左右详情信息栏（单选中槽）。
         /// 输入：当前选择、快照与配置；输出：无。
-        /// 行为：我方的手牌或单位显示在左侧，敌方单位显示在右侧；未选中、选中家或 Boss 部署阶段时两侧都清空。
-        /// 为什么保持单槽：界面同一时刻只有一个选择，另一侧留空可以避免“两侧都被选中”的误导；
-        /// 区域本身仍然占位，后续要改成对比或其它用途时不必改布局。
-        /// 为什么属性文本不在这里拼：卡面文本统一由 CardText 提供，界面只负责摆放。
+        /// 行为：我方手牌/单位使用左侧信息栏，敌方单位使用右侧信息栏；名称、属性与规则补充分别落在卡面式层级中。
+        /// 为什么分手牌与单位：手牌显示配置基础值，场上单位必须显示快照里的当前生命、攻击和移动，避免减攻或受伤后仍显示初始值。
+        /// 为什么保持单槽：界面同一时刻只有一个选择，另一侧不显示，避免空信息栏遮挡棋盘或造成“两侧都被选中”的误导。
         /// </summary>
         void FillDetailFaces(Selection selection, GameSnapshot snapshot, GameConfiguration configuration)
         {
-            var leftTitle = string.Empty;
-            var leftBody = string.Empty;
-            var rightTitle = string.Empty;
-            var rightBody = string.Empty;
+            CardArchetype leftArchetype = null;
+            CardArchetype rightArchetype = null;
+            UnitState leftUnit = null;
+            UnitState rightUnit = null;
+
             if (snapshot != null && configuration != null)
             {
                 if (selection.Kind == SelectionKind.Hand)
                 {
                     var card = snapshot.Hand.FirstOrDefault(c => c.Id == selection.Id);
-                    if (card != null && configuration.Cards.TryGetValue(card.TypeId, out var handArch))
-                    {
-                        leftTitle = CardText.CategoryLabel(handArch.Category) + " · 玩家";
-                        leftBody = CardText.DetailLine(handArch, Side.Player);
-                    }
+                    if (card != null) configuration.Cards.TryGetValue(card.TypeId, out leftArchetype);
                 }
                 else if (selection.Kind == SelectionKind.Unit)
                 {
                     var unit = snapshot.Units.FirstOrDefault(u => u.Id == selection.Id);
-                    if (unit != null && configuration.Cards.TryGetValue(unit.TypeId, out var unitArch))
+                    if (unit != null && configuration.Cards.TryGetValue(unit.TypeId, out var unitArchetype))
                     {
-                        var title = CardText.CategoryLabel(unitArch.Category) + (unit.Owner == Side.Player ? " · 玩家" : " · Boss");
-                        var body = CardText.UnitDetail(unitArch, unit) + Environment.NewLine
-                            + $"行动机会 {(unit.CanAct ? "可用" : unit.Acted ? "已用完" : "维持费不足")}";
-                        if (unit.Owner == Side.Player) { leftTitle = title; leftBody = body; }
-                        else { rightTitle = title; rightBody = body; }
+                        if (unit.Owner == Side.Player)
+                        {
+                            leftArchetype = unitArchetype;
+                            leftUnit = unit;
+                        }
+                        else
+                        {
+                            rightArchetype = unitArchetype;
+                            rightUnit = unit;
+                        }
                     }
                 }
             }
-            if (_detailLeftTitle != null) _detailLeftTitle.text = leftTitle;
-            if (_detailLeftBody != null) _detailLeftBody.text = leftBody;
-            if (_detailRightTitle != null) _detailRightTitle.text = rightTitle;
-            if (_detailRightBody != null) _detailRightBody.text = rightBody;
+
+            ApplyDetailFace(
+                _detailLeftTitle, _detailLeftMeta, _detailLeftTrait, _detailLeftBody,
+                _detailLeftAttack, _detailLeftHealth, _detailLeftMove,
+                leftArchetype, leftUnit, Side.Player);
+            ApplyDetailFace(
+                _detailRightTitle, _detailRightMeta, _detailRightTrait, _detailRightBody,
+                _detailRightAttack, _detailRightHealth, _detailRightMove,
+                rightArchetype, rightUnit, Side.Boss);
+
+            ShowElement(_detailLeft, !_menuVisible && HasDetailContent(_detailLeftTitle, _detailLeftBody));
+            ShowElement(_detailRight, !_menuVisible && HasDetailContent(_detailRightTitle, _detailRightBody));
+        }
+
+        /// <summary>
+        /// 把一个卡种或场上单位写入一侧的竖向卡面信息区。
+        /// 输入：名称、阵营阶级、特性标签、规则说明、三项属性标签、卡种、可选单位快照与所属阵营；输出：无。
+        /// 行为：单位存在时使用当前攻击、生命和移动；手牌使用卡种基础值；没有补充规则时隐藏“特性”。
+        /// 为什么集中处理：左右两侧结构完全相同，统一写入可避免数值口径、英文阶级和空状态出现分叉。
+        /// </summary>
+        static void ApplyDetailFace(
+            Label title, Label meta, Label trait, Label body,
+            Label attack, Label health, Label move,
+            CardArchetype archetype, UnitState unit, Side owner)
+        {
+            if (archetype == null)
+            {
+                if (title != null) title.text = string.Empty;
+                if (meta != null) meta.text = string.Empty;
+                if (body != null) body.text = string.Empty;
+                if (attack != null) attack.text = "0";
+                if (health != null) health.text = "0";
+                if (move != null) move.text = "0";
+                ShowElement(trait, false);
+                return;
+            }
+
+            if (title != null) title.text = archetype.Name;
+            if (meta != null)
+                meta.text = $"{(owner == Side.Player ? "我方" : "敌方")}·{CardFaceTierLabel(archetype.Tier)}";
+
+            var combat = archetype.Combat;
+            if (attack != null) attack.text = (unit != null ? unit.Attack : combat?.Attack ?? 0).ToString();
+            if (health != null) health.text = (unit != null ? unit.Hp : combat?.Hp ?? 0).ToString();
+            if (move != null) move.text = (unit != null ? unit.MoveDistance : combat?.MoveDistance ?? 0).ToString();
+
+            var fullDetail = unit == null
+                ? CardText.DetailLine(archetype, owner)
+                : CardText.UnitDetail(archetype, unit);
+            var supplemental = RemoveLeadingDetailLines(fullDetail, unit == null ? 2 : 3);
+            if (unit != null)
+            {
+                var action = $"行动机会：{(unit.CanAct ? "可用" : unit.Acted ? "已用完" : "维持费不足")}";
+                supplemental = string.IsNullOrWhiteSpace(supplemental)
+                    ? action
+                    : supplemental + Environment.NewLine + action;
+            }
+            if (body != null) body.text = supplemental;
+            ShowElement(trait, !string.IsNullOrWhiteSpace(supplemental));
+        }
+
+        /// <summary>
+        /// 把规则阶级转换为实体卡面使用的英文短标签。
+        /// 输入：卡种阶级；输出：JUNIOR、MIDDLE、SENIOR 或 BOSS。
+        /// 为什么单独转换：规则与选卡界面继续使用“初级/中级/高级”，只有战斗详情需要与现有卡面美术统一。
+        /// </summary>
+        static string CardFaceTierLabel(CardTier tier)
+        {
+            switch (tier)
+            {
+                case CardTier.Basic: return "JUNIOR";
+                case CardTier.Intermediate: return "MIDDLE";
+                case CardTier.Advanced: return "SENIOR";
+                case CardTier.None: return "BOSS";
+                default: return "UNKNOWN";
+            }
+        }
+        /// <summary>
+        /// 去掉完整详情中已经由名称、副标题和图标数值表达的前置行。
+        /// 输入：完整多行详情与要移除的行数；输出：只保留规则、限制及状态说明的文本。
+        /// 为什么需要：继续复用 CardText 的唯一规则文案，同时避免在信息栏里重复显示卡名和同一组属性。
+        /// </summary>
+        static string RemoveLeadingDetailLines(string detail, int count)
+        {
+            if (string.IsNullOrEmpty(detail) || count <= 0) return detail ?? string.Empty;
+            var lines = detail.Replace("\r\n", "\n").Split('\n');
+            return string.Join(Environment.NewLine, lines.Skip(Math.Min(count, lines.Length))).Trim();
         }
 
         /// <summary>重置日志渲染计数。输入：无；输出：无。用途：重开后清空日志列表。</summary>
