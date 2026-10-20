@@ -38,6 +38,8 @@ namespace Spotlight
         [SerializeField] HudView _hudView;
         /// <summary>动效播放器。</summary>
         [SerializeField] CardFeedback _feedback;
+        /// <summary>Boss 音乐播放器；只接收当前展示快照，不参与规则结算。</summary>
+        [SerializeField] BossMusicController _music;
         /// <summary>
         /// 调试面板当前是否打开（由编辑器侧的面板通过 <see cref="SetDebugPanelOpen"/> 写入）。
         /// 为什么运行层只保留一个布尔值：面板类型在 Spotlight.Editor 程序集里，运行层不能引用它；
@@ -132,6 +134,7 @@ namespace Spotlight
         /// </summary>
         void Start()
         {
+            GameAudioSettings.EnsureLoaded();
             _configAsset = ConfigLoader.LoadAsset(_configAsset);
             if (!ConfigLoader.TryCreateConfiguration(out var configuration, out var error, _configAsset))
             {
@@ -158,6 +161,7 @@ namespace Spotlight
         /// </summary>
         void OnDestroy()
         {
+            _music?.StopImmediately();
             if (_pauseOpen) Time.timeScale = _timeScaleBeforePause;
         }
 
@@ -246,6 +250,7 @@ namespace Spotlight
         /// </summary>
         public void StartSession(GameConfiguration configuration)
         {
+            _music?.BeginSession(configuration.Presentation);
             CancelHandDrag();
             StopAllCoroutines();
             _feedbackQueue.Clear();
@@ -501,8 +506,8 @@ namespace Spotlight
 
         /// <summary>失焦时取消手势，避免窗口外松手后卡牌一直跟随。输入：焦点状态；输出：必要时归位。</summary>
         void OnApplicationFocus(bool focused) { if (!focused) CancelHandDrag(); }
-        /// <summary>协调器禁用时取消手势。输入：无；输出：释放视图临时状态。</summary>
-        void OnDisable() => CancelHandDrag(true);
+        /// <summary>协调器禁用时取消手势和音乐等待。输入：无；输出：释放旧对局的临时表现。</summary>
+        void OnDisable() { CancelHandDrag(true); _music?.StopImmediately(); }
 
         /// <summary>玩家点击棋盘格。输入：内部坐标；输出：无。</summary>
         void OnCellClicked(Cell cell)
@@ -834,6 +839,7 @@ namespace Spotlight
             if (_session == null) return;
             var snapshot = _presentingTurn ? _displaySnapshot : _session.GetSnapshot();
             if (snapshot == null) return;
+            _music?.SyncSnapshot(snapshot);
             var actions = _presentingTurn ? new LegalActions() : _session.GetLegalActions(_selection);
             _boardView?.Render(snapshot, actions, _selection);
             _handView?.Render(snapshot, _selection);
