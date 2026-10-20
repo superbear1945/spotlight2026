@@ -3,7 +3,66 @@
   <ui:VisualElement name="hud-root" picking-mode="Ignore" class="hud-root">
     <ui:VisualElement name="top-hud" picking-mode="Ignore" class="top-hud">
       <ui:VisualElement name="player-status" picking-mode="Ignore" class="player-status">
-        <ui:Label text="我方" picking-mode="Ignore" class="side-label player-side-label" />
+        <ui:VisualElement name="player-insignia-dots" picking-mode="Ignore" class="side-insignia-dots player-insignia-dots">
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 73px; top: 7px; width: 6px; height: 6px; border-radius: 3.0px; opacity: 0.62;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 92px; top: 9px; width: 7px; height: 7px; border-radius: 3.5px; opacity: 0.64;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 111px; top: 6px; width: 6px; height: 6px; border-radius: 3.0px; opacity: 0.62;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 37px; top: 29px; width: 6px; height: 6px; border-radius: 3.0px; opacity: 0.63;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 61px; top: 31px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.68;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 80px; top: 28px; width: 10px; height: 10px; border-radius: 5.0px; opacity: 0.69;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 104px; top: 30px; width: 10px; height: 10px; border-radius: 5.0px; opacity: 0.70;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 123px; top: 27px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.68;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 142px; top: 29px; width: 8px; height: 8px; border-radius: 4.0px; opacity: 0.65;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 29px; top: 50px; width: 8px; height: 8px; border-radius: 4.0px; opacity: 0.65;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 48px; top: 52px; width: 11px; height: 11px; border-radius: 5.5px; opacity: 0.71;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 72px; top: 49px; width: 13px; height: 13px; border-radius: 6.5px; opacity: 0.75;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 91px; top: 51px; width: 14px; height: 14px; border-radius: 7.0px; opacity: 0.77;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 115px; top: 48px; width: 13px; height: 13px; border-radius: 6.5px; opacity: 0.75;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 134px; top: 50px; width: 11px; height: 11px; border-radius: 5.5px; opacity: 0.72;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 153px; top: 52px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.68;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 17px; top: 69px; width: 7px; height: 7px; border-radius: 3.5px; opacity: 0.64;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 41px; top: 71px; width: 11px; height: 11px; border-radius: 5.5px; opacity: 0.72;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 60px; top: 73px; width: 15px; height: 15px; border-radius: 7.5px; opacity: 0.78;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 79px; top: 70px; width: 17px; height: 17px; border-radius: 8.5px; opacity: 0.82;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 103px; top: 72px; width: 18px; height: 18px; border-radius: 9.0px; opacity: 0.84;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 122px; top: 69px; width: 15px; height: 15px; border-radius: 7.5px; opacity: 0.79;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 146px; top: 71px; width: 12px; height: 12px; border-radius: 6.0px; opacity: 0.73;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 165px; top: 73px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.67;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 9px; top: 90px; width: 6px; height: 6px; border-radius: 3.0px; opacity: 0.63;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 28px; top: 92px; width: 10px; height: 10px; border-radius: 5.0px; opacity: 0.69;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 52px; top: 94px; width: 14px; height: 14px; border-radius: 7.0px; opacity: 0.77;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 71px; top: 91px; width: 18px; height: 18px; border-radius: 9.0px; opacity: 0.84;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 90px; top: 93px; width: 21px; height: 21px; border-radius: 10.5px; opacity: 0.90;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 114px; top: 90px; width: 18px; height: 18px; border-radius: 9.0px; opacity: 0.85;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 133px; top: 92px; width: 15px; height: 15px; border-radius: 7.5px; opacity: 0.79;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 157px; top: 94px; width: 11px; height: 11px; border-radius: 5.5px; opacity: 0.71;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 176px; top: 91px; width: 7px; height: 7px; border-radius: 3.5px; opacity: 0.64;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 16px; top: 111px; width: 7px; height: 7px; border-radius: 3.5px; opacity: 0.65;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 40px; top: 113px; width: 12px; height: 12px; border-radius: 6.0px; opacity: 0.72;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 59px; top: 115px; width: 15px; height: 15px; border-radius: 7.5px; opacity: 0.78;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 83px; top: 112px; width: 18px; height: 18px; border-radius: 9.0px; opacity: 0.85;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 102px; top: 114px; width: 18px; height: 18px; border-radius: 9.0px; opacity: 0.85;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 121px; top: 111px; width: 16px; height: 16px; border-radius: 8.0px; opacity: 0.82;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 145px; top: 113px; width: 12px; height: 12px; border-radius: 6.0px; opacity: 0.74;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 164px; top: 115px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.68;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 27px; top: 134px; width: 8px; height: 8px; border-radius: 4.0px; opacity: 0.65;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 51px; top: 136px; width: 11px; height: 11px; border-radius: 5.5px; opacity: 0.72;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 70px; top: 133px; width: 14px; height: 14px; border-radius: 7.0px; opacity: 0.77;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 94px; top: 135px; width: 15px; height: 15px; border-radius: 7.5px; opacity: 0.79;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 113px; top: 132px; width: 15px; height: 15px; border-radius: 7.5px; opacity: 0.78;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 132px; top: 134px; width: 12px; height: 12px; border-radius: 6.0px; opacity: 0.74;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 156px; top: 136px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.67;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 39px; top: 155px; width: 7px; height: 7px; border-radius: 3.5px; opacity: 0.65;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 58px; top: 157px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.68;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 82px; top: 154px; width: 11px; height: 11px; border-radius: 5.5px; opacity: 0.72;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 101px; top: 156px; width: 11px; height: 11px; border-radius: 5.5px; opacity: 0.72;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 125px; top: 153px; width: 10px; height: 10px; border-radius: 5.0px; opacity: 0.70;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 144px; top: 155px; width: 8px; height: 8px; border-radius: 4.0px; opacity: 0.66;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 69px; top: 175px; width: 7px; height: 7px; border-radius: 3.5px; opacity: 0.64;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 93px; top: 177px; width: 8px; height: 8px; border-radius: 4.0px; opacity: 0.65;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 112px; top: 174px; width: 8px; height: 8px; border-radius: 4.0px; opacity: 0.65;" />
+        </ui:VisualElement>
+        <ui:VisualElement name="player-insignia" picking-mode="Ignore" class="side-insignia player-insignia" />
         <ui:VisualElement picking-mode="Ignore" class="life-frame player-life-frame">
           <ui:Label name="player-life-label" text="10" picking-mode="Ignore" class="life-value player-life-value" />
         </ui:VisualElement>
@@ -22,20 +81,77 @@
         <ui:Label name="plays-label" text="剩余出牌 5" picking-mode="Ignore" class="plays-label" style="display: none;" />
       </ui:VisualElement>
       <ui:VisualElement name="enemy-status" picking-mode="Ignore" class="enemy-status">
-        <ui:Label text="敌方" picking-mode="Ignore" class="side-label enemy-side-label" />
+        <ui:VisualElement name="enemy-insignia-dots" picking-mode="Ignore" class="side-insignia-dots enemy-insignia-dots">
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 58px; top: 6px; width: 5px; height: 5px; border-radius: 2.5px; opacity: 0.62;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 73px; top: 7px; width: 6px; height: 6px; border-radius: 3.0px; opacity: 0.64;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 88px; top: 5px; width: 5px; height: 5px; border-radius: 2.5px; opacity: 0.62;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 29px; top: 23px; width: 5px; height: 5px; border-radius: 2.5px; opacity: 0.63;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 48px; top: 24px; width: 7px; height: 7px; border-radius: 3.5px; opacity: 0.68;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 63px; top: 22px; width: 8px; height: 8px; border-radius: 4.0px; opacity: 0.69;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 82px; top: 24px; width: 8px; height: 8px; border-radius: 4.0px; opacity: 0.70;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 97px; top: 21px; width: 7px; height: 7px; border-radius: 3.5px; opacity: 0.68;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 112px; top: 23px; width: 6px; height: 6px; border-radius: 3.0px; opacity: 0.65;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 23px; top: 40px; width: 6px; height: 6px; border-radius: 3.0px; opacity: 0.65;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 38px; top: 41px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.71;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 57px; top: 39px; width: 10px; height: 10px; border-radius: 5.0px; opacity: 0.75;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 72px; top: 40px; width: 11px; height: 11px; border-radius: 5.5px; opacity: 0.77;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 91px; top: 38px; width: 10px; height: 10px; border-radius: 5.0px; opacity: 0.75;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 106px; top: 40px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.72;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 121px; top: 41px; width: 7px; height: 7px; border-radius: 3.5px; opacity: 0.68;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 13px; top: 55px; width: 6px; height: 6px; border-radius: 3.0px; opacity: 0.64;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 32px; top: 56px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.72;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 47px; top: 58px; width: 12px; height: 12px; border-radius: 6.0px; opacity: 0.78;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 62px; top: 55px; width: 13px; height: 13px; border-radius: 6.5px; opacity: 0.82;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 81px; top: 57px; width: 14px; height: 14px; border-radius: 7.0px; opacity: 0.84;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 96px; top: 55px; width: 12px; height: 12px; border-radius: 6.0px; opacity: 0.79;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 115px; top: 56px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.73;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 130px; top: 58px; width: 7px; height: 7px; border-radius: 3.5px; opacity: 0.67;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 7px; top: 71px; width: 5px; height: 5px; border-radius: 2.5px; opacity: 0.63;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 22px; top: 73px; width: 8px; height: 8px; border-radius: 4.0px; opacity: 0.69;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 41px; top: 74px; width: 11px; height: 11px; border-radius: 5.5px; opacity: 0.77;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 56px; top: 72px; width: 14px; height: 14px; border-radius: 7.0px; opacity: 0.84;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 71px; top: 73px; width: 17px; height: 17px; border-radius: 8.5px; opacity: 0.90;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 90px; top: 71px; width: 14px; height: 14px; border-radius: 7.0px; opacity: 0.85;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 105px; top: 73px; width: 12px; height: 12px; border-radius: 6.0px; opacity: 0.79;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 124px; top: 74px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.71;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 139px; top: 72px; width: 6px; height: 6px; border-radius: 3.0px; opacity: 0.64;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 13px; top: 88px; width: 6px; height: 6px; border-radius: 3.0px; opacity: 0.65;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 32px; top: 89px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.72;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 47px; top: 91px; width: 12px; height: 12px; border-radius: 6.0px; opacity: 0.78;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 66px; top: 88px; width: 14px; height: 14px; border-radius: 7.0px; opacity: 0.85;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 81px; top: 90px; width: 14px; height: 14px; border-radius: 7.0px; opacity: 0.85;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 96px; top: 88px; width: 13px; height: 13px; border-radius: 6.5px; opacity: 0.82;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 115px; top: 89px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.74;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 130px; top: 91px; width: 7px; height: 7px; border-radius: 3.5px; opacity: 0.68;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 21px; top: 106px; width: 6px; height: 6px; border-radius: 3.0px; opacity: 0.65;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 40px; top: 107px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.72;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 55px; top: 105px; width: 11px; height: 11px; border-radius: 5.5px; opacity: 0.77;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 74px; top: 107px; width: 12px; height: 12px; border-radius: 6.0px; opacity: 0.79;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 89px; top: 104px; width: 12px; height: 12px; border-radius: 6.0px; opacity: 0.78;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 104px; top: 106px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.74;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 123px; top: 107px; width: 7px; height: 7px; border-radius: 3.5px; opacity: 0.67;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 31px; top: 122px; width: 6px; height: 6px; border-radius: 3.0px; opacity: 0.65;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 46px; top: 124px; width: 7px; height: 7px; border-radius: 3.5px; opacity: 0.68;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 65px; top: 122px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.72;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 80px; top: 123px; width: 9px; height: 9px; border-radius: 4.5px; opacity: 0.72;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 99px; top: 121px; width: 8px; height: 8px; border-radius: 4.0px; opacity: 0.70;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 114px; top: 122px; width: 6px; height: 6px; border-radius: 3.0px; opacity: 0.66;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 55px; top: 138px; width: 6px; height: 6px; border-radius: 3.0px; opacity: 0.64;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 73px; top: 140px; width: 6px; height: 6px; border-radius: 3.0px; opacity: 0.65;" />
+          <ui:VisualElement picking-mode="Ignore" class="halftone-dot" style="left: 88px; top: 137px; width: 6px; height: 6px; border-radius: 3.0px; opacity: 0.65;" />
+        </ui:VisualElement>
+        <ui:VisualElement name="enemy-insignia" picking-mode="Ignore" class="side-insignia enemy-insignia" />
         <ui:VisualElement picking-mode="Ignore" class="life-frame enemy-life-frame">
           <ui:Label name="boss-life-label" text="10" picking-mode="Ignore" class="life-value boss-life-value" />
         </ui:VisualElement>
       </ui:VisualElement>
       <ui:VisualElement picking-mode="Ignore" class="entry-toolbar">
         <ui:Button name="pause-button" text="" tooltip="暂停" class="icon-button pause-button entry-first" />
-        <ui:Button name="menu-button" text="" tooltip="菜单" class="icon-button settings-button menu-button" />
-        <ui:Button name="quick-debug-button" text="" tooltip="配置 / 调试" class="icon-button settings-button" />
+        <ui:Button name="settings-button" text="" tooltip="设置" class="icon-button settings-button" />
         <ui:Button name="history-button" text="" tooltip="显示或隐藏对局日志" class="icon-button history-button log-hidden" />
         <ui:Button name="help-button" text="" tooltip="规则帮助" class="icon-button help-button" />
       </ui:VisualElement>
     </ui:VisualElement>
-
     <ui:VisualElement name="log-panel" picking-mode="Ignore" class="panel log-panel" style="display: none;">
       <ui:Label text="对局日志" picking-mode="Ignore" class="section-label" />
       <ui:ScrollView name="log-list" class="log-list">
@@ -49,17 +165,63 @@
       <ui:Label text="选中详情" picking-mode="Ignore" class="section-label" />
       <ui:Label name="unit-detail" text="点击手牌、己方单位或己方家进行操作" picking-mode="Ignore" class="detail-label" />
     </ui:VisualElement>
-
-    <ui:VisualElement name="detail-left" picking-mode="Ignore" class="panel detail-panel detail-panel-left">
+    <ui:VisualElement name="detail-left" picking-mode="Ignore" class="detail-card-info detail-card-info-left" style="display: none;">
+      <ui:VisualElement picking-mode="Ignore" class="detail-backdrop-blur" />
+      <ui:VisualElement picking-mode="Ignore" class="detail-edge-accent" />
       <ui:Label name="detail-left-title" picking-mode="Ignore" class="detail-title" />
-      <ui:Label name="detail-left-body" picking-mode="Ignore" class="detail-body" />
+      <ui:Label name="detail-left-meta" picking-mode="Ignore" class="detail-meta" />
+      <ui:VisualElement picking-mode="Ignore" class="detail-rule">
+        <ui:VisualElement picking-mode="Ignore" class="detail-rule-light" />
+        <ui:VisualElement picking-mode="Ignore" class="detail-rule-accent" />
+      </ui:VisualElement>
+      <ui:VisualElement picking-mode="Ignore" class="detail-stats">
+        <ui:VisualElement picking-mode="Ignore" class="detail-stat">
+          <ui:VisualElement tooltip="攻击" picking-mode="Ignore" class="detail-stat-icon detail-icon-attack" />
+          <ui:Label name="detail-left-attack" text="0" picking-mode="Ignore" class="detail-stat-value" />
+        </ui:VisualElement>
+        <ui:VisualElement picking-mode="Ignore" class="detail-stat">
+          <ui:VisualElement tooltip="生命" picking-mode="Ignore" class="detail-stat-icon detail-icon-health" />
+          <ui:Label name="detail-left-health" text="0" picking-mode="Ignore" class="detail-stat-value" />
+        </ui:VisualElement>
+        <ui:VisualElement picking-mode="Ignore" class="detail-stat">
+          <ui:VisualElement tooltip="移动" picking-mode="Ignore" class="detail-stat-icon detail-icon-move" />
+          <ui:Label name="detail-left-move" text="0" picking-mode="Ignore" class="detail-stat-value" />
+        </ui:VisualElement>
+      </ui:VisualElement>
+      <ui:VisualElement picking-mode="Ignore" class="detail-trait-row">
+        <ui:Label name="detail-left-trait" text="特性" picking-mode="Ignore" class="detail-trait-tag" />
+        <ui:Label name="detail-left-body" picking-mode="Ignore" class="detail-body" />
+      </ui:VisualElement>
       <ui:Button name="withdraw-button" text="离场" class="action-button secondary-action withdraw-button" style="display: none;" />
     </ui:VisualElement>
-    <ui:VisualElement name="detail-right" picking-mode="Ignore" class="panel detail-panel detail-panel-right">
+    <ui:VisualElement name="detail-right" picking-mode="Ignore" class="detail-card-info detail-card-info-right" style="display: none;">
+      <ui:VisualElement picking-mode="Ignore" class="detail-backdrop-blur" />
+      <ui:VisualElement picking-mode="Ignore" class="detail-edge-accent" />
       <ui:Label name="detail-right-title" picking-mode="Ignore" class="detail-title" />
-      <ui:Label name="detail-right-body" picking-mode="Ignore" class="detail-body" />
+      <ui:Label name="detail-right-meta" picking-mode="Ignore" class="detail-meta" />
+      <ui:VisualElement picking-mode="Ignore" class="detail-rule">
+        <ui:VisualElement picking-mode="Ignore" class="detail-rule-light" />
+        <ui:VisualElement picking-mode="Ignore" class="detail-rule-accent" />
+      </ui:VisualElement>
+      <ui:VisualElement picking-mode="Ignore" class="detail-stats">
+        <ui:VisualElement picking-mode="Ignore" class="detail-stat">
+          <ui:VisualElement tooltip="攻击" picking-mode="Ignore" class="detail-stat-icon detail-icon-attack" />
+          <ui:Label name="detail-right-attack" text="0" picking-mode="Ignore" class="detail-stat-value" />
+        </ui:VisualElement>
+        <ui:VisualElement picking-mode="Ignore" class="detail-stat">
+          <ui:VisualElement tooltip="生命" picking-mode="Ignore" class="detail-stat-icon detail-icon-health" />
+          <ui:Label name="detail-right-health" text="0" picking-mode="Ignore" class="detail-stat-value" />
+        </ui:VisualElement>
+        <ui:VisualElement picking-mode="Ignore" class="detail-stat">
+          <ui:VisualElement tooltip="移动" picking-mode="Ignore" class="detail-stat-icon detail-icon-move" />
+          <ui:Label name="detail-right-move" text="0" picking-mode="Ignore" class="detail-stat-value" />
+        </ui:VisualElement>
+      </ui:VisualElement>
+      <ui:VisualElement picking-mode="Ignore" class="detail-trait-row">
+        <ui:Label name="detail-right-trait" text="特性" picking-mode="Ignore" class="detail-trait-tag" />
+        <ui:Label name="detail-right-body" picking-mode="Ignore" class="detail-body" />
+      </ui:VisualElement>
     </ui:VisualElement>
-
     <ui:VisualElement name="bottom-bar" picking-mode="Ignore" class="bottom-bar">
       <ui:Button name="bomb-deploy-button" text="布置炸弹" class="action-button primary-action bomb-button" style="display: none;" />
       <ui:Button name="bomb-skip-button" text="跳过炸弹" class="action-button secondary-action bomb-button" style="display: none;" />
@@ -68,7 +230,6 @@
       <ui:Button name="skip-deploy-button" text="跳过放牌并结束" class="action-button secondary-action" style="display: none;" />
       <ui:Button name="restart-button" text="重开" class="action-button secondary-action" style="display: none;" />
     </ui:VisualElement>
-
     <ui:VisualElement name="pile-left" picking-mode="Ignore" class="panel pile-panel pile-left">
       <ui:Label text="墓地" picking-mode="Ignore" class="pile-title" />
       <ui:Label name="grave-count" text="0" picking-mode="Ignore" class="pile-count" />
@@ -79,7 +240,6 @@
       <ui:Label name="draw-count-intermediate" text="中级 0" picking-mode="Ignore" class="pile-tier-count" />
       <ui:Label name="draw-count-basic" text="初级 0" picking-mode="Ignore" class="pile-tier-count" />
     </ui:VisualElement>
-
     <ui:VisualElement name="menu-overlay" class="overlay menu-overlay" style="display: none;">
       <ui:VisualElement picking-mode="Ignore" class="overlay-card">
         <ui:Label text="菜单" class="victory-label" />
@@ -90,7 +250,6 @@
         <ui:Button name="debug-button" text="配置/调试" class="action-button menu-debug-button" />
       </ui:VisualElement>
     </ui:VisualElement>
-
     <ui:Label name="error-label" picking-mode="Ignore" class="error-label" style="display: none;" />
     <ui:VisualElement name="victory-overlay" picking-mode="Ignore" class="overlay victory-overlay" style="display: none;">
       <ui:VisualElement picking-mode="Ignore" class="overlay-card">
@@ -100,7 +259,6 @@
         <ui:Button name="victory-restart-button" text="再来一局" class="action-button primary-action victory-restart-button" />
       </ui:VisualElement>
     </ui:VisualElement>
-
     <ui:VisualElement name="deck-select-confirm-overlay" class="overlay menu-overlay" style="display: none;">
       <ui:VisualElement picking-mode="Ignore" class="overlay-card">
         <ui:Label text="进入选卡？" class="victory-label" />
@@ -133,16 +291,95 @@
         </ui:VisualElement>
       </ui:VisualElement>
     </ui:VisualElement>
-
     <ui:VisualElement name="modal-overlay" class="overlay modal-overlay" style="display: none;" />
     <ui:VisualElement name="pause-overlay" class="overlay pause-overlay" style="display: none;">
-      <ui:VisualElement name="pause-panel" picking-mode="Ignore" class="pause-panel" />
-      <ui:Button name="pause-close-button" text="" tooltip="继续战斗" class="pause-close-button" />
-      <ui:Button name="pause-continue-button" text="继续战斗" class="pause-menu-button pause-continue-button" />
-      <ui:Button name="pause-restart-button" text="重新开始" class="pause-menu-button pause-restart-button" />
-      <ui:Button name="pause-exit-button" text="退出战斗" class="pause-menu-button pause-exit-button" />
+      <ui:VisualElement name="pause-panel" picking-mode="Ignore" class="pause-panel">
+        <ui:VisualElement name="pause-header-left-line" picking-mode="Ignore" class="pause-header-line pause-header-left-line" />
+        <ui:VisualElement name="pause-title-icon" picking-mode="Ignore" class="pause-title-icon" />
+        <ui:VisualElement name="pause-header-right-line" picking-mode="Ignore" class="pause-header-line pause-header-right-line" />
+        <ui:Button name="pause-close-button" text="" tooltip="继续战斗" class="pause-close-button" />
+        <ui:Button name="pause-continue-button" text="继续战斗" class="pause-menu-button pause-continue-button" />
+        <ui:Button name="pause-restart-button" text="重新开始" class="pause-menu-button pause-restart-button" />
+        <ui:Button name="pause-exit-button" text="退出战斗" class="pause-menu-button pause-exit-button" />
+      </ui:VisualElement>
     </ui:VisualElement>
-
+    <ui:VisualElement name="settings-overlay" class="overlay utility-overlay" style="display: none;">
+      <ui:VisualElement name="settings-panel" class="utility-panel settings-panel">
+        <ui:VisualElement class="settings-title-row">
+          <ui:VisualElement picking-mode="Ignore" class="settings-title-line" />
+          <ui:Label text="设置" class="utility-title settings-title" />
+          <ui:VisualElement picking-mode="Ignore" class="settings-title-line" />
+        </ui:VisualElement>
+        <ui:Button name="settings-x-button" text="×" tooltip="保存并返回" class="settings-x-button" />
+        <ui:VisualElement class="settings-section-row settings-sound-section">
+          <ui:Label text="声音" class="settings-section-title" />
+          <ui:VisualElement picking-mode="Ignore" class="settings-section-line" />
+        </ui:VisualElement>
+        <ui:VisualElement class="settings-control-row settings-master-row">
+          <ui:Label text="主音量" class="settings-control-label" />
+          <ui:VisualElement class="settings-slider-shell">
+            <ui:VisualElement name="master-volume-fill" picking-mode="Ignore" class="settings-slider-fill-clip">
+              <ui:VisualElement picking-mode="Ignore" class="settings-slider-fill-art" />
+            </ui:VisualElement>
+            <ui:Slider name="master-volume-slider" low-value="0" high-value="100" value="100" class="settings-slider" />
+          </ui:VisualElement>
+          <ui:Label name="master-volume-value" text="100%" picking-mode="Ignore" class="settings-volume-value" />
+        </ui:VisualElement>
+        <ui:VisualElement class="settings-control-row settings-music-row">
+          <ui:Label text="音乐音量" class="settings-control-label" />
+          <ui:VisualElement class="settings-slider-shell">
+            <ui:VisualElement name="music-volume-fill" picking-mode="Ignore" class="settings-slider-fill-clip">
+              <ui:VisualElement picking-mode="Ignore" class="settings-slider-fill-art" />
+            </ui:VisualElement>
+            <ui:Slider name="music-volume-slider" low-value="0" high-value="100" value="100" class="settings-slider" />
+          </ui:VisualElement>
+          <ui:Label name="music-volume-value" text="100%" picking-mode="Ignore" class="settings-volume-value" />
+        </ui:VisualElement>
+        <ui:VisualElement class="settings-control-row settings-sound-row">
+          <ui:Label text="音效音量" class="settings-control-label" />
+          <ui:VisualElement class="settings-slider-shell">
+            <ui:VisualElement name="sound-volume-fill" picking-mode="Ignore" class="settings-slider-fill-clip">
+              <ui:VisualElement picking-mode="Ignore" class="settings-slider-fill-art" />
+            </ui:VisualElement>
+            <ui:Slider name="sound-volume-slider" low-value="0" high-value="100" value="100" class="settings-slider" />
+          </ui:VisualElement>
+          <ui:Label name="sound-volume-value" text="100%" picking-mode="Ignore" class="settings-volume-value" />
+        </ui:VisualElement>
+        <ui:VisualElement class="settings-section-row settings-display-section">
+          <ui:Label text="显示" class="settings-section-title" />
+          <ui:VisualElement picking-mode="Ignore" class="settings-section-line" />
+        </ui:VisualElement>
+        <ui:VisualElement class="settings-control-row settings-toggle-row">
+          <ui:Label text="全屏显示" class="settings-control-label" />
+          <ui:Toggle name="fullscreen-toggle" value="true" class="settings-toggle" />
+        </ui:VisualElement>
+        <ui:VisualElement class="utility-actions">
+          <ui:Button name="settings-debug-button" text="开发者配置" class="action-button secondary-action settings-debug-button" />
+          <ui:Button name="settings-reset-button" text="恢复默认" class="action-button secondary-action" />
+          <ui:Button name="settings-close-button" text="返回" class="action-button primary-action" />
+        </ui:VisualElement>
+      </ui:VisualElement>
+    </ui:VisualElement>
+    <ui:VisualElement name="help-overlay" class="overlay utility-overlay" style="display: none;">
+      <ui:VisualElement name="help-panel" class="utility-panel help-panel">
+        <ui:VisualElement class="settings-title-row help-title-row">
+          <ui:VisualElement picking-mode="Ignore" class="settings-title-line" />
+          <ui:Label text="规则帮助" class="utility-title help-title" />
+          <ui:VisualElement picking-mode="Ignore" class="settings-title-line" />
+        </ui:VisualElement>
+        <ui:ScrollView class="help-scroll">
+          <ui:Label text="目标" class="help-heading" />
+          <ui:Label text="摧毁敌方的家即可获胜；自己的家被摧毁则失败。" class="help-copy" />
+          <ui:Label text="你的回合" class="help-heading" />
+          <ui:Label text="从手牌部署卡牌，选择己方单位后移动、攻击或互换。界面高亮的格子才是当前合法目标。" class="help-copy" />
+          <ui:Label text="资源与行动" class="help-heading" />
+          <ui:Label text="资源卡和家会提供资源；单位维持费不足时，本回合无法行动。刚部署的单位可能受到召唤失调限制。" class="help-copy" />
+          <ui:Label text="结束回合" class="help-heading" />
+          <ui:Label text="完成操作后点击顶部中央按钮结束回合。若手牌超过上限，需要先弃牌。" class="help-copy" />
+        </ui:ScrollView>
+        <ui:Button name="help-close-button" text="明白了" class="action-button primary-action utility-close-button" />
+      </ui:VisualElement>
+    </ui:VisualElement>
     <ui:VisualElement name="debug-panel" class="cfg-mask">
       <ui:VisualElement class="cfg-panel">
         <ui:VisualElement class="cfg-head">

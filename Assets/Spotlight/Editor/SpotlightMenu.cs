@@ -7,6 +7,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using TMPro;
 
 namespace Spotlight.EditorTools
 {
@@ -189,12 +190,14 @@ namespace Spotlight.EditorTools
             var canvas = CreateCanvas();
             var board = CreateBoardView(canvas, cellPrefab, templatePrefab);
             var hand = CreateHandView(canvas, templatePrefab);
+            var cardZones = CreateCardZonesView(canvas);
             EnsurePassiveArtwork(canvas);
 
             var bootstrapSerialized = new SerializedObject(bootstrap);
             SetObject(bootstrapSerialized, "_configAsset", config);
             SetObject(bootstrapSerialized, "_boardView", board);
             SetObject(bootstrapSerialized, "_handView", hand);
+            SetObject(bootstrapSerialized, "_cardZonesView", cardZones);
             SetObject(bootstrapSerialized, "_hudView", hud);
             SetObject(bootstrapSerialized, "_feedback", feedback);
             SetObject(bootstrapSerialized, "_debugPanel", debugPanel);
@@ -311,6 +314,115 @@ namespace Spotlight.EditorTools
         }
 
         /// <summary>
+        /// 创建玩家抽牌堆与墓地显示。
+        /// 输入：主 UGUI 画布；输出：已装配数量文本和弃牌提示引用的 <see cref="CardZonesView"/>。
+        /// 为什么由场景生成器创建：两个牌区与手牌共用底部布局，必须使用稳定对象名和锚点，
+        /// 才能在重复生成演示场景后继续由 GameBootstrap 自动绑定。
+        /// </summary>
+        static CardZonesView CreateCardZonesView(Canvas canvas)
+        {
+            var rootObject = new GameObject("CardZonesRoot", typeof(RectTransform), typeof(CardZonesView));
+            var root = (RectTransform)rootObject.transform;
+            root.SetParent(canvas.transform, false);
+            root.anchorMin = new Vector2(0f, 0f);
+            root.anchorMax = new Vector2(1f, 0f);
+            root.pivot = new Vector2(0.5f, 0f);
+            root.anchoredPosition = Vector2.zero;
+            root.sizeDelta = new Vector2(0f, 230f);
+
+            var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(CjkFontSetup.FontAssetPath);
+
+            var drawObject = new GameObject("DrawPilePanel", typeof(RectTransform), typeof(Image), typeof(Outline));
+            var drawRect = (RectTransform)drawObject.transform;
+            drawRect.SetParent(root, false);
+            drawRect.anchorMin = Vector2.zero;
+            drawRect.anchorMax = Vector2.zero;
+            drawRect.pivot = Vector2.zero;
+            drawRect.anchoredPosition = new Vector2(300f, 22f);
+            drawRect.sizeDelta = new Vector2(156f, 188f);
+            var drawPanel = drawObject.GetComponent<Image>();
+            drawPanel.color = new Color(0.08f, 0.29f, 0.34f, 0.96f);
+            drawPanel.raycastTarget = false;
+            var drawOutline = drawObject.GetComponent<Outline>();
+            drawOutline.effectColor = new Color(0.47f, 0.87f, 0.82f, 0.9f);
+            drawOutline.effectDistance = new Vector2(2f, -2f);
+            var drawTitle = CreateZoneText(drawRect, "DrawPileTitle", "抽牌堆", font, 24f, 0.72f, 0.96f, true);
+            var drawCount = CreateZoneText(drawRect, "DrawPileCount", "0", font, 56f, 0.27f, 0.75f, true);
+            var drawHint = CreateZoneText(drawRect, "DrawPileHint", "剩余卡牌", font, 18f, 0.05f, 0.30f, false);
+
+            var graveyardObject = new GameObject("GraveyardPanel", typeof(RectTransform), typeof(Image), typeof(Outline));
+            var graveyardRect = (RectTransform)graveyardObject.transform;
+            graveyardRect.SetParent(root, false);
+            graveyardRect.anchorMin = new Vector2(1f, 0f);
+            graveyardRect.anchorMax = new Vector2(1f, 0f);
+            graveyardRect.pivot = new Vector2(1f, 0f);
+            graveyardRect.anchoredPosition = new Vector2(-300f, 22f);
+            graveyardRect.sizeDelta = new Vector2(156f, 188f);
+            var graveyardPanel = graveyardObject.GetComponent<Image>();
+            graveyardPanel.color = new Color(0.10f, 0.18f, 0.22f, 0.94f);
+            graveyardPanel.raycastTarget = false;
+            var graveyardOutline = graveyardObject.GetComponent<Outline>();
+            graveyardOutline.effectColor = new Color(0.54f, 0.69f, 0.72f, 0.9f);
+            graveyardOutline.effectDistance = new Vector2(2f, -2f);
+            var graveyardTitle = CreateZoneText(graveyardRect, "GraveyardTitle", "墓地", font, 24f, 0.72f, 0.96f, true);
+            var graveyardCount = CreateZoneText(graveyardRect, "GraveyardCount", "0", font, 56f, 0.27f, 0.75f, true);
+            var graveyardHint = CreateZoneText(graveyardRect, "GraveyardHint", "已使用卡牌", font, 18f, 0.05f, 0.30f, false);
+
+            // 静态标题与提示由自身文本保存；视图只持有运行时会变化的数量、墓地提示与背景。
+            var view = rootObject.GetComponent<CardZonesView>();
+            var serialized = new SerializedObject(view);
+            SetObject(serialized, "_drawPilePanel", drawPanel);
+            SetObject(serialized, "_drawPileCountText", drawCount);
+            SetObject(serialized, "_graveyardPanel", graveyardPanel);
+            SetObject(serialized, "_graveyardCountText", graveyardCount);
+            SetObject(serialized, "_graveyardHintText", graveyardHint);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            // 保留局部变量可让生成代码清楚表达两个牌区的完整层级；所有 Graphic 均为只读显示。
+            drawTitle.raycastTarget = drawCount.raycastTarget = drawHint.raycastTarget = false;
+            graveyardTitle.raycastTarget = graveyardCount.raycastTarget = graveyardHint.raycastTarget = false;
+            return view;
+        }
+
+        /// <summary>
+        /// 在牌区面板内创建一段 TMP 文本。
+        /// 输入：父节点、名称、初始文本、字体、字号、纵向锚点范围与粗体标记；
+        /// 输出：已铺满指定纵向范围、居中且不参与射线检测的 <see cref="TextMeshProUGUI"/>。
+        /// 为什么集中创建：标题、数量和提示必须使用同一中文字体、对齐和自动缩放规则，避免两侧样式漂移。
+        /// </summary>
+        static TextMeshProUGUI CreateZoneText(
+            RectTransform parent,
+            string name,
+            string content,
+            TMP_FontAsset font,
+            float fontSize,
+            float anchorMinY,
+            float anchorMaxY,
+            bool bold)
+        {
+            var textObject = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+            var rect = (RectTransform)textObject.transform;
+            rect.SetParent(parent, false);
+            rect.anchorMin = new Vector2(0f, anchorMinY);
+            rect.anchorMax = new Vector2(1f, anchorMaxY);
+            rect.offsetMin = new Vector2(8f, 0f);
+            rect.offsetMax = new Vector2(-8f, 0f);
+
+            var text = textObject.GetComponent<TextMeshProUGUI>();
+            if (font != null) text.font = font;
+            text.text = content;
+            text.fontSize = fontSize;
+            text.enableAutoSizing = true;
+            text.fontSizeMin = Mathf.Max(10f, fontSize * 0.55f);
+            text.fontSizeMax = fontSize;
+            text.alignment = TextAlignmentOptions.Center;
+            text.color = new Color(0.88f, 0.96f, 0.95f, 1f);
+            text.fontStyle = bold ? FontStyles.Bold : FontStyles.Normal;
+            text.raycastTarget = false;
+            return text;
+        }
+
+        /// <summary>
         /// 确保画布中存在示意图要求的两层非交互美术，并同步棋盘与手牌的基准布局。
         /// 输入：已包含 BoardRoot 与 HandRoot 的画布；输出：幂等更新后的全屏战场背景与整条手牌底板。
         /// 为什么没有棋盘面板：示意图的格子直接铺在战场背景上，通用功能面板只用于弹窗，
@@ -371,6 +483,9 @@ namespace Spotlight.EditorTools
                 // 手牌必须始终画在底板之后；先把手牌放到最后，再把底板插到它前一位，重复调用仍保持稳定。
                 handRoot.SetAsLastSibling();
                 handBackdrop.transform.SetSiblingIndex(Mathf.Max(0, handRoot.GetSiblingIndex() - 1));
+
+                var cardZonesRoot = canvas.transform.Find("CardZonesRoot");
+                if (cardZonesRoot != null) cardZonesRoot.SetAsLastSibling();
             }
             else
             {
