@@ -143,8 +143,11 @@ namespace Spotlight.Tests
                 var hits = new List<RaycastResult>(); EventSystem.current.RaycastAll(pointer, hits);
                 Assert.That(hits.Any(h => h.gameObject.GetComponentInParent<BoardCellView>()?.Coordinate == position), Is.True);
                 Invoke("OnCellClicked", position);
-                Assert.That(_root.Q<Label>("unit-detail").text, Does.Contain("不能攻击、移动或互换"));
-                Assert.That(_root.Q<Label>("boss-info-label").text, Does.Contain("刷怪卡"));
+                // 选中刷怪卡后，右侧卡面详情的正文必须说明它的刷怪能力与不可行动限制。
+                var spawnerBody = _root.Q<Label>("detail-right-body").text;
+                Assert.That(spawnerBody, Does.Contain("不能攻击、移动或互换"), spawnerBody);
+                Assert.That(spawnerBody, Does.Contain("刷怪："), spawnerBody);
+                Assert.That(_root.Q<Label>("detail-left-body").text, Is.Empty, "选中 Boss 单位时左侧详情区必须保持空");
             }
             LogAssert.NoUnexpectedReceived();
         }
