@@ -92,8 +92,8 @@ namespace Spotlight.EditorTools
 
         /// <summary>Presentation 表内容（首行为表头，第二行为唯一数据行，列以逗号分隔）。</summary>
         private const string PresentationSheetText =
-            "referenceWidth,referenceHeight,fontSize,logLimit,moveSeconds,feedbackSeconds,selectedScale,playerColor,bossColor,resourceColor,attackColor,specialColor,moveColor,attackTargetColor,swapColor,deployColor\n" +
-            "1920,1080,18,200,0.2,0.12,1.05,#3366FF,#FF3333,#33AA66,#EE8833,#AA55FF,#33AAFF,#FF3333,#AA33FF,#33FF99";
+            "referenceWidth,referenceHeight,fontSize,logLimit,moveSeconds,feedbackSeconds,selectedScale,playerColor,bossColor,resourceColor,attackColor,specialColor,moveColor,attackTargetColor,swapColor,deployColor,musicLoopGapSeconds,musicFadeOutSeconds,musicPhaseGapSeconds\n" +
+            "1920,1080,18,200,0.2,0.12,1.05,#3366FF,#FF3333,#33AA66,#EE8833,#AA55FF,#33AAFF,#FF3333,#AA33FF,#33FF99,10,5,5";
 
         /// <summary>
         /// 生成完整默认工作簿。

@@ -68,6 +68,9 @@ MonoBehaviour:
     rowFraction: 1
     edgeOffset: 1
   _presentation:
+    musicLoopGapSeconds: 10
+    musicFadeOutSeconds: 5
+    musicPhaseGapSeconds: 5
     referenceWidth: 1920
     referenceHeight: 1080
     fontSize: 18

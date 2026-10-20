@@ -103,14 +103,28 @@ namespace Spotlight.Tests
                             Assert.That(notes.All(n => n.Value.Contains("默认") || n.Value.Contains("卡牌阶级")), Is.True);
                         }
                     // 原有 40 条说明加上三阶段前列、当前列护卫舰的两项 Rules 引用说明，共 42 条；
-                    // 再加上 Cards.cardArt（手牌）与 Cards.cardArtUnit（场地）两条卡图说明，共 44 条。
+                    // 再加上 Cards.cardArt（手牌）/ Cards.cardArtUnit（场地）两条卡图说明与三项音乐计时说明，共 47 条。
                     // 保留精确数量检查，避免遗漏批注；额外检查新字段内容，防止错误批注恰好凑足数量。
-                    Assert.That(count, Is.EqualTo(44));
+                    Assert.That(count, Is.EqualTo(47));
                     using (var stream = zip.GetEntry("xl/comments2.xml").Open())
                     {
                         var notes = XDocument.Load(stream).Descendants(ns + "comment").Select(n => n.Value).ToArray();
                         Assert.That(notes.Any(n => n.Contains("bossGuardType1")), Is.True, "前列护卫舰引用缺少默认卡种说明");
                         Assert.That(notes.Any(n => n.Contains("bossGuardType2")), Is.True, "当前列护卫舰引用缺少默认卡种说明");
+                    }
+                    using (var stream = zip.GetEntry("xl/comments5.xml").Open())
+                    {
+                        var notes = XDocument.Load(stream).Descendants(ns + "comment").ToArray();
+                        var fields = new[] { "musicLoopGapSeconds", "musicFadeOutSeconds", "musicPhaseGapSeconds" };
+                        var cells = new[] { "Q1", "R1", "S1" };
+                        var descriptions = new[] { "音乐自然结束后等待", "切阶段或结算淡出", "淡出完成后等待新阶段音乐" };
+                        var defaults = new[] { "默认 10", "默认 5", "默认 5" };
+                        for (var i = 0; i < fields.Length; i++)
+                        {
+                            var note = notes.Single(n => (string)n.Attribute("ref") == cells[i]);
+                            Assert.That(note.Value, Does.Contain(descriptions[i]), fields[i] + " 批注内容不匹配");
+                            Assert.That(note.Value, Does.Contain(defaults[i]), fields[i] + " 缺少默认秒数说明");
+                        }
                     }
                     // Deck 表已废除，工作表顺序为 Cards、Rules、Homes、BossSlots、Presentation，
                     // 因此带批注的 Rules 是第 2 张表。

@@ -29,6 +29,8 @@ namespace Spotlight.Tests
         VisualElement _root;
         /// <summary>承载 HudView 的临时对象。</summary>
         GameObject _host;
+        /// <summary>音量控制现为实时生效，夹具需要恢复原先的全局与分类音量。</summary>
+        float _listenerVolume, _masterVolume, _musicVolume, _soundVolume;
 
         /// <summary>
         /// 实例化真实 HUD 资产。
@@ -37,6 +39,8 @@ namespace Spotlight.Tests
         [SetUp]
         public void SetUp()
         {
+            _listenerVolume = AudioListener.volume;
+            _masterVolume = GameAudioSettings.Master; _musicVolume = GameAudioSettings.Music; _soundVolume = GameAudioSettings.Sound;
             var asset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(UxmlPath);
             Assert.That(asset, Is.Not.Null, "找不到界面文件 " + UxmlPath);
             _root = asset.Instantiate();
@@ -47,6 +51,8 @@ namespace Spotlight.Tests
         [TearDown]
         public void TearDown()
         {
+            GameAudioSettings.SetMaster(_masterVolume); GameAudioSettings.SetMusic(_musicVolume); GameAudioSettings.SetSound(_soundVolume);
+            AudioListener.volume = _listenerVolume;
             if (_host != null) Object.DestroyImmediate(_host);
             _root = null;
         }
@@ -61,7 +67,7 @@ namespace Spotlight.Tests
             var requiredNames = new[]
             {
                 "turn-label", "resource-label", "plays-label", "round-number-label",
-                "player-life-label", "boss-life-label", "boss-info-label", "boss-phase-label", "phase-label", "unit-detail",
+                "player-life-label", "boss-life-label", "boss-phase-label",
                 "log-panel", "log-list", "log-content", "pause-button", "settings-button", "history-button",
                 "help-button",
                 "withdraw-button", "bomb-deploy-button", "bomb-skip-button",
@@ -92,10 +98,13 @@ namespace Spotlight.Tests
             {
                 "victory-overlay", "victory-art", "defeat-art", "modal-overlay",
                 "error-label", "withdraw-button", "skip-deploy-button", "restart-button",
-                "log-panel", "side-panel", "opponent-turn-indicator", "pause-overlay",
+                "log-panel", "opponent-turn-indicator", "pause-overlay",
                 "settings-overlay", "help-overlay", "menu-overlay", "deck-select-confirm-overlay", "deck-select-mask"
             };
             var uxml = File.ReadAllText(UxmlPath);
+            Assert.That(uxml, Does.Not.Contain("side-panel").And.Not.Contain("boss-info-label")
+                .And.Not.Contain("name=\"phase-label\"").And.Not.Contain("unit-detail"),
+                "右下角旧「Boss 状态 / 选中详情」侧栏已废弃：Boss 阶段看顶部摘要，选中详情看左右卡面详情区");
             Assert.That(uxml, Does.Not.Contain("pause-deck-select-button")
                 .And.Not.Contain("pause-settings-icon")
                 .And.Not.Contain("text=\"重新选卡\""),
@@ -307,12 +316,20 @@ namespace Spotlight.Tests
             musicVolume.value = 25f;
             soundVolume.value = 35f;
             InvokeMethod(hud, "OnMasterVolumeChanged", ChangeEvent<float>.GetPooled(0f, 15f));
+            InvokeMethod(hud, "OnMusicVolumeChanged", ChangeEvent<float>.GetPooled(0f, 25f));
+            InvokeMethod(hud, "OnSoundVolumeChanged", ChangeEvent<float>.GetPooled(0f, 35f));
+            Assert.That(AudioListener.volume, Is.EqualTo(.15f).Within(.001f));
+            Assert.That(GameAudioSettings.Music, Is.EqualTo(.25f).Within(.001f));
+            Assert.That(GameAudioSettings.Sound, Is.EqualTo(.35f).Within(.001f));
             Assert.That(_root.Q<Label>("master-volume-value").text, Is.EqualTo("15%"));
             fullscreen.value = false;
             InvokeMethod(hud, "ResetPlayerSettings");
             Assert.That(masterVolume.value, Is.EqualTo(100f));
             Assert.That(musicVolume.value, Is.EqualTo(100f));
             Assert.That(soundVolume.value, Is.EqualTo(100f));
+            Assert.That(GameAudioSettings.Master, Is.EqualTo(1f));
+            Assert.That(GameAudioSettings.Music, Is.EqualTo(1f));
+            Assert.That(GameAudioSettings.Sound, Is.EqualTo(1f));
             Assert.That(fullscreen.value, Is.True);
             InvokeMethod(hud, "CloseSettingsPanel");
             Assert.That(settingsOverlay.style.display.value, Is.EqualTo(DisplayStyle.None));

@@ -36,7 +36,14 @@
 #   6. 一旦 workflow 里出现打包/归档动作（zip / 7z / tar，或引用 build/ 产物目录），
 #      就必须同时保留删除 *_BurstDebugInformation_DoNotShip 的兜底行（详见 CheckBuildArtifactCleanup）：
 #      Burst 调试目录里是构建机的绝对路径，整目录压进 nightly 包就把开发期信息发出去了。
-#      当前 main 的 unity-tests.yml 已不含打包 job，所以这条现在是“一旦加回打包就会启用”的守卫。
+#      目前唯一有打包动作的是 release-*.yml（手动发版），所以这条对它恒生效。
+#
+#   7. release-*.yml 是发版专用 workflow，规则与前三条相反（详见 CheckReleaseWorkflow）：
+#      只允许 workflow_dispatch（禁止 pull_request / push）、必须声明 contents: write、
+#      必须走 scripts/next-release-version.sh 算版本、且同样要与测试共用 unity-seat 席位组。
+#      为什么不能沿用“必须有 pull_request”那条：一次发版要跑两轮 Unity 并创建不可回滚的
+#      tag/Release，绝不能由提交自动触发；而“给它加上 pull_request 触发以便过守卫”这种
+#      为了过检查而改行为的做法，正是这条规则要拦的事。
 #
 # 【输入】
 #   无参数：扫描仓库内 .github/workflows/*.yml（相对仓库根目录）。
@@ -245,7 +252,7 @@ CheckUnityConcurrency() {
 # 里面记录 Temp/Burst、Library/Burst 与编辑器安装路径；打包步骤 cp 到 runner 后再 zip，
 # 泄露的就是 runner 的 /github/workspace/... 路径。目录名里的 DoNotShip 说明 Unity 自己也
 # 认为它不该发布，但“压缩整个产物目录”这个写法很自然会把它一起带上，且不会有任何报错。
-# 现在 main 的 workflow 没有打包 job，因此本条只在重新引入打包时才生效（其余情况直接放行）。
+# 目前唯一带打包动作的是 release-*.yml（手动发版），因此这条对它恒生效。
 # -----------------------------------------------------------------------------
 CheckBuildArtifactCleanup() {
   local _file="$1"
@@ -266,28 +273,83 @@ CheckBuildArtifactCleanup() {
 }
 
 # -----------------------------------------------------------------------------
-# _check_file —— 校验单个 workflow 文件的触发策略与 Unity 串行约束
-# 输入：workflow 文件路径
-# 输出：标准输出打印结论；返回 0 表示合规，1 表示存在违规
+# CheckReleaseWorkflow —— 校验发版 workflow（release-*.yml）的触发与权限
+# 输入：workflow 文件路径；输出：失败时打印原因，返回 0 合规 / 1 违规。
+# 校验项：
+#   1) 必须有 workflow_dispatch —— 手动是它唯一合法的触发入口。
+#   2) 不得有 pull_request / push —— 发版要跑两轮 Unity 并创建不可回滚的 tag 与 Release。
+#   3) 必须有 permissions.contents: write —— gh release create 需要写权限，
+#      缺了不会在配置阶段报错，而是在最后一步 403，白等十几分钟。
+#   4) 必须调用 scripts/next-release-version.sh —— 版本号只允许一处运算，
+#      否则“Release 标签 / 包内 bundleVersion / Android versionCode”三处会分叉。
+#   5) 复用 CheckUnityConcurrency —— 发版同样要占 Unity 个人版席位，必须与测试共用 unity-seat。
+# 为什么按文件名识别：workflow_dispatch 里读不到“这是不是发版”的语义，
+#   而文件名是唯一稳定、可被静态检查的标识；命名约定写在 AGENTS.md 第 7 节。
 # -----------------------------------------------------------------------------
-_check_file() {
+CheckReleaseWorkflow() {
   local _file="$1" _block _rc=0
 
   _block=$(_on_block "$_file")
 
-  if ! grep -q '^[[:space:]]*pull_request:' <<<"$_block"; then
-    echo "  ❌ $_file：缺少 pull_request 触发 —— PR 阶段不会跑这个 workflow"
-    _rc=1
-  fi
-
   if ! grep -q '^[[:space:]]*workflow_dispatch:' <<<"$_block"; then
-    echo "  ❌ $_file：缺少 workflow_dispatch 触发 —— 失去了手动复现入口"
+    echo "  ❌ $_file：缺少 workflow_dispatch 触发 —— 发版只能手动触发"
     _rc=1
   fi
 
-  if grep -q '^[[:space:]]*push:' <<<"$_block"; then
-    echo "  ❌ $_file：存在 push 触发 —— main 已被规则集锁死，push 只会重复执行"
+  if grep -Eq '^[[:space:]]*(pull_request|push):' <<<"$_block"; then
+    echo "  ❌ $_file：发版 workflow 不得自动触发 —— pull_request / push 都会创建不可回滚的 Release"
     _rc=1
+  fi
+
+  if ! grep -Eq '^[[:space:]]*contents:[[:space:]]*write' "$_file"; then
+    echo "  ❌ $_file：缺少 permissions.contents: write —— gh release create 会在最后一步 403"
+    _rc=1
+  fi
+
+  if ! grep -q 'scripts/next-release-version.sh' "$_file"; then
+    echo "  ❌ $_file：没有调用 scripts/next-release-version.sh —— 版本号必须由它统一计算"
+    echo "     ↑ 自己写一套 sed/awk 版本运算会让 tag、包内 bundleVersion、versionCode 三处分叉。"
+    _rc=1
+  fi
+
+  CheckUnityConcurrency "$_file" || _rc=1
+
+  return "$_rc"
+}
+
+# -----------------------------------------------------------------------------
+# _check_file —— 校验单个 workflow 文件的触发策略与 Unity 串行约束
+# 输入：workflow 文件路径
+# 输出：标准输出打印结论；返回 0 表示合规，1 表示存在违规
+# 为什么先按文件名分流：release-*.yml 的触发规则与测试 workflow 正好相反
+#   （只许手动、禁止 PR），两条规则不能同时套在同一个文件上。
+# -----------------------------------------------------------------------------
+_check_file() {
+  local _file="$1" _block _rc=0 _is_release=0
+
+  case "${_file##*/}" in
+    release-*.yml) _is_release=1 ;;
+  esac
+
+  _block=$(_on_block "$_file")
+
+  if [ "$_is_release" -eq 1 ]; then
+    CheckReleaseWorkflow "$_file" || _rc=1
+  else
+    if ! grep -q '^[[:space:]]*pull_request:' <<<"$_block"; then
+      echo "  ❌ $_file：缺少 pull_request 触发 —— PR 阶段不会跑这个 workflow"
+      _rc=1
+    fi
+
+    if ! grep -q '^[[:space:]]*workflow_dispatch:' <<<"$_block"; then
+      echo "  ❌ $_file：缺少 workflow_dispatch 触发 —— 失去了手动复现入口"
+      _rc=1
+    fi
+
+    if grep -q '^[[:space:]]*push:' <<<"$_block"; then
+      echo "  ❌ $_file：存在 push 触发 —— main 已被规则集锁死，push 只会重复执行"
+      _rc=1
+    fi
   fi
 
   if [ "${_file##*/}" = "unity-tests.yml" ]; then
@@ -674,6 +736,66 @@ U（压缩前删掉 Burst 目录 → 放行）|cd build/StandaloneWindows64 && f
 V（没有打包步骤 → 放行）|echo test|0
 PACKCASES
 
+  # --- 用例 Y–AE：发版 workflow（release-*.yml）的触发与权限约束。
+  # 为什么必须覆盖：发版是唯一会创建 tag / Release / 上传资产的流程，且一次要占两轮 Unity 席位。
+  # 它改坏时的表现都是“没事发生”或“人工发现时才爆”：
+  #   · 加回 pull_request → 每个 PR 都会发一个 Release；
+  #   · 漏掉 contents: write → 构建成功后最后一步 403，白烧半小时；
+  #   · 自己写一套版本运算 → tag 与包内版本分叉，装上去才知道；
+  #   · 按 ref 分组 → 与测试抢同一个 Unity 个人席位，报 no available seats。
+  _write_release_fixture() {
+    local _path="$1" _variant="${2:-ok}"
+    {
+      printf '%s\n' 'on:'
+      [ "$_variant" = "nodispatch" ] || printf '%s\n' '  workflow_dispatch:'
+      case "$_variant" in
+        pr | nodispatch) printf '%s\n' '  pull_request:' ;;
+        push) printf '%s\n' '  push:' '    branches: [ main ]' ;;
+      esac
+      printf '%s\n' 'permissions:'
+      if [ "$_variant" = "noperm" ]; then
+        printf '%s\n' '  contents: read'
+      else
+        printf '%s\n' '  contents: write'
+      fi
+      printf '%s\n' 'concurrency:'
+      if [ "$_variant" = "refgroup" ]; then
+        printf '%s\n' '  group: release-${{ github.ref }}'
+      else
+        printf '%s\n' '  group: unity-seat'
+      fi
+      printf '%s\n' 'jobs:' '  release:' '    steps:'
+      if [ "$_variant" = "noversion" ]; then
+        printf '%s\n' '      - run: echo 打包'
+      else
+        printf '%s\n' '      - run: bash scripts/next-release-version.sh --latest v0.0.1'
+      fi
+    } >"$_path"
+    return 0
+  }
+
+  local _rcase _rvariant _rexpected _ractual
+  while IFS='|' read -r _rcase _rvariant _rexpected; do
+    [ -n "${_rcase:-}" ] || continue
+    _write_release_fixture "$_tmp/release-build.yml" "$_rvariant"
+    _ractual=0
+    bash "$_self_path" "$_tmp/release-build.yml" >/dev/null 2>&1 || _ractual=$?
+    if [ "$_ractual" -eq "$_rexpected" ]; then
+      echo "  ✅ 自检 $_rcase 通过"
+    else
+      echo "  ❌ 自检 $_rcase 失败：期望退出码 $_rexpected，实际 $_ractual"
+      _rc=1
+    fi
+  done <<'RELEASECASES'
+Y（合规的发版 workflow → 放行）|ok|0
+Z（发版 workflow 加回 pull_request → 拦截）|pr|1
+AA（发版 workflow 加回 push → 拦截）|push|1
+AB（发版 workflow 缺 workflow_dispatch → 拦截）|nodispatch|1
+AC（缺 permissions.contents: write → 拦截）|noperm|1
+AD（自己算版本、没走统一脚本 → 拦截）|noversion|1
+AE（按 ref 分组抢 Unity 席位 → 拦截）|refgroup|1
+RELEASECASES
+
   # --- 用例 I–K：合并门槛只允许“检查全绿 + 分支最新”，不得要求人工审阅。
   # 为什么必须在自检里覆盖：这条约定平时看不出问题，一旦规则集被改回要求审阅，
   # 表现只是 PR 卡在等 approval；而校验它的 --check-ruleset 需要 gh 登录才能跑，
@@ -764,6 +886,8 @@ if [ "$_fail" -ne 0 ]; then
   echo "  Code Owner 审阅关闭、无 required_reviewers），因此必需检查全绿且分支最新后"
   echo "  作者可自行合并；PR 阶段测的就是合并结果，push 触发只会重复跑。"
   echo "  需要时用 workflow_dispatch 手动触发。"
+  echo "  release-*.yml 是手动发版专用：只允许 workflow_dispatch、禁止 pull_request/push、"
+  echo "  必须有 contents: write、必须走 scripts/next-release-version.sh，并与测试共用 unity-seat 席位组。"
   echo "  Unity 测试矩阵还必须设置 max-parallel: 1，避免矩阵内并行授权竞争；"
   echo "  unity-tests.yml 顶层的 concurrency 必须是仓库级固定组名（unity-seat）且不得中途取消，"
   echo "  否则两个 PR 会同时抢同一个 Unity 个人席位。"

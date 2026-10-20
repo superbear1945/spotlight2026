@@ -1,10 +1,9 @@
-// HUD 视图（UI Toolkit / UXML）：回合信息、资源、日志、单位详情、按钮与胜负/模态遮罩。
+// HUD 视图（UI Toolkit / UXML）：回合信息、资源、日志、左右详情区、按钮与胜负/模态遮罩。
 // 为什么用 UI Toolkit 做静态 UI：面板结构固定、由策划在 UXML 中维护，不需要每帧重建；
 // 动态的手牌与棋盘使用 UGUI，避免为频繁增删的元素编写复杂的 UXML 同步代码。
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -19,12 +18,6 @@ namespace Spotlight
     /// </summary>
     public sealed class HudView : MonoBehaviour
     {
-        /// <summary>主音量在 PlayerPrefs 中的持久化键；值域为 0 到 1。</summary>
-        const string _masterVolumePreferenceKey = "Spotlight.MasterVolume";
-        /// <summary>音乐音量在 PlayerPrefs 中的持久化键；为后续音乐总线保留独立值域。</summary>
-        const string _musicVolumePreferenceKey = "Spotlight.MusicVolume";
-        /// <summary>音效音量在 PlayerPrefs 中的持久化键；为后续音效总线保留独立值域。</summary>
-        const string _soundVolumePreferenceKey = "Spotlight.SoundVolume";
         /// <summary>全屏开关在 PlayerPrefs 中的持久化键；1 表示全屏，0 表示窗口。</summary>
         const string _fullscreenPreferenceKey = "Spotlight.Fullscreen";
 
@@ -82,22 +75,14 @@ namespace Spotlight
         VisualElement _roundCounter;
         /// <summary>Boss 自动行动时显示在回合圆盘右侧的“对方回合”状态牌。</summary>
         VisualElement _opponentTurnIndicator;
-        /// <summary>Boss 兵位与手动模式提示文本。</summary>
-        Label _bossLabel;
         /// <summary>顶部常驻 Boss 阶段摘要，战斗中无需打开暂停菜单即可查看锁血和战舰数量。</summary>
         Label _bossPhaseLabel;
-        /// <summary>阶段提示（弃牌、模态等）。</summary>
-        Label _phaseLabel;
-        /// <summary>选中对象详情文本。</summary>
-        Label _detailLabel;
         /// <summary>错误/提示文本。</summary>
         Label _errorLabel;
         /// <summary>日志滚动容器。</summary>
         ScrollView _logScroll;
         /// <summary>完整日志面板，由记录按钮控制显隐。</summary>
         VisualElement _logPanel;
-        /// <summary>选中详情面板；没有选择或阶段提示时保持隐藏，避免遮挡棋盘。</summary>
-        VisualElement _sidePanel;
         /// <summary>日志内容容器。</summary>
         VisualElement _logContent;
         /// <summary>战斗记录入口按钮，只控制日志面板显示，不修改规则状态。</summary>
@@ -120,7 +105,7 @@ namespace Spotlight
         Button _menuButton;
         /// <summary>菜单遮罩（含「继续 / 重开 / 退出游戏」三个按钮）。</summary>
         VisualElement _menuOverlay;
-        /// <summary>当前是否显示齿轮菜单；Render 用它避免把菜单中的 Boss 状态面板按普通战斗界面规则再次隐藏。</summary>
+        /// <summary>当前是否显示齿轮菜单；Render 用它避免把菜单中的对局日志按普通战斗界面规则再次隐藏。</summary>
         bool _menuVisible;
         /// <summary>战斗界面的左右详情区：左为我方选中，右为敌方选中。</summary>
         VisualElement _detailLeft, _detailRight;
@@ -190,14 +175,10 @@ namespace Spotlight
             _bossLifeLabel = _root.Q<Label>("boss-life-label");
             _roundCounter = _root.Q<VisualElement>("round-counter");
             _opponentTurnIndicator = _root.Q<VisualElement>("opponent-turn-indicator");
-            _bossLabel = _root.Q<Label>("boss-info-label");
             _bossPhaseLabel = _root.Q<Label>("boss-phase-label");
-            _phaseLabel = _root.Q<Label>("phase-label");
-            _detailLabel = _root.Q<Label>("unit-detail");
             _errorLabel = _root.Q<Label>("error-label");
             _logScroll = _root.Q<ScrollView>("log-list");
             _logPanel = _root.Q<VisualElement>("log-panel");
-            _sidePanel = _root.Q<VisualElement>("side-panel");
             _logContent = _root.Q<VisualElement>("log-content");
             _historyButton = _root.Q<Button>("history-button");
             _pauseButton = _root.Q<Button>("pause-button");
@@ -324,7 +305,7 @@ namespace Spotlight
             if (_helpOverlay != null) _helpOverlay.style.display = DisplayStyle.None;
             if (_errorLabel != null) _errorLabel.style.display = DisplayStyle.None;
             if (_withdrawButton != null) _withdrawButton.style.display = DisplayStyle.None;
-            // 战斗界面是默认视图：原有面板（日志、Boss 状态与选中详情）先隐藏，只在齿轮菜单里显示。
+            // 战斗界面是默认视图：对局日志先隐藏，只在菜单里显示。
             SetMenuVisible(false);
         }
 
@@ -390,18 +371,7 @@ namespace Spotlight
             var bossHome = snapshot.Homes.FirstOrDefault(h => h.Owner == Side.Boss);
             if (_playerLifeLabel != null) _playerLifeLabel.text = playerHome != null ? playerHome.Hp.ToString() : "—";
             if (_bossLifeLabel != null) _bossLifeLabel.text = bossHome != null ? bossHome.Hp.ToString() : "—";
-            var bossLine = BuildBossLine(snapshot, configuration);
-            var phaseLine = BuildPhaseLine(snapshot);
-            var detailLine = BuildDetail(selection, snapshot, configuration);
-            if (_bossLabel != null) _bossLabel.text = bossLine;
             if (_bossPhaseLabel != null) _bossPhaseLabel.text = BuildBossPhaseSummary(snapshot);
-            if (_phaseLabel != null) _phaseLabel.text = phaseLine;
-            if (_detailLabel != null) _detailLabel.text = detailLine;
-            if (_sidePanel != null)
-            {
-                var showDetails = selection.Kind != SelectionKind.None || !string.IsNullOrEmpty(phaseLine);
-                _sidePanel.style.display = _menuVisible || showDetails ? DisplayStyle.Flex : DisplayStyle.None;
-            }
             if (_endTurnButton != null) _endTurnButton.SetEnabled(showEndTurn && !inputBlocked && snapshot.Phase != MatchPhase.Finished && !snapshot.BossBombPending && !snapshot.BossSpawnerPending);
             var spawnerReady = snapshot.BossSpawnerPending && snapshot.Phase == MatchPhase.Action;
             if (_spawnerDeployButton != null) _spawnerDeployButton.style.display = spawnerReady ? DisplayStyle.Flex : DisplayStyle.None;
@@ -498,11 +468,11 @@ namespace Spotlight
         {
             if (_settingsOverlay == null) return;
             if (_masterVolumeSlider != null)
-                _masterVolumeSlider.value = PlayerPrefs.GetFloat(_masterVolumePreferenceKey, 0.8f) * 100f;
+                _masterVolumeSlider.SetValueWithoutNotify(GameAudioSettings.Master * 100f);
             if (_musicVolumeSlider != null)
-                _musicVolumeSlider.value = PlayerPrefs.GetFloat(_musicVolumePreferenceKey, 0.6f) * 100f;
+                _musicVolumeSlider.SetValueWithoutNotify(GameAudioSettings.Music * 100f);
             if (_soundVolumeSlider != null)
-                _soundVolumeSlider.value = PlayerPrefs.GetFloat(_soundVolumePreferenceKey, 0.8f) * 100f;
+                _soundVolumeSlider.SetValueWithoutNotify(GameAudioSettings.Sound * 100f);
             if (_fullscreenToggle != null)
                 _fullscreenToggle.value = PlayerPrefs.GetInt(_fullscreenPreferenceKey, Screen.fullScreen ? 1 : 0) != 0;
             RefreshVolumePreview(_masterVolumeSlider, _masterVolumeValue, _masterVolumeFill);
@@ -515,26 +485,24 @@ namespace Spotlight
         /// <summary>
         /// 保存玩家设置并关闭设置面板。
         /// 输入：设置面板中的主音量百分比与全屏开关；输出：立即更新 Unity 设备状态并写入 PlayerPrefs。
-        /// 为什么在关闭时统一应用：避免拖动滑块或试切全屏时反复写盘和切换窗口模式。
+        /// 音量拖动时已实时生效；关闭时统一写盘，全屏仍只在关闭时切换。
         /// </summary>
         void ApplyAndCloseSettingsPanel()
         {
             if (_masterVolumeSlider != null)
             {
-                var volume = Mathf.Clamp01(_masterVolumeSlider.value / 100f);
-                AudioListener.volume = volume;
-                PlayerPrefs.SetFloat(_masterVolumePreferenceKey, volume);
+                GameAudioSettings.SetMaster(_masterVolumeSlider.value / 100f);
             }
             if (_musicVolumeSlider != null)
-                PlayerPrefs.SetFloat(_musicVolumePreferenceKey, Mathf.Clamp01(_musicVolumeSlider.value / 100f));
+                GameAudioSettings.SetMusic(_musicVolumeSlider.value / 100f);
             if (_soundVolumeSlider != null)
-                PlayerPrefs.SetFloat(_soundVolumePreferenceKey, Mathf.Clamp01(_soundVolumeSlider.value / 100f));
+                GameAudioSettings.SetSound(_soundVolumeSlider.value / 100f);
             if (_fullscreenToggle != null)
             {
                 Screen.fullScreen = _fullscreenToggle.value;
                 PlayerPrefs.SetInt(_fullscreenPreferenceKey, _fullscreenToggle.value ? 1 : 0);
             }
-            PlayerPrefs.Save();
+            GameAudioSettings.Save();
             CloseSettingsPanel();
         }
 
@@ -545,6 +513,7 @@ namespace Spotlight
         /// </summary>
         void ResetPlayerSettings()
         {
+            GameAudioSettings.ResetVolumes();
             if (_masterVolumeSlider != null) _masterVolumeSlider.value = 100f;
             if (_musicVolumeSlider != null) _musicVolumeSlider.value = 100f;
             if (_soundVolumeSlider != null) _soundVolumeSlider.value = 100f;
@@ -553,24 +522,33 @@ namespace Spotlight
 
         /// <summary>
         /// 响应主音量滑条变化并同步百分比与橙色填充长度。
-        /// 输入：UI Toolkit 的浮点变更事件；输出：只更新设置面板预览，不在拖动过程中写磁盘。
+        /// 输入：UI Toolkit 的浮点变更事件；输出：实时应用音量并更新预览，不在拖动过程中写磁盘。
         /// </summary>
-        void OnMasterVolumeChanged(ChangeEvent<float> changeEvent) =>
+        void OnMasterVolumeChanged(ChangeEvent<float> changeEvent)
+        {
+            GameAudioSettings.SetMaster(changeEvent.newValue / 100f);
             RefreshVolumePreview(_masterVolumeSlider, _masterVolumeValue, _masterVolumeFill);
+        }
 
         /// <summary>
         /// 响应音乐音量滑条变化并同步百分比与橙色填充长度。
-        /// 输入：UI Toolkit 的浮点变更事件；输出：只更新设置面板预览，最终值在返回时保存。
+        /// 输入：UI Toolkit 的浮点变更事件；输出：实时应用音乐音量并更新预览，最终值在返回时保存。
         /// </summary>
-        void OnMusicVolumeChanged(ChangeEvent<float> changeEvent) =>
+        void OnMusicVolumeChanged(ChangeEvent<float> changeEvent)
+        {
+            GameAudioSettings.SetMusic(changeEvent.newValue / 100f);
             RefreshVolumePreview(_musicVolumeSlider, _musicVolumeValue, _musicVolumeFill);
+        }
 
         /// <summary>
         /// 响应音效音量滑条变化并同步百分比与橙色填充长度。
-        /// 输入：UI Toolkit 的浮点变更事件；输出：只更新设置面板预览，最终值在返回时保存。
+        /// 输入：UI Toolkit 的浮点变更事件；输出：实时应用音效音量并更新预览，最终值在返回时保存。
         /// </summary>
-        void OnSoundVolumeChanged(ChangeEvent<float> changeEvent) =>
+        void OnSoundVolumeChanged(ChangeEvent<float> changeEvent)
+        {
+            GameAudioSettings.SetSound(changeEvent.newValue / 100f);
             RefreshVolumePreview(_soundVolumeSlider, _soundVolumeValue, _soundVolumeFill);
+        }
 
         /// <summary>
         /// 把一个音量滑条的数值同步到独立百分比文本和美术填充条。
@@ -652,86 +630,6 @@ namespace Spotlight
         /// </summary>
         void ExitFromPause() => ExitRequested?.Invoke();
 
-        /// <summary>
-        /// 组装 Boss 区域的提示文本：AI 兵位剩余回合、等待空位或手动模式放牌提示。
-        /// 输入：快照与配置；输出：单行或多行文本。
-        /// </summary>
-        string BuildBossLine(GameSnapshot snapshot, GameConfiguration configuration)
-        {
-            var sb = new StringBuilder();
-            sb.Append("Boss 第 ").Append((int)snapshot.BossPhase + 1).Append(" 阶段").AppendLine(snapshot.BossInvulnerable ? " · 锁血，无法被攻击" : "");
-            if (snapshot.BossWarships.Count > 0)
-                sb.Append("战舰：待部署 ").Append(snapshot.BossWarships.Count(s => s.Status == BossWarshipStatus.Pending))
-                    .Append(" · 存活 ").Append(snapshot.BossWarships.Count(s => s.Status == BossWarshipStatus.Alive))
-                    .Append(" · 已击败 ").Append(snapshot.BossWarships.Count(s => s.Status == BossWarshipStatus.Defeated)).AppendLine();
-            foreach (var bomb in snapshot.BossBombs)
-                sb.Append("炸弹 ").Append(bomb.Position).Append(" · 第 ").Append(bomb.DueRound).Append(" 回合玩家行动前爆炸 · 伤害 ").Append(bomb.Damage).AppendLine();
-            if (snapshot.BossBombPending) sb.AppendLine("炸弹机会：请先布置或跳过");
-            if (snapshot.BossSpawnerPending) sb.AppendLine("刷怪卡机会：请先部署或跳过");
-            var spawner = snapshot.Units.FirstOrDefault(u => u.IsBossSpawner);
-            if (spawner != null)
-                sb.Append("刷怪卡：").Append(spawner.Hp).AppendLine(" 血 · 从部署后下一次 Boss 回合起尝试生成一架战机");
-            if (snapshot.PlayerControlsBoss)
-            {
-                var bossName = configuration != null && configuration.Cards.TryGetValue(configuration.Rules.BossCardType, out var boss) ? boss.Name : configuration?.Rules.BossCardType;
-                sb.Append("手动 Boss 模式：放牌 ").Append(configuration?.Rules.BossPlays ?? 0).Append(" 张（").Append(bossName).Append("）");
-                return sb.ToString();
-            }
-            sb.Append(snapshot.BossPhase == BossPhase.PhaseOne ? "AI 兵位：" : "固定兵位（补兵已暂停）：");
-            foreach (var slot in snapshot.BossReplacements)
-            {
-                sb.Append(slot.SlotId).Append("=");
-                if (slot.UnitId.HasValue) sb.Append("在场");
-                else if (slot.WaitingForSpace) sb.Append("等待空位");
-                else sb.Append("补兵 ").Append(slot.RemainingRounds).Append(" 回合");
-                sb.Append("  ");
-            }
-            return sb.ToString();
-        }
-
-        /// <summary>组装阶段提示文本。输入：快照；输出：提示行（无提示时为空串）。</summary>
-        string BuildPhaseLine(GameSnapshot snapshot)
-        {
-            if (snapshot.BossBombPending) return "先布置炸弹或跳过炸弹，再开始玩家行动";
-            if (snapshot.BossSpawnerPending) return "先部署刷怪卡或跳过，再开始 Boss 普通行动";
-            if (snapshot.Phase == MatchPhase.Discard) return $"请弃牌至上限（剩余 {snapshot.Hand.Count} 张）";
-            if (snapshot.BossInvulnerable) return "Boss 二阶段锁血：击败两艘战舰以解除锁血";
-            if (snapshot.ActiveSide == Side.Boss && !snapshot.PlayerControlsBoss) return "Boss 回合（AI 自动结算）";
-            return string.Empty;
-        }
-
-        /// <summary>
-        /// 组装选中对象详情。
-        /// 输入：选择上下文、快照与配置；输出：详情文本。
-        /// 行为：手牌显示配置属性与部署限制，单位显示实时生命与属性，家显示生命。
-        /// </summary>
-        string BuildDetail(Selection selection, GameSnapshot snapshot, GameConfiguration configuration)
-        {
-            if (selection.Kind == SelectionKind.BossBombDeployment) return "选择高亮列中的任意格布置炸弹，可与单位或家同格";
-            if (selection.Kind == SelectionKind.BossSpawnerDeployment) return "选择高亮空格部署刷怪卡，列号从玩家一侧起算";
-            if (selection.Kind == SelectionKind.Hand)
-            {
-                var card = snapshot.Hand.FirstOrDefault(c => c.Id == selection.Id);
-                return card != null && configuration.Cards.TryGetValue(card.TypeId, out var arch) ? CardText.DetailLine(arch, Side.Player) : string.Empty;
-            }
-            if (selection.Kind == SelectionKind.Unit)
-            {
-                var unit = snapshot.Units.FirstOrDefault(u => u.Id == selection.Id);
-                if (unit == null) return string.Empty;
-                // 单位详情必须用单位快照（当前攻击/射程/移动与一次性减攻状态），不能用卡种基础配置。
-                var text = configuration.Cards.TryGetValue(unit.TypeId, out var arch) ? CardText.UnitDetail(arch, unit) : string.Empty;
-                return text + Environment.NewLine + $"行动机会 {(unit.CanAct ? "可用" : unit.Acted ? "已用完" : "维持费不足")}";
-            }
-            if (selection.Kind == SelectionKind.Home)
-            {
-                var home = snapshot.Homes.FirstOrDefault(h => h.Id == selection.Id);
-                if (home == null) return string.Empty;
-                return $"{(home.Owner == Side.Player ? "玩家" : "Boss")}的家 · 生命 {home.Hp}{(home.Owner == Side.Boss && snapshot.BossInvulnerable ? "（锁血，无法被攻击）" : "")} · {(home.Acted ? "本回合已移动" : "本回合可移动一格")}";
-            }
-            if (selection.Kind == SelectionKind.BossDeployment) return "选择一个高亮格放置 Boss 卡";
-            return "点击手牌、己方单位或己方家进行操作";
-        }
-
         /// <summary>同步阶段日志。输入：当前展示快照的日志；输出：有界列表，滚动截断时仍更新且不重复追加。</summary>
         void AppendLog(IReadOnlyList<GameEvent> log)
         {
@@ -787,9 +685,9 @@ namespace Spotlight
         /// <summary>
         /// 切换“战斗界面”与“原有面板”两套视图。
         /// 输入：true 表示进入齿轮菜单；输出：无。
-        /// 行为：进入菜单时隐藏战斗界面（左右详情区、卡牌计数、齿轮），显示原有面板（日志、Boss 状态与选中详情）
-        /// 以及中间卡片上的「继续 / 重开」；退出时反向恢复。
-        /// 为什么保留原有面板：日志与兵位计时是排查问题的主要视图，做成菜单里的第二套界面后，
+        /// 行为：进入菜单时隐藏战斗界面（左右详情区、卡牌计数），显示对局日志以及中间卡片上的「继续 / 重开」；
+        /// 退出时反向恢复。
+        /// 为什么保留日志面板：兵位计时与刷怪过程只写进日志，做成菜单里的第二套界面后，
         /// 战斗界面可以保持干净，同时这些信息不会丢失。
         /// 棋盘与手牌不受影响：它们是对局本体，两套视图下都可见。
         /// </summary>
@@ -802,7 +700,6 @@ namespace Spotlight
             ShowElement(_pileRight, !visible);
             ShowElement(_menuButton, !visible);
             ShowElement(_logPanel, visible);
-            ShowElement(_sidePanel, visible);
             ShowElement(_menuOverlay, visible);
         }
 
